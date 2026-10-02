@@ -1,5 +1,6 @@
 package com.mycompany.tugas_akhir;
 
+<<<<<<< HEAD
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
@@ -80,5 +81,22 @@ public class PasswordHelper {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(salt);
         return md.digest(password.getBytes(StandardCharsets.UTF_8));
+=======
+
+public class PasswordHelper {
+
+
+    public static String hashPassword(String plainPassword) {
+        System.out.println("[PasswordHelper] Password stored as plaintext (TESTING MODE)");
+        return plainPassword;
+    }
+
+
+    public static boolean verifyPassword(String plainPassword, String storedPassword) {
+        boolean matches = plainPassword.equals(storedPassword);
+        System.out.println("[PasswordHelper] Password verification: " + (matches ? "MATCH ✓" : "MISMATCH ✗"));
+        System.out.println("[PasswordHelper] Input: '" + plainPassword + "', Stored: '" + storedPassword + "'");
+        return matches;
+>>>>>>> origin/main
     }
 }

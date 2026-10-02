@@ -3,12 +3,17 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.*?>
+<<<<<<< HEAD
+=======
+<?import java.lang.String?>
+>>>>>>> origin/main
 
 <VBox styleClass="content-area" spacing="16"
       xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mycompany.tugas_akhir.StorageController">
 
+<<<<<<< HEAD
     <!-- HEADER BAR -->
     <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
         <VBox spacing="3">
@@ -57,6 +62,149 @@
                 <TableColumn fx:id="colStok"     text="Stok"        prefWidth="90"  minWidth="75"  maxWidth="100"/>
                 <TableColumn fx:id="colStatus"   text="Status"      prefWidth="100" minWidth="85"  maxWidth="115"/>
                 <TableColumn fx:id="colAksi"     text="Aksi"        prefWidth="95"  minWidth="85"  maxWidth="105"/>
+=======
+    
+    <VBox spacing="2" style="-fx-padding: 0;">
+        <Label text="Manajemen Barang" styleClass="section-page-title"/>
+        <Label text="Kelola data master barang yang tersimpan di gudang" styleClass="section-page-sub"/>
+    </VBox>
+
+    
+    <HBox spacing="12" style="-fx-padding: 0;">
+        
+        
+        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
+            <HBox spacing="8" alignment="TOP_LEFT">
+                <Label text="📦" style="-fx-font-size: 20px;"/>
+                <VBox spacing="3">
+                    <Label text="TOTAL SKUs" style="-fx-font-size: 11px; -fx-text-fill: #9ba3b8; -fx-font-weight: bold;"/>
+                    <Label fx:id="lblTotalBarang" text="24" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                    <Label text="Active item in warehouse" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        
+        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
+            <HBox spacing="8" alignment="TOP_LEFT">
+                <Label text="✅" style="-fx-font-size: 20px;"/>
+                <VBox spacing="3">
+                    <Label text="IN STOCK" style="-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-font-weight: bold;"/>
+                    <Label fx:id="lblStokSehat" text="6" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
+                    <Label text="healthy stocks" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        
+        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
+            <HBox spacing="8" alignment="TOP_LEFT">
+                <Label text="⚠️" style="-fx-font-size: 20px;"/>
+                <VBox spacing="3">
+                    <Label text="LOW STOCK" style="-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-font-weight: bold;"/>
+                    <Label fx:id="lblStokRendah" text="2" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
+                    <Label text="restock soon" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        
+        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
+            <HBox spacing="8" alignment="TOP_LEFT">
+                <Label text="❌" style="-fx-font-size: 20px;"/>
+                <VBox spacing="3">
+                    <Label text="OUT OF STOCK" style="-fx-font-size: 11px; -fx-text-fill: #ef4444; -fx-font-weight: bold;"/>
+                    <Label fx:id="lblStokHabis" text="6" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
+                    <Label text="need re-order" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </HBox>
+
+    
+    <HBox spacing="12" style="-fx-padding: 0;">
+        
+        
+        <VBox styleClass="section-card" spacing="4" HBox.hgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <VBox spacing="2">
+                    <Label text="Section A" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                    <Label text="12" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                    <Label text="SKUs" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="A" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #e5e7eb; -fx-alignment: center; -fx-min-width: 50;"/>
+            </HBox>
+        </VBox>
+
+        
+        <VBox styleClass="section-card" spacing="4" HBox.hgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <VBox spacing="2">
+                    <Label text="Section B" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                    <Label text="6" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                    <Label text="SKUs" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="B" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #e5e7eb; -fx-alignment: center; -fx-min-width: 50;"/>
+            </HBox>
+        </VBox>
+
+        
+        <VBox styleClass="section-card" spacing="4" HBox.hgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <VBox spacing="2">
+                    <Label text="Section C" style="-fx-font-size: 12px; -fx-text-fill: #6b7280;"/>
+                    <Label text="6" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
+                    <Label text="SKUs" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="C" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #e5e7eb; -fx-alignment: center; -fx-min-width: 50;"/>
+            </HBox>
+        </VBox>
+    </HBox>
+
+    
+    <VBox styleClass="card" spacing="12" style="-fx-padding: 16;">
+        
+        
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label text="📋 Inventory Filter" style="-fx-font-size: 12px; -fx-text-fill: #6b7280; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="📥 export" styleClass="btn-outline-small" style="-fx-font-size: 11px; -fx-padding: 6 12 6 12;" onAction="#handleExport"/>
+            <Button text="➕ add item" styleClass="btn-primary-small" style="-fx-font-size: 11px; -fx-padding: 6 16 6 16; -fx-background-color: #3b82f6;" onAction="#handleTambah"/>
+        </HBox>
+
+        
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <TextField promptText="🔍  Search name, SKU, rack, code..."
+                       styleClass="search-box"
+                       fx:id="searchField"
+                       onKeyReleased="#handleSearch"
+                       style="-fx-min-width: 250; -fx-pref-width: 250;"/>
+
+            <ComboBox fx:id="comboFilter1" styleClass="filter-combo" style="-fx-min-width: 140;"/>
+
+            <ComboBox fx:id="comboStatusFilter" styleClass="filter-combo" style="-fx-min-width: 140;"/>
+
+            <ComboBox fx:id="comboCategoryFilter" styleClass="filter-combo" style="-fx-min-width: 160;"/>
+        </HBox>
+    </VBox>
+
+    
+    <VBox styleClass="card" spacing="12" style="-fx-padding: 0; -fx-background-color: transparent;">
+        
+        <TableView fx:id="tableBarang" prefHeight="400" styleClass="data-table">
+            <columns>
+                <TableColumn fx:id="colNo"        text="#"          prefWidth="50"/>
+                <TableColumn fx:id="colKode"      text="ITEM / SKU" prefWidth="180"/>
+                <TableColumn fx:id="colKategori"  text="CATEGORY"   prefWidth="110"/>
+                <TableColumn fx:id="colLokasi"    text="LOCATION"   prefWidth="140"/>
+                <TableColumn fx:id="colStok"      text="QUANTITY"   prefWidth="100"/>
+                <TableColumn fx:id="colStokMin"   text="MIN / MAX"  prefWidth="110"/>
+                <TableColumn fx:id="colStatus"    text="STATUS"     prefWidth="110"/>
+                <TableColumn fx:id="colLastUpdate" text="LAST UPDATE" prefWidth="120"/>
+>>>>>>> origin/main
             </columns>
             <placeholder>
                 <Label text="Tidak ada data barang" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>

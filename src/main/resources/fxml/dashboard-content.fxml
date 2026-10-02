@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.shape.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1">
+
+    
+    <HBox spacing="16">
+
+        
+        <VBox styleClass="card" spacing="12" HBox.hgrow="ALWAYS">
+
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="Section Overview" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+            </HBox>
+
+            
+            <HBox spacing="12" alignment="TOP_CENTER">
+
+                
+                <VBox spacing="6" alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
+                    <Label text="Section A" styleClass="section-header"/>
+                    <Label text="2/12" styleClass="section-sub"/>
+                    <GridPane hgap="4" vgap="4" alignment="CENTER">
+                        <Button text="A-01" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <Button text="A-02" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        <Button text="A-03" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <Button text="A-04" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Button text="A-05" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <Button text="A-06" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <Button text="A-07" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <Button text="A-08" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        <Button text="A-09" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <Button text="A-10" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                        <Button text="A-11" styleClass="slot-btn-blue" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                        <Button text="A-12" styleClass="slot-btn-blue" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                    </GridPane>
+                </VBox>
+
+                
+                <VBox spacing="6" alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
+                    <Label text="Section B" styleClass="section-header"/>
+                    <Label text="4/12" styleClass="section-sub"/>
+                    <GridPane hgap="4" vgap="4" alignment="CENTER">
+                        <Button text="B-01" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <Button text="B-02" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        <Button text="B-03" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <Button text="B-04" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Button text="B-05" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <Button text="B-06" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <Button text="B-07" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <Button text="B-08" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        <Button text="B-09" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <Button text="B-10" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                        <Button text="B-11" styleClass="slot-btn-green" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                        <Button text="B-12" styleClass="slot-btn-green" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                    </GridPane>
+                </VBox>
+
+                
+                <VBox spacing="6" alignment="TOP_CENTER" HBox.hgrow="ALWAYS">
+                    <Label text="Section C" styleClass="section-header"/>
+                    <Label text="12/12" styleClass="section-sub"/>
+                    <GridPane hgap="4" vgap="4" alignment="CENTER">
+                        <Button text="C-01" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <Button text="C-02" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        <Button text="C-03" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <Button text="C-04" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <Button text="C-05" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <Button text="C-06" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <Button text="C-07" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <Button text="C-08" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        <Button text="C-09" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <Button text="C-10" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                        <Button text="C-11" styleClass="slot-btn-red" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                        <Button text="C-12" styleClass="slot-btn-red" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                    </GridPane>
+                </VBox>
+
+            </HBox>
+        </VBox>
+
+        
+        <VBox spacing="16" style="-fx-pref-width: 340px; -fx-min-width: 320px; -fx-max-width: 360px;">
+
+            
+            <VBox styleClass="card" spacing="12">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Recent Activity  🕐" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="24H" styleClass="card-badge"/>
+                </HBox>
+
+                <HBox spacing="12" alignment="CENTER_LEFT">
+                    
+                    <VBox styleClass="activity-card-in" spacing="4">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="📦" styleClass="activity-icon-in"/>
+                            <Label text="↗" style="-fx-text-fill:#10b981; -fx-font-size:14px;"/>
+                        </HBox>
+                        <Label fx:id="lblBarangMasuk" text="1234" styleClass="activity-number-in"/>
+                        <Label text="Barang Masuk" styleClass="activity-label"/>
+                    </VBox>
+
+                    
+                    <VBox styleClass="activity-card-out" spacing="4">
+                        <HBox alignment="CENTER_LEFT" spacing="8">
+                            <Label text="🚚" styleClass="activity-icon-out"/>
+                            <Label text="↗" style="-fx-text-fill:#ef4444; -fx-font-size:14px;"/>
+                        </HBox>
+                        <Label fx:id="lblBarangKeluar" text="900" styleClass="activity-number-out"/>
+                        <Label text="Barang Keluar" styleClass="activity-label"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            
+            <VBox styleClass="card" spacing="10" VBox.vgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Recent Transaction  🖨" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="24H" styleClass="card-badge"/>
+                </HBox>
+
+                
+                <HBox spacing="0">
+                    <Label text="Barang" styleClass="table-header-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="Supplier" styleClass="table-header-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="Qty" styleClass="table-header-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="" styleClass="table-header-label" style="-fx-pref-width: 24px;"/>
+                </HBox>
+
+                
+                <HBox spacing="0" alignment="CENTER_LEFT">
+                    <Label text="Barang A" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="PT. Dua" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="300pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="📦" styleClass="tx-in-icon"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+
+                
+                <HBox spacing="0" alignment="CENTER_LEFT">
+                    <Label text="Barang B" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="PT. Satu" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="150pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="📦" styleClass="tx-in-icon"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+
+                
+                <HBox spacing="0" alignment="CENTER_LEFT">
+                    <Label text="Barang C" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="PT. Dua" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="20pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="📦" styleClass="tx-in-icon"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+
+                
+                <HBox spacing="0" alignment="CENTER_LEFT">
+                    <Label text="Barang D" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="PT. Empat" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="500pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="🚚" styleClass="tx-out-icon"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+
+                
+                <HBox spacing="0" alignment="CENTER_LEFT">
+                    <Label text="Barang E" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="PT. Tiga" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
+                    <Label text="769pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
+                    <Label text="🚚" styleClass="tx-out-icon"/>
+                </HBox>
+            </VBox>
+
+            
+            <VBox styleClass="card" spacing="10">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Top Movers  🔄" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="24H" styleClass="card-badge"/>
+                </HBox>
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="1" styleClass="movers-rank"/>
+                    <Label text="Barang A" styleClass="movers-item"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="2" styleClass="movers-rank"/>
+                    <Label text="Barang B" styleClass="movers-item"/>
+                </HBox>
+                <Pane styleClass="table-row-separator"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="3" styleClass="movers-rank"/>
+                    <Label text="Barang E" styleClass="movers-item"/>
+                </HBox>
+            </VBox>
+
+        </VBox>
+    </HBox>
+
+    
+    <VBox styleClass="card" spacing="12">
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <Label text="Storage Alert  🖥" styleClass="card-title"/>
+        </HBox>
+
+        <HBox spacing="32" alignment="CENTER_LEFT">
+
+            
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox spacing="1">
+                    <Label text="Rak" styleClass="alert-rak-label"/>
+                    <Label text="A-01" styleClass="alert-rak-sub"/>
+                </VBox>
+                <Label text="95%" styleClass="alert-pct-label"/>
+                <Label text="⚠" styleClass="alert-warn"/>
+            </HBox>
+
+            
+            <Pane style="-fx-background-color: #e2e6ef; -fx-pref-width:1px; -fx-min-width:1px; -fx-max-width:1px; -fx-pref-height:32px;"/>
+
+            
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox spacing="1">
+                    <Label text="Rak" styleClass="alert-rak-label"/>
+                    <Label text="B-01" styleClass="alert-rak-sub"/>
+                </VBox>
+                <Label text="100%" styleClass="alert-pct-label"/>
+                <Label text="✖" styleClass="alert-danger"/>
+            </HBox>
+
+            
+            <Pane style="-fx-background-color: #e2e6ef; -fx-pref-width:1px; -fx-min-width:1px; -fx-max-width:1px; -fx-pref-height:32px;"/>
+
+            
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox spacing="1">
+                    <Label text="Rak" styleClass="alert-rak-label"/>
+                    <Label text="C-01" styleClass="alert-rak-sub"/>
+                </VBox>
+                <Label text="45%" styleClass="alert-pct-label"/>
+                <Label text="✔" styleClass="alert-ok"/>
+            </HBox>
+
+        </HBox>
+    </VBox>
+
+</VBox>

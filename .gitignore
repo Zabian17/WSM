@@ -59,6 +59,13 @@ logs/
 .env
 
 # ========================
+# Helper / Automation Scripts
+# ========================
+push_release.*
+run.bat
+run.ps1
+
+# ========================
 # Project Notes (local only)
 # ========================
 PROGRESS.txt

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- ============================================================
 --  GUDANGKU - Database Schema
 --  Database : gudang_akhir
@@ -6,16 +7,29 @@
 -- ============================================================
 
 -- Buat database jika belum ada
+=======
+
+
+
+
+
+
+
+
+>>>>>>> origin/main
 CREATE DATABASE IF NOT EXISTS gudang_akhir
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
 USE gudang_akhir;
+<<<<<<< HEAD
+=======
 
--- ============================================================
--- TABEL: users
--- Menyimpan akun pengguna aplikasi
--- ============================================================
+
+
+
+>>>>>>> origin/main
+
 CREATE TABLE IF NOT EXISTS users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     full_name     VARCHAR(100)  NOT NULL,
@@ -27,10 +41,10 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- ============================================================
--- TABEL: barang
--- Menyimpan data master barang/produk
--- ============================================================
+
+
+
+
 CREATE TABLE IF NOT EXISTS barang (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     kode_barang VARCHAR(20)   NOT NULL UNIQUE,
@@ -38,15 +52,16 @@ CREATE TABLE IF NOT EXISTS barang (
     kategori    VARCHAR(80),
     satuan      VARCHAR(20)   DEFAULT 'pcs',
     stok        INT           DEFAULT 0,
-    stok_min    INT           DEFAULT 0,   -- alert jika stok di bawah ini
+    stok_min    INT           DEFAULT 0,   
+    stok_max    INT           DEFAULT 0,   
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- ============================================================
--- TABEL: supplier
--- Menyimpan data pemasok/supplier barang
--- ============================================================
+
+
+
+
 CREATE TABLE IF NOT EXISTS supplier (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     nama_supplier VARCHAR(150) NOT NULL,
@@ -56,32 +71,33 @@ CREATE TABLE IF NOT EXISTS supplier (
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================
--- TABEL: section
--- Menyimpan data seksi gudang (A, B, C, dst.)
--- ============================================================
+
+
+
+
 CREATE TABLE IF NOT EXISTS section (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     kode_section VARCHAR(10)  NOT NULL UNIQUE,
     nama_section VARCHAR(80),
-    kapasitas    INT          DEFAULT 12,  -- jumlah slot
+    kapasitas    INT          DEFAULT 12,  
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================
--- TABEL: rak
--- Slot penyimpanan dalam setiap section
--- ============================================================
+
+
+
+
 CREATE TABLE IF NOT EXISTS rak (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     section_id   INT NOT NULL,
     kode_rak     VARCHAR(10)  NOT NULL UNIQUE,
-    kapasitas    INT          DEFAULT 100, -- kapasitas dalam unit
+    kapasitas    INT          DEFAULT 100, 
     terisi       INT          DEFAULT 0,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (section_id) REFERENCES section(id) ON DELETE CASCADE
 );
 
+<<<<<<< HEAD
 CREATE TABLE IF NOT EXISTS inventory_balance (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     barang_id    INT NOT NULL,
@@ -128,16 +144,22 @@ CREATE TABLE IF NOT EXISTS inventory_transfer (
 -- TABEL: transaksi
 -- Mencatat setiap gerakan barang masuk dan keluar
 -- ============================================================
+=======
+
+
+
+
+>>>>>>> origin/main
 CREATE TABLE IF NOT EXISTS transaksi (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     kode_transaksi VARCHAR(20) NOT NULL UNIQUE,
     tipe          ENUM('masuk', 'keluar') NOT NULL,
     barang_id     INT NOT NULL,
-    supplier_id   INT,                         -- NULL jika tipe=keluar
+    supplier_id   INT,                         
     rak_id        INT,
     jumlah        INT          NOT NULL,
     keterangan    TEXT,
-    user_id       INT NOT NULL,                -- siapa yang input
+    user_id       INT NOT NULL,                
     tanggal       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (barang_id)   REFERENCES barang(id),
     FOREIGN KEY (supplier_id) REFERENCES supplier(id),
@@ -145,6 +167,7 @@ CREATE TABLE IF NOT EXISTS transaksi (
     FOREIGN KEY (user_id)     REFERENCES users(id)
 );
 
+<<<<<<< HEAD
 CREATE TABLE IF NOT EXISTS transaction_lot_allocation (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     transaksi_id   INT NOT NULL,
@@ -222,14 +245,19 @@ CREATE TABLE IF NOT EXISTS delivery_order_lot_reservation (
 -- ============================================================
 -- DATA AWAL (Seed)
 -- ============================================================
+=======
+>>>>>>> origin/main
 
--- Section A, B, C
+
+
+
+
 INSERT IGNORE INTO section (kode_section, nama_section, kapasitas) VALUES
 ('A', 'Section A', 12),
 ('B', 'Section B', 12),
 ('C', 'Section C', 12);
 
--- Rak A-01 s/d A-12
+
 INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (1, 'A-01', 100, 95),
 (1, 'A-02', 100, 40),
@@ -244,7 +272,7 @@ INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (1, 'A-11', 100, 0),
 (1, 'A-12', 100, 0);
 
--- Rak B-01 s/d B-12
+
 INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (2, 'B-01', 100, 100),
 (2, 'B-02', 100, 80),
@@ -259,7 +287,7 @@ INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (2, 'B-11', 100, 0),
 (2, 'B-12', 100, 0);
 
--- Rak C-01 s/d C-12 (penuh semua)
+
 INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (3, 'C-01', 100, 45),
 (3, 'C-02', 100, 100),
@@ -274,23 +302,31 @@ INSERT IGNORE INTO rak (section_id, kode_rak, kapasitas, terisi) VALUES
 (3, 'C-11', 100, 100),
 (3, 'C-12', 100, 100);
 
--- Supplier
+
 INSERT IGNORE INTO supplier (nama_supplier, kontak, email) VALUES
 ('PT. Satu',  '08111111111', 'satu@example.com'),
 ('PT. Dua',   '08222222222', 'dua@example.com'),
 ('PT. Tiga',  '08333333333', 'tiga@example.com'),
 ('PT. Empat', '08444444444', 'empat@example.com');
 
--- Barang sample
-INSERT IGNORE INTO barang (kode_barang, nama_barang, kategori, satuan, stok, stok_min) VALUES
-('BRG-001', 'Barang A', 'Umum', 'pcs', 500, 50),
-('BRG-002', 'Barang B', 'Umum', 'pcs', 300, 30),
-('BRG-003', 'Barang C', 'Umum', 'pcs', 150, 20),
-('BRG-004', 'Barang D', 'Umum', 'pcs', 200, 25),
-('BRG-005', 'Barang E', 'Umum', 'pcs', 769, 100);
 
--- ============================================================
--- CARA PAKAI:
---   Di phpMyAdmin : Import file ini via tab Import
---   Di terminal   : mysql -u root -p12345 < schema.sql
--- ============================================================
+INSERT IGNORE INTO barang (kode_barang, nama_barang, kategori, satuan, stok, stok_min, stok_max) VALUES
+('BRG-001', 'Barang A', 'Umum', 'pcs', 500, 50, 100),
+('BRG-002', 'Barang B', 'Umum', 'pcs', 300, 30, 60),
+('BRG-003', 'Barang C', 'Umum', 'pcs', 150, 20, 40),
+('BRG-004', 'Barang D', 'Umum', 'pcs', 200, 25, 50),
+('BRG-005', 'Barang E', 'Umum', 'pcs', 769, 100, 200);
+
+
+
+
+
+
+INSERT IGNORE INTO users (full_name, email, password_hash, role) VALUES
+('Test User', 'testuser@example.com', 'Testing123', 'user');
+
+
+
+
+
+

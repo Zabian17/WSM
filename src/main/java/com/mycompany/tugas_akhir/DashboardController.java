@@ -1,5 +1,6 @@
 package com.mycompany.tugas_akhir;
 
+<<<<<<< HEAD
 import com.mycompany.tugas_akhir.config.SpringFXMLLoader;
 import com.mycompany.tugas_akhir.model.Rak;
 import com.mycompany.tugas_akhir.model.Section;
@@ -8,6 +9,12 @@ import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
+=======
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ResourceBundle;
+>>>>>>> origin/main
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -35,6 +42,7 @@ import java.util.ResourceBundle;
 @Component
 public class DashboardController implements Initializable {
 
+<<<<<<< HEAD
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
     private final TransaksiService transaksiService;
     private final SectionService sectionService;
@@ -45,6 +53,10 @@ public class DashboardController implements Initializable {
 
     @FXML private ScrollPane mainScrollPane;
     @FXML private FlowPane sectionsFlowPane;
+=======
+    private UserDAO.User currentUser;
+    private Stage primaryStage;
+>>>>>>> origin/main
 
     @FXML private HBox navDashboard;
     @FXML private HBox navStorage;
@@ -55,11 +67,14 @@ public class DashboardController implements Initializable {
 
     @FXML private Label pageTitleLabel;
     @FXML private TextField searchField;
-    @FXML private Button avatarBtn;
+    @FXML private Label topbarAvatarLabel;
+    @FXML private ImageView topbarAvatarImg;
+    @FXML private StackPane topbarAvatarFallback;
 
     @FXML private Label lblBarangMasuk;
     @FXML private Label lblBarangKeluar;
 
+<<<<<<< HEAD
     public DashboardController(TransaksiService transaksiService,
                                SectionService sectionService,
                                SpringFXMLLoader fxmlLoader) {
@@ -67,11 +82,17 @@ public class DashboardController implements Initializable {
         this.sectionService = sectionService;
         this.fxmlLoader = fxmlLoader;
     }
+=======
+    @FXML private ScrollPane mainScrollPane;
+    
+    private String currentPage = "dashboard";
+>>>>>>> origin/main
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setActiveNav("dashboard");
 
+<<<<<<< HEAD
         if (mainScrollPane != null) {
             defaultDashboardView = mainScrollPane.getContent();
         }
@@ -437,55 +458,151 @@ public class DashboardController implements Initializable {
         showInfo("Kapasitas " + rak.getKodeRak(),
                 "Terisi: " + rak.getTerisi() + " dari " + rak.getKapasitas() + " unit ("
                         + rak.getPersentase() + "%). Perubahan occupancy dicatat melalui transaksi atau transfer stok.");
+=======
+        lblBarangMasuk.setText("1,234");
+        lblBarangKeluar.setText("900");
+        
+        loadDashboardPage();
+        
+        if (pageTitleLabel != null && pageTitleLabel.getScene() != null) {
+            primaryStage = (Stage) pageTitleLabel.getScene().getWindow();
+        }
+    }
+
+    public void initUser(UserDAO.User user) {
+        this.currentUser = user;
+        if (user != null) {
+            updateTopbarAvatar(user);
+        }
+        
+        if (primaryStage == null && pageTitleLabel != null && pageTitleLabel.getScene() != null) {
+            primaryStage = (Stage) pageTitleLabel.getScene().getWindow();
+        }
+    }
+
+    public void setCurrentUser(UserDAO.User user) {
+        initUser(user);
+    }
+
+
+    public void setPrimaryStage(Stage stage) {
+        this.primaryStage = stage;
+    }
+
+
+    public void updateTopbarAvatar(UserDAO.User user) {
+        if (user == null) return;
+
+        String picPath = user.profilePicturePath;
+        
+
+        if (picPath != null && !picPath.isBlank()) {
+            File f = new File(picPath);
+            if (f.exists()) {
+                try {
+                    Image img = new Image(f.toURI().toString(), 34, 34, true, true);
+                    topbarAvatarImg.setImage(img);
+                    
+                    Circle clip = new Circle(17, 17, 17);
+                    topbarAvatarImg.setClip(clip);
+                    
+                    topbarAvatarImg.setVisible(true);
+                    topbarAvatarImg.setManaged(true);
+                    topbarAvatarFallback.setVisible(false);
+                    topbarAvatarFallback.setManaged(false);
+                    return;
+                } catch (Exception e) {
+                    System.err.println("[DashboardController] Gagal load avatar: " + e.getMessage());
+                }
+            }
+        }
+        
+        topbarAvatarLabel.setText(user.getInitial());
+        topbarAvatarImg.setVisible(false);
+        topbarAvatarImg.setManaged(false);
+        topbarAvatarFallback.setVisible(true);
+        topbarAvatarFallback.setManaged(true);
+    }
+
+
+    public String getCurrentPage() {
+        return currentPage;
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavDashboard() {
         setActiveNav("dashboard");
         pageTitleLabel.setText("Dashboard");
+<<<<<<< HEAD
         if (defaultDashboardView != null && mainScrollPane != null) {
             mainScrollPane.setContent(defaultDashboardView);
         }
         loadStatsAsync();
         loadSectionsAsync();
+=======
+        currentPage = "dashboard";
+        loadDashboardPage();
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavStorage() {
         setActiveNav("storage");
         pageTitleLabel.setText("Storage");
+<<<<<<< HEAD
         loadCustomView("/fxml/storage.fxml", null);
+=======
+        currentPage = "storage";
+        loadStoragePage();
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavMovements() {
         setActiveNav("movements");
         pageTitleLabel.setText("Movements");
+<<<<<<< HEAD
         loadCustomView("/fxml/movements.fxml", controller -> {
             if (controller instanceof MovementsController mCtrl) {
                 mCtrl.initUser(currentUser);
             }
         });
+=======
+        currentPage = "movements";
+        loadMovementsPage();
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavCustomer() {
         setActiveNav("customer");
         pageTitleLabel.setText("Customer");
+<<<<<<< HEAD
         loadCustomView("/fxml/customer.fxml", null);
+=======
+        currentPage = "customer";
+        loadCustomerPage();
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavReport() {
         setActiveNav("report");
         pageTitleLabel.setText("Report");
+<<<<<<< HEAD
         loadCustomView("/fxml/report.fxml", null);
+=======
+        currentPage = "report";
+        loadReportPage();
+>>>>>>> origin/main
     }
 
     @FXML
     private void handleNavSetting() {
         setActiveNav("setting");
         pageTitleLabel.setText("Setting");
+<<<<<<< HEAD
         loadCustomView("/fxml/setting.fxml", controller -> {
             if (controller instanceof SettingController sCtrl) {
                 sCtrl.initUser(currentUser);
@@ -521,6 +638,10 @@ public class DashboardController implements Initializable {
             log.error("Gagal load avatar image: {}", path, ex);
             return null;
         }
+=======
+        currentPage = "setting";
+        loadSettingPage();
+>>>>>>> origin/main
     }
 
     @FXML
@@ -530,7 +651,14 @@ public class DashboardController implements Initializable {
 
     @FXML
     private void handleSettingShortcut() {
+<<<<<<< HEAD
         handleNavSetting();
+=======
+        setActiveNav("setting");
+        pageTitleLabel.setText("Setting");
+        currentPage = "setting";
+        loadSettingPage();
+>>>>>>> origin/main
     }
 
     @FXML
@@ -546,6 +674,7 @@ public class DashboardController implements Initializable {
         });
     }
 
+<<<<<<< HEAD
     private interface ControllerInitializer {
         void init(Object controller);
     }
@@ -566,6 +695,8 @@ public class DashboardController implements Initializable {
         }
     }
 
+=======
+>>>>>>> origin/main
     private void setActiveNav(String active) {
         resetAllNav();
         switch (active) {
@@ -583,6 +714,10 @@ public class DashboardController implements Initializable {
         for (HBox nav : navItems) {
             if (nav != null) {
                 nav.getStyleClass().setAll("nav-item");
+<<<<<<< HEAD
+=======
+                
+>>>>>>> origin/main
                 nav.getChildren().forEach(node -> {
                     if (node instanceof Label lbl) {
                         String sc = lbl.getStyleClass().stream().findFirst().orElse("");
@@ -612,6 +747,8 @@ public class DashboardController implements Initializable {
         });
     }
 
+
+
     private void goToLogin() {
         try {
             FXMLLoader loader = fxmlLoader.getLoader("/fxml/login.fxml");
@@ -631,6 +768,115 @@ public class DashboardController implements Initializable {
         }
     }
 
+<<<<<<< HEAD
+=======
+
+    private void loadStoragePage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/storage.fxml")
+            );
+            VBox storagePage = loader.load();
+            mainScrollPane.setContent(storagePage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Storage: " + e.getMessage());
+        }
+    }
+
+    private void loadMovementsPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/movements.fxml")
+            );
+            VBox movementsPage = loader.load();
+            
+            MovementsController controller = loader.getController();
+            if (controller != null && currentUser != null) {
+                controller.initUser(currentUser);
+            }
+            
+            mainScrollPane.setContent(movementsPage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Movements: " + e.getMessage());
+        }
+    }
+
+    private void loadCustomerPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/customer.fxml")
+            );
+            VBox customerPage = loader.load();
+
+            CustomerController controller = loader.getController();
+            if (controller != null && currentUser != null) {
+                controller.initUser(currentUser);
+            }
+
+            mainScrollPane.setContent(customerPage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Customer: " + e.getMessage());
+        }
+    }
+
+    private void loadReportPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/report.fxml")
+            );
+            VBox reportPage = loader.load();
+
+            ReportController controller = loader.getController();
+            if (controller != null && currentUser != null) {
+                controller.initUser(currentUser);
+            }
+
+            mainScrollPane.setContent(reportPage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Report: " + e.getMessage());
+        }
+    }
+
+    private void loadSettingPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/setting.fxml")
+            );
+            VBox settingPage = loader.load();
+
+            SettingController controller = loader.getController();
+            if (controller != null && currentUser != null) {
+                controller.initUser(currentUser);
+                controller.setDashboardController(this);
+            }
+
+            mainScrollPane.setContent(settingPage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Setting: " + e.getMessage());
+        }
+    }
+
+    private void loadDashboardPage() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/fxml/dashboard-content.fxml")
+            );
+            VBox dashboardContent = loader.load();
+            mainScrollPane.setContent(dashboardContent);
+        } catch (IOException e) {
+            e.printStackTrace();
+            showInfo("Error", "Gagal load halaman Dashboard: " + e.getMessage());
+        }
+    }
+        
+
+
+>>>>>>> origin/main
     private void showInfo(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);

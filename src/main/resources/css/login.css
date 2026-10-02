@@ -1,4 +1,4 @@
-/* Panel kiri */
+
 .left-panel {
     -fx-background-color: linear-gradient(to bottom, #0a1f6e, #1565c0, #1e88e5);
     -fx-min-width: 340px;
@@ -87,7 +87,7 @@
     -fx-wrap-text: true;
 }
 
-/* panel kanan */
+
 .right-panel {
     -fx-background-color: #f0f2f5;
 }

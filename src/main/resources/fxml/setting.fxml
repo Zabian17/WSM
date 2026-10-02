@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.image.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mycompany.tugas_akhir.SettingController">
+
+    <!-- HEADER BAR -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
+        <VBox spacing="3">
+            <Label text="Pengaturan Aplikasi &amp; Akun" styleClass="section-page-title"/>
+            <Label text="Kelola profil akun pengguna dan konfigurasi sistem GudangKu" styleClass="section-page-sub"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="16">
+
+        <!-- LEFT COLUMN: PROFIL & PASSWORD -->
+        <VBox spacing="16" HBox.hgrow="ALWAYS">
+
+            <!-- CARD PROFIL PENGGUNA -->
+            <VBox styleClass="card" spacing="14">
+                <Label text="Profil Pengguna" styleClass="card-title"/>
+
+                <GridPane hgap="12" vgap="12">
+                    <Label text="Nama Lengkap:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label"/>
+                    <TextField fx:id="tfFullName" promptText="Masukkan nama lengkap..." GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-field"/>
+
+                    <Label text="Email:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                    <TextField fx:id="tfEmail" promptText="Masukkan email..." GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-field"/>
+
+                    <Label text="Role Akses:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                    <Label fx:id="lblRole" text="ADMIN" GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="card-badge" style="-fx-font-size: 12px;"/>
+                </GridPane>
+
+                <HBox alignment="CENTER_RIGHT">
+                    <Button text="💾 Simpan Profil" styleClass="btn-primary" onAction="#handleSaveProfile"/>
+                </HBox>
+            </VBox>
+
+            <!-- CARD PROFILE PICTURE -->
+            <VBox styleClass="card" spacing="14">
+                <Label text="Profile Picture" styleClass="card-title"/>
+                <HBox alignment="CENTER_LEFT" spacing="16">
+                    <StackPane styleClass="profile-avatar-preview" prefWidth="96" prefHeight="96" minWidth="96" minHeight="96" maxWidth="96" maxHeight="96">
+                        <Label fx:id="lblAvatarInitials" text="U" styleClass="profile-avatar-initial"/>
+                        <ImageView fx:id="profileImageView" fitWidth="96" fitHeight="96" preserveRatio="true" visible="false"/>
+                    </StackPane>
+                    <VBox spacing="8" HBox.hgrow="ALWAYS">
+                        <Label text="JPG, JPEG, PNG, atau WEBP. Maksimal 2 MB." styleClass="form-hint" wrapText="true"/>
+                        <Label fx:id="lblPhotoStatus" text="Belum ada profile picture." styleClass="form-hint" wrapText="true"/>
+                        <HBox spacing="8">
+                            <Button text="Ubah Foto" styleClass="btn-outline" onAction="#handleChoosePhoto"/>
+                            <Button fx:id="btnRemovePhoto" text="Hapus Foto" styleClass="btn-outline" onAction="#handleRemovePhoto" visible="false" managed="false"/>
+                        </HBox>
+                        <HBox spacing="8">
+                            <Button fx:id="btnSavePhoto" text="Simpan" styleClass="btn-primary" onAction="#handleSavePhoto" disable="true"/>
+                            <Button text="Batal" styleClass="btn-outline" onAction="#handleCancelPhoto"/>
+                        </HBox>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <!-- CARD GANTI PASSWORD -->
+            <VBox styleClass="card" spacing="14">
+                <Label text="Keamanan &amp; Password" styleClass="card-title"/>
+
+                <GridPane hgap="12" vgap="12">
+                    <Label text="Password Saat Ini:" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label"/>
+                    <PasswordField fx:id="pfOldPassword" promptText="Masukkan password lama..." GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-field"/>
+
+                    <Label text="Password Baru:" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                    <PasswordField fx:id="pfNewPassword" promptText="Minimal 6 karakter..." GridPane.columnIndex="1" GridPane.rowIndex="1" styleClass="form-field"/>
+
+                    <Label text="Konfirmasi Password:" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                    <PasswordField fx:id="pfConfirmPassword" promptText="Ulangi password baru..." GridPane.columnIndex="1" GridPane.rowIndex="2" styleClass="form-field"/>
+                </GridPane>
+
+                <HBox alignment="CENTER_RIGHT">
+                    <Button text="🔒 Ubah Password" styleClass="btn-primary" onAction="#handleChangePassword"/>
+                </HBox>
+            </VBox>
+
+        </VBox>
+
+        <!-- RIGHT COLUMN: INFORMASI SISTEM -->
+        <VBox spacing="16" style="-fx-pref-width: 360px; -fx-min-width: 320px; -fx-max-width: 380px;">
+            <VBox styleClass="card" spacing="14">
+                <Label text="Informasi Sistem" styleClass="card-title"/>
+
+                <VBox spacing="10">
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Nama Aplikasi:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" prefWidth="120"/>
+                        <Label text="GudangKu v1.0.0" style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Framework UI:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" prefWidth="120"/>
+                        <Label text="JavaFX 21 + AtlantaFX" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Backend Core:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" prefWidth="120"/>
+                        <Label text="Spring Boot 3.2.4 JPA" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Database Target:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" prefWidth="120"/>
+                        <Label text="MySQL (gudang_akhir)" style="-fx-font-size: 13px;"/>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="8">
+                        <Label text="Status Koneksi:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;" prefWidth="120"/>
+                        <Label text="🟢 Connected (HikariCP)" style="-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+                    </HBox>
+                </VBox>
+            </VBox>
+        </VBox>
+
+    </HBox>
+
+</VBox>

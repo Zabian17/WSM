@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mycompany.tugas_akhir.StorageController">
+
+    <!-- HEADER BAR -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
+        <VBox spacing="3">
+            <Label text="Manajemen Barang" styleClass="section-page-title"/>
+            <Label text="Kelola data master barang yang tersimpan di gudang" styleClass="section-page-sub"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="searchField"
+                   promptText="🔍  Cari barang..."
+                   styleClass="search-box"
+                   onKeyReleased="#handleSearch"
+                   prefWidth="240"/>
+        <Button text="＋  Tambah Barang" styleClass="btn-primary" onAction="#handleTambah"/>
+    </HBox>
+
+    <!-- STATS ROW -->
+    <HBox spacing="16">
+        <VBox styleClass="stat-mini-card" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblTotalBarang" text="0" styleClass="stat-mini-number"/>
+            <Label text="Total Barang" styleClass="stat-mini-label"/>
+        </VBox>
+        <VBox styleClass="stat-mini-card-warn" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblStokRendah" text="0" styleClass="stat-mini-number-warn"/>
+            <Label text="Stok Rendah" styleClass="stat-mini-label"/>
+        </VBox>
+        <VBox styleClass="stat-mini-card-danger" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblStokHabis" text="0" styleClass="stat-mini-number-danger"/>
+            <Label text="Stok Habis" styleClass="stat-mini-label"/>
+        </VBox>
+    </HBox>
+
+    <!-- TABLE CARD 100% RESPONSIVE WIDTH -->
+    <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <Label text="Daftar Barang" styleClass="card-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Stok per SLOC" styleClass="btn-outline" onAction="#handleViewSLOCStock"/>
+            <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+        </HBox>
+
+        <TableView fx:id="tableBarang" prefHeight="480" styleClass="data-table" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colKode"     text="Kode"        prefWidth="100" minWidth="80"  maxWidth="115"/>
+                <TableColumn fx:id="colNama"     text="Nama Barang" prefWidth="320" minWidth="200"/>
+                <TableColumn fx:id="colKategori" text="Kategori"    prefWidth="140" minWidth="110" maxWidth="160"/>
+                <TableColumn fx:id="colStok"     text="Stok"        prefWidth="90"  minWidth="75"  maxWidth="100"/>
+                <TableColumn fx:id="colStatus"   text="Status"      prefWidth="100" minWidth="85"  maxWidth="115"/>
+                <TableColumn fx:id="colAksi"     text="Aksi"        prefWidth="95"  minWidth="85"  maxWidth="105"/>
+            </columns>
+            <placeholder>
+                <Label text="Tidak ada data barang" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
+            </placeholder>
+        </TableView>
+    </VBox>
+
+</VBox>

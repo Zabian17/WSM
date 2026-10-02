@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mycompany.tugas_akhir.CustomerController">
+
+    <!-- HEADER BAR -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
+        <VBox spacing="3">
+            <Label text="Manajemen Customer" styleClass="section-page-title"/>
+            <Label text="Kelola data pelanggan &amp; mitra penerima barang dari gudang" styleClass="section-page-sub"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="searchField"
+                   promptText="🔍  Cari customer..."
+                   styleClass="search-box"
+                   onKeyReleased="#handleSearch"
+                   prefWidth="240"/>
+        <Button text="＋  Tambah Customer" styleClass="btn-primary" onAction="#handleTambah"/>
+    </HBox>
+
+    <!-- TABLE CARD 100% RESPONSIVE WIDTH -->
+    <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
+        <HBox alignment="CENTER_LEFT" spacing="8">
+            <Label text="Daftar Customer" styleClass="card-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="lblTotalCustomer" text="0 Customer" styleClass="card-badge"/>
+            <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+        </HBox>
+
+        <TableView fx:id="tableCustomer" prefHeight="500" styleClass="data-table" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colNama"   text="Nama Customer" prefWidth="220" minWidth="160"/>
+                <TableColumn fx:id="colKontak" text="Kontak / HP"   prefWidth="130" minWidth="110" maxWidth="150"/>
+                <TableColumn fx:id="colEmail"  text="Email"         prefWidth="220" minWidth="160"/>
+                <TableColumn fx:id="colStatus" text="Status"        prefWidth="90"  minWidth="80"  maxWidth="110"/>
+                <TableColumn fx:id="colAksi"   text="Aksi"          prefWidth="95"  minWidth="85"  maxWidth="105"/>
+            </columns>
+            <placeholder>
+                <Label text="Belum ada data customer" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
+            </placeholder>
+        </TableView>
+    </VBox>
+
+</VBox>

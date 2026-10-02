@@ -1,8 +1,8 @@
 package com.mycompany.tugas_akhir;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.ResourceBundle;
+import com.mycompany.tugas_akhir.config.SpringFXMLLoader;
+import com.mycompany.tugas_akhir.model.User;
+import com.mycompany.tugas_akhir.service.UserService;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -10,10 +10,25 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.net.URL;
+import java.util.ResourceBundle;
+
+@Component
 public class LoginController implements Initializable {
 
-    private final UserDAO userDAO = new UserDAO();
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+    private final UserService userService;
+    private final SpringFXMLLoader fxmlLoader;
+
+    public LoginController(UserService userService, SpringFXMLLoader fxmlLoader) {
+        this.userService = userService;
+        this.fxmlLoader = fxmlLoader;
+    }
 
     @FXML private VBox signUpPane;
     @FXML private VBox signInPane;
@@ -82,12 +97,11 @@ public class LoginController implements Initializable {
             return;
         }
 
-        boolean success = userDAO.register(name, email, password);
+        boolean success = userService.register(name, email, password);
 
         if (success) {
             showAlert(Alert.AlertType.INFORMATION, "Berhasil",
                     "Akun berhasil dibuat!\nSilakan sign in dengan email Anda.");
-            // Bersihkan form
             tfFullName.clear();
             tfEmail.clear();
             pfPassword.clear();
@@ -108,7 +122,7 @@ public class LoginController implements Initializable {
             return;
         }
 
-        UserDAO.User user = userDAO.login(email, password);
+        User user = userService.login(email, password);
 
         if (user != null) {
             navigateToDashboard(user);
@@ -119,25 +133,25 @@ public class LoginController implements Initializable {
         }
     }
 
-    private void navigateToDashboard(UserDAO.User user) {
+    private void navigateToDashboard(User user) {
         try {
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/fxml/dashboard.fxml")
-            );
-            // Load FXML dulu sebelum ambil controller
+            FXMLLoader loader = fxmlLoader.getLoader("/fxml/dashboard.fxml");
             Scene scene = new Scene(loader.load(), 1200, 720);
 
-            // Kirim data user yang login ke DashboardController
             DashboardController dashCtrl = loader.getController();
             dashCtrl.initUser(user);
 
             Stage stage = (Stage) tfLoginEmail.getScene().getWindow();
             stage.setTitle("GudangKu - Dashboard");
+            stage.hide();
             stage.setResizable(true);
             stage.setScene(scene);
+            stage.setWidth(1200);
+            stage.setHeight(720);
+            stage.centerOnScreen();
             stage.show();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Gagal membuka dashboard: {}", e.getMessage(), e);
             showAlert(Alert.AlertType.ERROR, "Error", "Gagal membuka dashboard: " + e.getMessage());
         }
     }

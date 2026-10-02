@@ -1,16 +1,16 @@
 -- ============================================================
 --  GUDANGKU - Database Schema
---  Database : gudang_s6
+--  Database : gudang_akhir
 --  Dibuat   : 13 Mei 2026
 --  Jalankan file ini di phpMyAdmin atau MySQL CLI
 -- ============================================================
 
 -- Buat database jika belum ada
-CREATE DATABASE IF NOT EXISTS gudang_s6
+CREATE DATABASE IF NOT EXISTS gudang_akhir
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE gudang_s6;
+USE gudang_akhir;
 
 -- ============================================================
 -- TABEL: users
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         VARCHAR(150)  NOT NULL UNIQUE,
     password_hash VARCHAR(255)  NOT NULL,
     role          ENUM('admin', 'user') DEFAULT 'user',
+    profile_picture_path VARCHAR(500) NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -81,6 +82,48 @@ CREATE TABLE IF NOT EXISTS rak (
     FOREIGN KEY (section_id) REFERENCES section(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS inventory_balance (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    barang_id    INT NOT NULL,
+    rak_id       INT NULL,
+    location_key VARCHAR(24) NOT NULL,
+    quantity     INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_inventory_barang_location (barang_id, location_key),
+    FOREIGN KEY (barang_id) REFERENCES barang(id),
+    FOREIGN KEY (rak_id) REFERENCES rak(id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_lot_balance (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    barang_id    INT NOT NULL,
+    rak_id       INT NULL,
+    location_key VARCHAR(24) NOT NULL,
+    batch_code   VARCHAR(64) NOT NULL,
+    expiry_date  DATE NULL,
+    received_at  DATETIME NOT NULL,
+    quantity     INT NOT NULL DEFAULT 0,
+    reserved_quantity INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_lot_barang_location_batch (barang_id, location_key, batch_code),
+    FOREIGN KEY (barang_id) REFERENCES barang(id),
+    FOREIGN KEY (rak_id) REFERENCES rak(id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_transfer (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    transfer_code       VARCHAR(24) NOT NULL UNIQUE,
+    barang_id           INT NOT NULL,
+    source_rak_id       INT NULL,
+    destination_rak_id  INT NOT NULL,
+    quantity            INT NOT NULL,
+    notes               TEXT,
+    user_id             INT NOT NULL,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (barang_id) REFERENCES barang(id),
+    FOREIGN KEY (source_rak_id) REFERENCES rak(id),
+    FOREIGN KEY (destination_rak_id) REFERENCES rak(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- ============================================================
 -- TABEL: transaksi
 -- Mencatat setiap gerakan barang masuk dan keluar
@@ -100,6 +143,80 @@ CREATE TABLE IF NOT EXISTS transaksi (
     FOREIGN KEY (supplier_id) REFERENCES supplier(id),
     FOREIGN KEY (rak_id)      REFERENCES rak(id),
     FOREIGN KEY (user_id)     REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS transaction_lot_allocation (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    transaksi_id   INT NOT NULL,
+    lot_balance_id INT NOT NULL,
+    quantity       INT NOT NULL,
+    FOREIGN KEY (transaksi_id) REFERENCES transaksi(id),
+    FOREIGN KEY (lot_balance_id) REFERENCES inventory_lot_balance(id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_transfer_lot_allocation (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    transfer_id    INT NOT NULL,
+    lot_balance_id INT NOT NULL,
+    quantity       INT NOT NULL,
+    FOREIGN KEY (transfer_id) REFERENCES inventory_transfer(id),
+    FOREIGN KEY (lot_balance_id) REFERENCES inventory_lot_balance(id)
+);
+
+CREATE TABLE IF NOT EXISTS inbound_receipt (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    receipt_code    VARCHAR(24) NOT NULL UNIQUE,
+    barang_id       INT NOT NULL,
+    supplier_id     INT NOT NULL,
+    quantity        INT NOT NULL,
+    batch_code      VARCHAR(64) NOT NULL,
+    expiry_date     DATE NULL,
+    notes           TEXT,
+    status          VARCHAR(24) NOT NULL,
+    qc_notes        TEXT,
+    created_by      INT NOT NULL,
+    qc_by           INT NULL,
+    putaway_rak_id  INT NULL,
+    created_at      DATETIME NOT NULL,
+    qc_at           DATETIME NULL,
+    FOREIGN KEY (barang_id) REFERENCES barang(id),
+    FOREIGN KEY (supplier_id) REFERENCES supplier(id),
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (qc_by) REFERENCES users(id),
+    FOREIGN KEY (putaway_rak_id) REFERENCES rak(id)
+);
+
+CREATE TABLE IF NOT EXISTS delivery_order (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    order_code  VARCHAR(24) NOT NULL UNIQUE,
+    customer_id INT NOT NULL,
+    created_by  INT NOT NULL,
+    status      VARCHAR(24) NOT NULL,
+    notes       TEXT,
+    created_at  DATETIME NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES customer(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS delivery_order_line (
+    id                 INT AUTO_INCREMENT PRIMARY KEY,
+    delivery_order_id  INT NOT NULL,
+    barang_id          INT NOT NULL,
+    ordered_quantity   INT NOT NULL,
+    UNIQUE KEY uk_delivery_order_item (delivery_order_id, barang_id),
+    FOREIGN KEY (delivery_order_id) REFERENCES delivery_order(id),
+    FOREIGN KEY (barang_id) REFERENCES barang(id)
+);
+
+CREATE TABLE IF NOT EXISTS delivery_order_lot_reservation (
+    id                    INT AUTO_INCREMENT PRIMARY KEY,
+    delivery_order_line_id INT NOT NULL,
+    lot_balance_id        INT NOT NULL,
+    reserved_quantity     INT NOT NULL,
+    picked_quantity       INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_do_line_lot (delivery_order_line_id, lot_balance_id),
+    FOREIGN KEY (delivery_order_line_id) REFERENCES delivery_order_line(id),
+    FOREIGN KEY (lot_balance_id) REFERENCES inventory_lot_balance(id)
 );
 
 -- ============================================================

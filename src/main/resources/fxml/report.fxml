@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mycompany.tugas_akhir.ReportController">
+
+    <!-- HEADER BAR -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
+        <VBox spacing="3">
+            <Label text="Laporan &amp; Analitik Gudang" styleClass="section-page-title"/>
+            <Label text="Rekapitulasi pergerakan barang, stok, dan statistik transaksi" styleClass="section-page-sub"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="📄 Export PDF" styleClass="btn-outline" onAction="#handleExportPDF"/>
+        <Button text="📊 Export CSV" styleClass="btn-primary" onAction="#handleExportCSV"/>
+    </HBox>
+
+    <!-- STATS CARDS ROW -->
+    <HBox spacing="16">
+        <VBox styleClass="stat-mini-card" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblTotalBarang" text="0" styleClass="stat-mini-number"/>
+            <Label text="Total Jenis Barang" styleClass="stat-mini-label"/>
+        </VBox>
+        <VBox styleClass="stat-mini-card" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblTotalMasuk" text="0" styleClass="stat-mini-number" style="-fx-text-fill: #10b981;"/>
+            <Label text="Total Barang Masuk (pcs)" styleClass="stat-mini-label"/>
+        </VBox>
+        <VBox styleClass="stat-mini-card" spacing="3" HBox.hgrow="ALWAYS">
+            <Label fx:id="lblTotalKeluar" text="0" styleClass="stat-mini-number" style="-fx-text-fill: #ef4444;"/>
+            <Label text="Total Barang Keluar (pcs)" styleClass="stat-mini-label"/>
+        </VBox>
+    </HBox>
+
+    <!-- TABLE CARD 100% RESPONSIVE WIDTH -->
+    <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label text="Filter Laporan" styleClass="card-title"/>
+            <ComboBox fx:id="cbFilterTipe" onAction="#handleFilterChange" styleClass="form-combo" prefWidth="160"/>
+            <TextField fx:id="searchField" promptText="🔍 Search barang / kode..." styleClass="search-box" onKeyReleased="#handleSearch" prefWidth="240"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+        </HBox>
+
+        <TableView fx:id="tableReport" prefHeight="480" styleClass="data-table" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colKode"       text="Kode Tx"   prefWidth="100" minWidth="90"  maxWidth="115"/>
+                <TableColumn fx:id="colTipe"       text="Tipe"      prefWidth="85"  minWidth="80"  maxWidth="95"/>
+                <TableColumn fx:id="colBarang"     text="Barang"    prefWidth="150" minWidth="120"/>
+                <TableColumn fx:id="colLokasi"     text="SLOC"      prefWidth="90"  minWidth="80"  maxWidth="110"/>
+                <TableColumn fx:id="colSupplier"   text="Supplier"  prefWidth="140" minWidth="110"/>
+                <TableColumn fx:id="colJumlah"     text="Jumlah"    prefWidth="85"  minWidth="75"  maxWidth="95"/>
+                <TableColumn fx:id="colPetugas"    text="Petugas"   prefWidth="100" minWidth="85"  maxWidth="115"/>
+                <TableColumn fx:id="colTanggal"    text="Tanggal"   prefWidth="135" minWidth="125" maxWidth="145"/>
+                <TableColumn fx:id="colKeterangan" text="Keterangan" prefWidth="350" minWidth="180"/>
+            </columns>
+            <placeholder>
+                <Label text="Tidak ada data laporan transaksi" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
+            </placeholder>
+        </TableView>
+    </VBox>
+
+</VBox>

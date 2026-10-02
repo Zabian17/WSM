@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox styleClass="content-area" spacing="16"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.mycompany.tugas_akhir.MovementsController">
+
+    <!-- HEADER BAR -->
+    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
+        <VBox spacing="3">
+            <Label text="Movements" styleClass="section-page-title"/>
+            <Label text="Catat pergerakan barang masuk dan keluar dari gudang" styleClass="section-page-sub"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Delivery Orders" styleClass="btn-outline" onAction="#handleOpenDeliveryOrders"/>
+        <Button text="Inbound / QC" styleClass="btn-outline" onAction="#handleOpenReceiving"/>
+        <Button text="Riwayat Transfer" styleClass="btn-outline" onAction="#handleRiwayatTransfer"/>
+        <Button text="Transfer SLOC" styleClass="btn-primary" onAction="#handleTransferSLOC"/>
+    </HBox>
+
+    <!-- MAIN CONTENT: FORM + TABLE -->
+    <HBox spacing="16" VBox.vgrow="ALWAYS">
+
+        <!-- Left: Form Input -->
+        <VBox spacing="16" style="-fx-pref-width: 320px; -fx-min-width: 300px; -fx-max-width: 340px;">
+            <VBox styleClass="card" spacing="14">
+                <Label text="Input Transaksi" styleClass="card-title"/>
+
+                <!-- Tipe -->
+                <VBox spacing="5">
+                    <Label text="Tipe Transaksi *" styleClass="form-label"/>
+                    <ComboBox fx:id="cbTipe"
+                               promptText="Pilih tipe transaksi..."
+                               styleClass="form-combo"
+                               maxWidth="Infinity"
+                               onAction="#handleTipeChange"/>
+                </VBox>
+
+                <!-- Barang -->
+                <VBox spacing="5">
+                    <Label text="Barang *" styleClass="form-label"/>
+                    <ComboBox fx:id="cbBarang"
+                               promptText="Pilih barang..."
+                               styleClass="form-combo"
+                               maxWidth="Infinity"
+                               onAction="#handleBarangChange"/>
+                </VBox>
+
+                <VBox spacing="5">
+                    <Label text="Lokasi SLOC *" styleClass="form-label"/>
+                    <ComboBox fx:id="cbLokasi"
+                               promptText="Pilih lokasi penyimpanan..."
+                               styleClass="form-combo"
+                               maxWidth="Infinity"/>
+                </VBox>
+
+                <!-- Info stok saat ini -->
+                <HBox fx:id="boxInfoStok" spacing="8" alignment="CENTER_LEFT"
+                      style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 8 12 8 12;"
+                      visible="false" managed="false">
+                    <Label text="📦" style="-fx-font-size: 13px;"/>
+                    <Label fx:id="lblInfoStok" text="Stok saat ini: -"
+                           style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
+                </HBox>
+
+                <!-- Supplier (hanya untuk Barang Masuk) -->
+                <VBox fx:id="boxSupplier" spacing="5" visible="false" managed="false">
+                    <Label text="Supplier" styleClass="form-label"/>
+                    <ComboBox fx:id="cbSupplier"
+                               promptText="Pilih supplier (opsional)..."
+                               styleClass="form-combo"
+                               maxWidth="Infinity"/>
+                </VBox>
+
+                <VBox fx:id="boxBatch" spacing="5" visible="false" managed="false">
+                    <Label text="Kode Batch *" styleClass="form-label"/>
+                    <TextField fx:id="tfBatchCode" promptText="Kode batch dari label barang..."
+                               styleClass="form-field"/>
+                    <Label text="Tanggal Kedaluwarsa (opsional)" styleClass="form-label"/>
+                    <DatePicker fx:id="dpExpiryDate" promptText="Pilih tanggal kedaluwarsa"
+                                maxWidth="Infinity"/>
+                </VBox>
+
+                <!-- Jumlah -->
+                <VBox spacing="5">
+                    <Label text="Jumlah *" styleClass="form-label"/>
+                    <TextField fx:id="tfJumlah"
+                                promptText="Masukkan jumlah..."
+                                styleClass="form-field"/>
+                </VBox>
+
+                <!-- Keterangan -->
+                <VBox spacing="5">
+                    <Label text="Keterangan" styleClass="form-label"/>
+                    <TextArea fx:id="taKeterangan"
+                               promptText="Catatan tambahan (opsional)..."
+                               styleClass="form-area"
+                               prefRowCount="3"
+                               wrapText="true"/>
+                </VBox>
+
+                <!-- Tombol Submit -->
+                <Button text="💾  Simpan Transaksi"
+                        styleClass="btn-primary"
+                        onAction="#handleSimpan"
+                        maxWidth="Infinity"/>
+            </VBox>
+        </VBox>
+
+        <!-- Right: Riwayat Transaksi (Streamlined & 100% Responsive Width) -->
+        <VBox spacing="12" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
+            <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label text="Riwayat Transaksi" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblTotalTx" text="0 transaksi" styleClass="card-badge"/>
+                    <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+                </HBox>
+
+                <TableView fx:id="tableTransaksi" prefHeight="480" styleClass="data-table" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="colKodeTx"     text="Kode"     prefWidth="100" minWidth="85"  maxWidth="115"/>
+                        <TableColumn fx:id="colTipeTx"     text="Tipe"     prefWidth="85"  minWidth="75"  maxWidth="95"/>
+                        <TableColumn fx:id="colNamaBarang" text="Barang"   prefWidth="300" minWidth="180"/>
+                        <TableColumn fx:id="colLokasi"     text="SLOC"     prefWidth="90"  minWidth="80"  maxWidth="110"/>
+                        <TableColumn fx:id="colJumlahTx"   text="Jumlah"   prefWidth="85"  minWidth="75"  maxWidth="95"/>
+                        <TableColumn fx:id="colTanggal"    text="Tanggal"  prefWidth="135" minWidth="120" maxWidth="145"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Belum ada data transaksi" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+        </VBox>
+
+    </HBox>
+
+</VBox>

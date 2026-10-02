@@ -202,6 +202,23 @@
     -fx-font-weight: bold;
 }
 
+.profile-avatar-preview {
+    -fx-background-color: #eef2ff;
+    -fx-background-radius: 48;
+    -fx-alignment: center;
+}
+
+.profile-avatar-initial {
+    -fx-text-fill: #1a56db;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+}
+
+.form-hint {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 11px;
+}
+
 /* ============================================================
    SECTION OVERVIEW
    ============================================================ */

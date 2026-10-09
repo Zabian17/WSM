@@ -76,9 +76,7 @@ run.ps1
 /WMS_Proposal_PT_Rotaryana_Prima.md
 *.md
 !README.md
-!AGENTS.md
-!CLAUDE.md
-!.claude/
-!.claude/**
-!.codex/
-!.codex/**
+/AGENTS.md
+/CLAUDE.md
+/.claude/
+/.codex/

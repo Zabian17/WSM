@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import jakarta.persistence.LockModeType;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BarangRepository extends JpaRepository<Barang, Integer> {
@@ -19,6 +20,8 @@ public interface BarangRepository extends JpaRepository<Barang, Integer> {
 
     @Query("SELECT b FROM Barang b WHERE LOWER(b.namaBarang) LIKE LOWER(CONCAT('%', :kw, '%')) OR LOWER(b.kodeBarang) LIKE LOWER(CONCAT('%', :kw, '%')) OR LOWER(b.kategori) LIKE LOWER(CONCAT('%', :kw, '%'))")
     List<Barang> searchByKeyword(@Param("kw") String keyword);
+
+    Optional<Barang> findByKodeBarang(String kodeBarang);
 
     @Query("SELECT COALESCE(MAX(CAST(SUBSTRING(b.kodeBarang, 5) AS int)), 0) FROM Barang b WHERE b.kodeBarang LIKE 'BRG-%'")
     int findMaxKodeSequence();

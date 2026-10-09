@@ -94,7 +94,7 @@
             
             <VBox styleClass="card" spacing="12">
                 <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Recent Activity  🕐" styleClass="card-title"/>
+                    <Label text="Aktivitas Terbaru" styleClass="card-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label text="24H" styleClass="card-badge"/>
                 </HBox>
@@ -103,7 +103,7 @@
                     
                     <VBox styleClass="activity-card-in" spacing="4">
                         <HBox alignment="CENTER_LEFT" spacing="8">
-                            <Label text="📦" styleClass="activity-icon-in"/>
+                            <Label text="+" styleClass="activity-icon-in"/>
                             <Label text="↗" style="-fx-text-fill:#10b981; -fx-font-size:14px;"/>
                         </HBox>
                         <Label fx:id="lblBarangMasuk" text="1234" styleClass="activity-number-in"/>
@@ -113,7 +113,7 @@
                     
                     <VBox styleClass="activity-card-out" spacing="4">
                         <HBox alignment="CENTER_LEFT" spacing="8">
-                            <Label text="🚚" styleClass="activity-icon-out"/>
+                            <Label text="−" styleClass="activity-icon-out"/>
                             <Label text="↗" style="-fx-text-fill:#ef4444; -fx-font-size:14px;"/>
                         </HBox>
                         <Label fx:id="lblBarangKeluar" text="900" styleClass="activity-number-out"/>
@@ -143,7 +143,7 @@
                     <Label text="Barang A" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="PT. Dua" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="300pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
-                    <Label text="📦" styleClass="tx-in-icon"/>
+                    <Label text="+" styleClass="tx-in-icon"/>
                 </HBox>
                 <Pane styleClass="table-row-separator"/>
 
@@ -152,7 +152,7 @@
                     <Label text="Barang B" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="PT. Satu" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="150pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
-                    <Label text="📦" styleClass="tx-in-icon"/>
+                    <Label text="+" styleClass="tx-in-icon"/>
                 </HBox>
                 <Pane styleClass="table-row-separator"/>
 
@@ -161,7 +161,7 @@
                     <Label text="Barang C" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="PT. Dua" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="20pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
-                    <Label text="📦" styleClass="tx-in-icon"/>
+                    <Label text="+" styleClass="tx-in-icon"/>
                 </HBox>
                 <Pane styleClass="table-row-separator"/>
 
@@ -170,7 +170,7 @@
                     <Label text="Barang D" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="PT. Empat" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="500pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
-                    <Label text="🚚" styleClass="tx-out-icon"/>
+                    <Label text="−" styleClass="tx-out-icon"/>
                 </HBox>
                 <Pane styleClass="table-row-separator"/>
 
@@ -179,14 +179,14 @@
                     <Label text="Barang E" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="PT. Tiga" styleClass="table-cell-label" style="-fx-pref-width: 80px;"/>
                     <Label text="769pcs" styleClass="table-cell-label" style="-fx-pref-width: 60px;"/>
-                    <Label text="🚚" styleClass="tx-out-icon"/>
+                    <Label text="−" styleClass="tx-out-icon"/>
                 </HBox>
             </VBox>
 
             
             <VBox styleClass="card" spacing="10">
                 <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Top Movers  🔄" styleClass="card-title"/>
+                    <Label text="Barang Teraktif" styleClass="card-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label text="24H" styleClass="card-badge"/>
                 </HBox>
@@ -225,7 +225,7 @@
                     <Label text="A-01" styleClass="alert-rak-sub"/>
                 </VBox>
                 <Label text="95%" styleClass="alert-pct-label"/>
-                <Label text="⚠" styleClass="alert-warn"/>
+                <Label text="!" styleClass="alert-warn"/>
             </HBox>
 
             

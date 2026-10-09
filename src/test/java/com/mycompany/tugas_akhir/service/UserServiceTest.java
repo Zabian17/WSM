@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +27,17 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         service = new UserService(userRepository);
+    }
+
+    @Test
+    void listsUsersInNameOrderForPickerAssignment() {
+        List<User> users = List.of(
+                User.builder().id(1).fullName("Alice").build(),
+                User.builder().id(2).fullName("Bob").build());
+        when(userRepository.findAll(any(Sort.class))).thenReturn(users);
+
+        assertEquals(users, service.getUsersForAssignment());
+        verify(userRepository).findAll(Sort.by(Sort.Direction.ASC, "fullName"));
     }
 
     @Test

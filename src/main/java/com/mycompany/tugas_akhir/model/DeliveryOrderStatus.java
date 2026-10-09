@@ -7,6 +7,7 @@ public enum DeliveryOrderStatus {
     PICKED,
     PACKED,
     LOADED,
+    PARTIALLY_DISPATCHED,
     DISPATCHED,
     CANCELLED
 }

@@ -9,23 +9,24 @@
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mycompany.tugas_akhir.MovementsController">
 
-<<<<<<< HEAD
     <!-- HEADER BAR -->
-=======
-    
->>>>>>> origin/main
-    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
-        <VBox spacing="3">
+    <VBox spacing="10" style="-fx-padding: 0 0 4 0;">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="3">
             <Label text="Movements" styleClass="section-page-title"/>
             <Label text="Catat pergerakan barang masuk dan keluar dari gudang" styleClass="section-page-sub"/>
-        </VBox>
-<<<<<<< HEAD
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button text="Delivery Orders" styleClass="btn-outline" onAction="#handleOpenDeliveryOrders"/>
-        <Button text="Inbound / QC" styleClass="btn-outline" onAction="#handleOpenReceiving"/>
-        <Button text="Riwayat Transfer" styleClass="btn-outline" onAction="#handleRiwayatTransfer"/>
-        <Button text="Transfer SLOC" styleClass="btn-primary" onAction="#handleTransferSLOC"/>
-    </HBox>
+            </VBox>
+        </HBox>
+        <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
+            <Button text="Pesanan Pengiriman" styleClass="btn-outline" onAction="#handleOpenDeliveryOrders"/>
+            <Button text="Penerimaan / QC" styleClass="btn-outline" onAction="#handleOpenReceiving"/>
+            <Button text="Riwayat Transfer" styleClass="btn-outline" onAction="#handleRiwayatTransfer"/>
+            <Button text="Transfer Lokasi" styleClass="btn-primary" onAction="#handleTransferSLOC"/>
+            <Button text="Material Usage / MRO" styleClass="btn-outline" onAction="#handleOpenMaterialUsage"/>
+            <Button text="Purchase / Sales Return" styleClass="btn-outline" onAction="#handleOpenReturns"/>
+            <Button text="Stock Transfer Plan / STO" styleClass="btn-outline" onAction="#handleOpenSto"/>
+        </FlowPane>
+    </VBox>
 
     <!-- MAIN CONTENT: FORM + TABLE -->
     <HBox spacing="16" VBox.vgrow="ALWAYS">
@@ -67,7 +68,7 @@
                 <HBox fx:id="boxInfoStok" spacing="8" alignment="CENTER_LEFT"
                       style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 8 12 8 12;"
                       visible="false" managed="false">
-                    <Label text="📦" style="-fx-font-size: 13px;"/>
+                    <Label text="+" style="-fx-font-size: 13px;"/>
                     <Label fx:id="lblInfoStok" text="Stok saat ini: -"
                            style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
                 </HBox>
@@ -109,177 +110,13 @@
                 </VBox>
 
                 <!-- Tombol Submit -->
-                <Button text="💾  Simpan Transaksi"
+                <Button text="Simpan Transaksi"
                         styleClass="btn-primary"
                         onAction="#handleSimpan"
-=======
-    </HBox>
-
-    
-    <HBox spacing="0" style="-fx-background-color: #f3f4f6; -fx-padding: 0 16 0 16; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;">
-        <Button fx:id="btnTabAll" text="All" 
-                styleClass="tab-button" 
-                style="-fx-padding: 12 20 12 20; -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0 0 2 0; -fx-border-color: #3b82f6; -fx-cursor: hand;"
-                onAction="#handleTabAll"/>
-        <Button fx:id="btnTabStockIn" text="Stock in" 
-                styleClass="tab-button" 
-                style="-fx-padding: 12 20 12 20; -fx-font-size: 13px; -fx-text-fill: #6b7280; -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0 0 2 0; -fx-border-color: transparent; -fx-cursor: hand;"
-                onAction="#handleTabStockIn"/>
-        <Button fx:id="btnTabStockOut" text="Stock out" 
-                styleClass="tab-button" 
-                style="-fx-padding: 12 20 12 20; -fx-font-size: 13px; -fx-text-fill: #6b7280; -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0 0 2 0; -fx-border-color: transparent; -fx-cursor: hand;"
-                onAction="#handleTabStockOut"/>
-        <Button fx:id="btnTabAdjustment" text="Adjustment" 
-                styleClass="tab-button" 
-                style="-fx-padding: 12 20 12 20; -fx-font-size: 13px; -fx-text-fill: #6b7280; -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0 0 2 0; -fx-border-color: transparent; -fx-cursor: hand;"
-                onAction="#handleTabAdjustment"/>
-        <Region HBox.hgrow="ALWAYS"/>
-    </HBox>
-
-    
-    <VBox fx:id="tabContentAll" spacing="16">
-        
-        <HBox spacing="12" style="-fx-padding: 0;">
-            
-            <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-                <HBox spacing="8" alignment="TOP_LEFT">
-                    <Label text="📊" style="-fx-font-size: 20px;"/>
-                    <VBox spacing="3">
-                        <Label text="TOTAL MOVEMENTS" style="-fx-font-size: 11px; -fx-text-fill: #9ba3b8; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblTotalMovements" text="2,156" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                        <Label text="total in this month" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-
-            
-            <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-                <HBox spacing="8" alignment="TOP_LEFT">
-                    <Label text="📥" style="-fx-font-size: 20px;"/>
-                    <VBox spacing="3">
-                        <Label text="STOCK IN" style="-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblStockInCount" text="470" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-                        <Label text="stock masuk" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-
-            
-            <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-                <HBox spacing="8" alignment="TOP_LEFT">
-                    <Label text="📤" style="-fx-font-size: 20px;"/>
-                    <VBox spacing="3">
-                        <Label text="STOCK OUT" style="-fx-font-size: 11px; -fx-text-fill: #ef4444; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblStockOutCount" text="1269" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-                        <Label text="stok keluar" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-
-            
-            <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-                <HBox spacing="8" alignment="TOP_LEFT">
-                    <Label text="✏️" style="-fx-font-size: 20px;"/>
-                    <VBox spacing="3">
-                        <Label text="ADJUSTMENT" style="-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblAdjustmentCount" text="470" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;"/>
-                        <Label text="edit stock" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-        </HBox>
-
-        
-        <VBox styleClass="card" spacing="12">
-            <HBox alignment="CENTER_LEFT" spacing="8">
-                <Label text="📋 Movement Log" styleClass="card-title"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="lblAllTotalTx" text="0 transaksi" styleClass="card-badge"/>
-                <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefreshAll"/>
-                <Button text="📥 Export PDF" styleClass="btn-outline" onAction="#handleExportAll"/>
-            </HBox>
-
-            <TableView fx:id="tableAllTransaksi" prefHeight="400" styleClass="data-table">
-                <columns>
-                    <TableColumn fx:id="colAllKodeTx"     text="Kode Transaksi" prefWidth="105" minWidth="85"/>
-                    <TableColumn fx:id="colAllTipeTx"     text="Tipe"           prefWidth="75"  minWidth="65"/>
-                    <TableColumn fx:id="colAllNamaBarang" text="Barang"         prefWidth="120" minWidth="100"/>
-                    <TableColumn fx:id="colAllSupplierTx" text="Supplier/Info"   prefWidth="110" minWidth="90"/>
-                    <TableColumn fx:id="colAllAlasan"     text="Alasan"        prefWidth="120" minWidth="100"/>
-                    <TableColumn fx:id="colAllJumlahTx"   text="Jumlah"         prefWidth="75"  minWidth="60"/>
-                    <TableColumn fx:id="colAllTanggal"    text="Tanggal"        prefWidth="135" minWidth="115"/>
-                </columns>
-                <placeholder>
-                    <Label text="Belum ada data transaksi" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
-                </placeholder>
-            </TableView>
-        </VBox>
-    </VBox>
-
-    
-    <HBox fx:id="tabContentStockIn" spacing="16" managed="false" visible="false">
-
-        
-        <VBox spacing="16" style="-fx-pref-width: 320px; -fx-min-width: 300px; -fx-max-width: 340px;">
-            <VBox styleClass="card" spacing="14">
-                <Label text="Stock In Form" styleClass="card-title"/>
-
-                
-                <VBox spacing="5">
-                    <Label text="Barang *" styleClass="form-label"/>
-                    <ComboBox fx:id="cbBarangStockIn"
-                              promptText="Pilih barang..."
-                              styleClass="form-combo"
-                              maxWidth="Infinity"
-                              onAction="#handleBarangChangeStockIn"/>
-                </VBox>
-
-                
-                <HBox fx:id="boxInfoStokStockIn" spacing="8" alignment="CENTER_LEFT"
-                      style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 8 12 8 12;"
-                      visible="false" managed="false">
-                    <Label text="📦" style="-fx-font-size: 13px;"/>
-                    <Label fx:id="lblInfoStokStockIn" text="Stok saat ini: -"
-                           style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
-                </HBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Supplier" styleClass="form-label"/>
-                    <ComboBox fx:id="cbSupplierStockIn"
-                              promptText="Pilih supplier (opsional)..."
-                              styleClass="form-combo"
-                              maxWidth="Infinity"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Jumlah *" styleClass="form-label"/>
-                    <TextField fx:id="tfJumlahStockIn"
-                               promptText="Masukkan jumlah..."
-                               styleClass="form-field"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Keterangan" styleClass="form-label"/>
-                    <TextArea fx:id="taKeteranganStockIn"
-                              promptText="Catatan tambahan (opsional)..."
-                              styleClass="form-area"
-                              prefRowCount="3"
-                              wrapText="true"/>
-                </VBox>
-
-                
-                <Button text="💾  Simpan Stock In"
-                        styleClass="btn-primary"
-                        onAction="#handleSimpanStockIn"
->>>>>>> origin/main
                         maxWidth="Infinity"/>
             </VBox>
         </VBox>
 
-<<<<<<< HEAD
         <!-- Right: Riwayat Transaksi (Streamlined & 100% Responsive Width) -->
         <VBox spacing="12" HBox.hgrow="ALWAYS" VBox.vgrow="ALWAYS">
             <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
@@ -287,7 +124,7 @@
                     <Label text="Riwayat Transaksi" styleClass="card-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="lblTotalTx" text="0 transaksi" styleClass="card-badge"/>
-                    <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+                    <Button text="Muat Ulang" styleClass="btn-outline" onAction="#handleRefresh"/>
                 </HBox>
 
                 <TableView fx:id="tableTransaksi" prefHeight="480" styleClass="data-table" VBox.vgrow="ALWAYS">
@@ -301,211 +138,6 @@
                     </columns>
                     <placeholder>
                         <Label text="Belum ada data transaksi" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
-=======
-        
-        <VBox spacing="12" HBox.hgrow="ALWAYS">
-            <VBox styleClass="card" spacing="12">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Riwayat Stock In" styleClass="card-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lblTotalStockIn" text="0 transaksi" styleClass="card-badge"/>
-                    <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefreshStockIn"/>
-                    <Button text="📥 Export PDF" styleClass="btn-outline" onAction="#handleExportStockIn"/>
-                </HBox>
-
-                <TableView fx:id="tableStockInTransaksi" prefHeight="400" styleClass="data-table">
-                    <columns>
-                        <TableColumn fx:id="colStockInKodeTx"     text="Kode Transaksi" prefWidth="110" minWidth="90"/>
-                        <TableColumn fx:id="colStockInNamaBarang" text="Barang"         prefWidth="140" minWidth="120"/>
-                        <TableColumn fx:id="colStockInSupplier"   text="Supplier"       prefWidth="130" minWidth="110"/>
-                        <TableColumn fx:id="colStockInAlasan"     text="Alasan"         prefWidth="120" minWidth="100"/>
-                        <TableColumn fx:id="colStockInJumlah"     text="Jumlah"         prefWidth="80"  minWidth="70"/>
-                        <TableColumn fx:id="colStockInTanggal"    text="Tanggal"        prefWidth="140" minWidth="120"/>
-                    </columns>
-                    <placeholder>
-                        <Label text="Belum ada data stock in" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
-                    </placeholder>
-                </TableView>
-            </VBox>
-        </VBox>
-
-    </HBox>
-
-    
-    <HBox fx:id="tabContentStockOut" spacing="16" managed="false" visible="false">
-
-        
-        <VBox spacing="16" style="-fx-pref-width: 320px; -fx-min-width: 300px; -fx-max-width: 340px;">
-            <VBox styleClass="card" spacing="14">
-                <Label text="Stock Out Form" styleClass="card-title"/>
-
-                
-                <VBox spacing="5">
-                    <Label text="Barang *" styleClass="form-label"/>
-                    <ComboBox fx:id="cbBarangStockOut"
-                              promptText="Pilih barang..."
-                              styleClass="form-combo"
-                              maxWidth="Infinity"
-                              onAction="#handleBarangChangeStockOut"/>
-                </VBox>
-
-                
-                <HBox fx:id="boxInfoStokStockOut" spacing="8" alignment="CENTER_LEFT"
-                      style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 8 12 8 12;"
-                      visible="false" managed="false">
-                    <Label text="📦" style="-fx-font-size: 13px;"/>
-                    <Label fx:id="lblInfoStokStockOut" text="Stok saat ini: -"
-                           style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
-                </HBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Tujuan / Lokasi" styleClass="form-label"/>
-                    <TextField fx:id="tfTujuanStockOut"
-                               promptText="Masukkan tujuan..."
-                               styleClass="form-field"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Jumlah *" styleClass="form-label"/>
-                    <TextField fx:id="tfJumlahStockOut"
-                               promptText="Masukkan jumlah..."
-                               styleClass="form-field"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Keterangan" styleClass="form-label"/>
-                    <TextArea fx:id="taKeteranganStockOut"
-                              promptText="Catatan tambahan (opsional)..."
-                              styleClass="form-area"
-                              prefRowCount="3"
-                              wrapText="true"/>
-                </VBox>
-
-                
-                <Button text="💾  Simpan Stock Out"
-                        styleClass="btn-primary"
-                        onAction="#handleSimpanStockOut"
-                        maxWidth="Infinity"/>
-            </VBox>
-        </VBox>
-
-        
-        <VBox spacing="12" HBox.hgrow="ALWAYS">
-            <VBox styleClass="card" spacing="12">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Riwayat Stock Out" styleClass="card-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lblTotalStockOut" text="0 transaksi" styleClass="card-badge"/>
-                    <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefreshStockOut"/>
-                    <Button text="📥 Export PDF" styleClass="btn-outline" onAction="#handleExportStockOut"/>
-                </HBox>
-
-                <TableView fx:id="tableStockOutTransaksi" prefHeight="400" styleClass="data-table">
-                    <columns>
-                        <TableColumn fx:id="colStockOutKodeTx"     text="Kode Transaksi" prefWidth="110" minWidth="90"/>
-                        <TableColumn fx:id="colStockOutNamaBarang" text="Barang"         prefWidth="140" minWidth="120"/>
-                        <TableColumn fx:id="colStockOutTujuan"     text="Tujuan"         prefWidth="130" minWidth="110"/>
-                        <TableColumn fx:id="colStockOutAlasan"     text="Alasan"         prefWidth="120" minWidth="100"/>
-                        <TableColumn fx:id="colStockOutJumlah"     text="Jumlah"         prefWidth="80"  minWidth="70"/>
-                        <TableColumn fx:id="colStockOutTanggal"    text="Tanggal"        prefWidth="140" minWidth="120"/>
-                    </columns>
-                    <placeholder>
-                        <Label text="Belum ada data stock out" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
-                    </placeholder>
-                </TableView>
-            </VBox>
-        </VBox>
-
-    </HBox>
-
-    
-    <HBox fx:id="tabContentAdjustment" spacing="16" managed="false" visible="false">
-
-        
-        <VBox spacing="16" style="-fx-pref-width: 320px; -fx-min-width: 300px; -fx-max-width: 340px;">
-            <VBox styleClass="card" spacing="14">
-                <Label text="Adjustment Form" styleClass="card-title"/>
-
-                
-                <VBox spacing="5">
-                    <Label text="Barang *" styleClass="form-label"/>
-                    <ComboBox fx:id="cbBarangAdjustment"
-                              promptText="Pilih barang..."
-                              styleClass="form-combo"
-                              maxWidth="Infinity"
-                              onAction="#handleBarangChangeAdjustment"/>
-                </VBox>
-
-                
-                <HBox fx:id="boxInfoStokAdjustment" spacing="8" alignment="CENTER_LEFT"
-                      style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 8 12 8 12;"
-                      visible="false" managed="false">
-                    <Label text="📦" style="-fx-font-size: 13px;"/>
-                    <Label fx:id="lblInfoStokAdjustment" text="Stok saat ini: -"
-                           style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
-                </HBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Stok Baru *" styleClass="form-label"/>
-                    <TextField fx:id="tfStokBaruAdjustment"
-                               promptText="Masukkan stok baru..."
-                               styleClass="form-field"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Alasan Penyesuaian *" styleClass="form-label"/>
-                    <ComboBox fx:id="cbAlasanAdjustment"
-                              promptText="Pilih alasan..."
-                              styleClass="form-combo"
-                              maxWidth="Infinity"/>
-                </VBox>
-
-                
-                <VBox spacing="5">
-                    <Label text="Keterangan" styleClass="form-label"/>
-                    <TextArea fx:id="taKeteranganAdjustment"
-                              promptText="Catatan tambahan (opsional)..."
-                              styleClass="form-area"
-                              prefRowCount="3"
-                              wrapText="true"/>
-                </VBox>
-
-                
-                <Button text="💾  Simpan Adjustment"
-                        styleClass="btn-primary"
-                        onAction="#handleSimpanAdjustment"
-                        maxWidth="Infinity"/>
-            </VBox>
-        </VBox>
-
-        
-        <VBox spacing="12" HBox.hgrow="ALWAYS">
-            <VBox styleClass="card" spacing="12">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Riwayat Adjustment" styleClass="card-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lblTotalAdjustment" text="0 transaksi" styleClass="card-badge"/>
-                    <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefreshAdjustment"/>
-                    <Button text="📥 Export PDF" styleClass="btn-outline" onAction="#handleExportAdjustment"/>
-                </HBox>
-
-                <TableView fx:id="tableAdjustmentTransaksi" prefHeight="400" styleClass="data-table">
-                    <columns>
-                        <TableColumn fx:id="colAdjustmentKodeTx"     text="Kode Transaksi" prefWidth="105" minWidth="85"/>
-                        <TableColumn fx:id="colAdjustmentNamaBarang" text="Barang"         prefWidth="125" minWidth="110"/>
-                        <TableColumn fx:id="colAdjustmentAlasan"     text="Alasan"         prefWidth="130" minWidth="110"/>
-                        <TableColumn fx:id="colAdjustmentKeterangan" text="Keterangan"     prefWidth="140" minWidth="120"/>
-                        <TableColumn fx:id="colAdjustmentStok"       text="Stok Baru"      prefWidth="80"  minWidth="70"/>
-                        <TableColumn fx:id="colAdjustmentTanggal"    text="Tanggal"        prefWidth="130" minWidth="110"/>
-                    </columns>
-                    <placeholder>
-                        <Label text="Belum ada data adjustment" style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px;"/>
->>>>>>> origin/main
                     </placeholder>
                 </TableView>
             </VBox>

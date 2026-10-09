@@ -25,6 +25,12 @@ public class DeliveryOrderLotReservation {
     @Column(name = "picked_quantity", nullable = false)
     private Integer pickedQuantity = 0;
 
+    @Column(name = "packed_quantity", nullable = false)
+    private Integer packedQuantity = 0;
+
+    @Column(name = "loaded_quantity", nullable = false)
+    private Integer loadedQuantity = 0;
+
     public DeliveryOrderLotReservation() {}
 
     public DeliveryOrderLotReservation(DeliveryOrderLine deliveryOrderLine,
@@ -39,5 +45,10 @@ public class DeliveryOrderLotReservation {
     public InventoryLotBalance getLotBalance() { return lotBalance; }
     public Integer getReservedQuantity() { return reservedQuantity; }
     public Integer getPickedQuantity() { return pickedQuantity == null ? 0 : pickedQuantity; }
+    public Integer getPackedQuantity() { return packedQuantity == null ? 0 : packedQuantity; }
+    public Integer getLoadedQuantity() { return loadedQuantity == null ? 0 : loadedQuantity; }
     public void setPickedQuantity(Integer pickedQuantity) { this.pickedQuantity = pickedQuantity; }
+    public void setReservedQuantity(Integer reservedQuantity) { this.reservedQuantity = reservedQuantity; }
+    public void setPackedQuantity(Integer packedQuantity) { this.packedQuantity = packedQuantity; }
+    public void setLoadedQuantity(Integer loadedQuantity) { this.loadedQuantity = loadedQuantity; }
 }

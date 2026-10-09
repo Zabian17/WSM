@@ -3,17 +3,12 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.*?>
-<<<<<<< HEAD
-=======
-<?import javafx.scene.control.cell.*?>
->>>>>>> origin/main
 
 <VBox styleClass="content-area" spacing="16"
       xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mycompany.tugas_akhir.ReportController">
 
-<<<<<<< HEAD
     <!-- HEADER BAR -->
     <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
         <VBox spacing="3">
@@ -21,8 +16,9 @@
             <Label text="Rekapitulasi pergerakan barang, stok, dan statistik transaksi" styleClass="section-page-sub"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
-        <Button text="📄 Export PDF" styleClass="btn-outline" onAction="#handleExportPDF"/>
-        <Button text="📊 Export CSV" styleClass="btn-primary" onAction="#handleExportCSV"/>
+        <Button text="Laporan Operasional WMS" styleClass="btn-outline" onAction="#handleOpenOperationalReports"/>
+        <Button text="Ekspor PDF" styleClass="btn-outline" onAction="#handleExportPDF"/>
+        <Button text="Ekspor CSV" styleClass="btn-primary" onAction="#handleExportCSV"/>
     </HBox>
 
     <!-- STATS CARDS ROW -->
@@ -46,9 +42,9 @@
         <HBox alignment="CENTER_LEFT" spacing="12">
             <Label text="Filter Laporan" styleClass="card-title"/>
             <ComboBox fx:id="cbFilterTipe" onAction="#handleFilterChange" styleClass="form-combo" prefWidth="160"/>
-            <TextField fx:id="searchField" promptText="🔍 Search barang / kode..." styleClass="search-box" onKeyReleased="#handleSearch" prefWidth="240"/>
+            <TextField fx:id="searchField" promptText="Cari barang atau kode..." styleClass="search-box" onKeyReleased="#handleSearch" prefWidth="240"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+            <Button text="Muat Ulang" styleClass="btn-outline" onAction="#handleRefresh"/>
         </HBox>
 
         <TableView fx:id="tableReport" prefHeight="480" styleClass="data-table" VBox.vgrow="ALWAYS">
@@ -69,217 +65,4 @@
         </TableView>
     </VBox>
 
-=======
-    
-    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
-        <VBox spacing="3">
-            <Label text="Report" styleClass="section-page-title"/>
-            <Label text="Laporan pergerakan barang berdasarkan periode waktu" styleClass="section-page-sub"/>
-        </VBox>
-    </HBox>
-
-    
-    <VBox styleClass="card" spacing="12">
-        <HBox alignment="CENTER_LEFT" spacing="8">
-            <Label text="🔍 Filter Laporan" styleClass="card-title"/>
-        </HBox>
-
-        <HBox spacing="12" alignment="CENTER_LEFT">
-
-            
-            <VBox spacing="4">
-                <Label text="Dari Tanggal" styleClass="form-label"/>
-                <DatePicker fx:id="dpStartDate"
-                            promptText="Pilih tanggal awal"
-                            styleClass="filter-combo"
-                            prefWidth="150"/>
-            </VBox>
-
-            
-            <VBox spacing="4">
-                <Label text="Sampai Tanggal" styleClass="form-label"/>
-                <DatePicker fx:id="dpEndDate"
-                            promptText="Pilih tanggal akhir"
-                            styleClass="filter-combo"
-                            prefWidth="150"/>
-            </VBox>
-
-            
-            <VBox spacing="4">
-                <Label text="Tipe Transaksi" styleClass="form-label"/>
-                <ComboBox fx:id="cbTipe"
-                          promptText="Pilih tipe..."
-                          styleClass="filter-combo"
-                          prefWidth="140"/>
-            </VBox>
-
-            <Region HBox.hgrow="ALWAYS"/>
-
-            
-            <VBox spacing="4" alignment="BOTTOM_LEFT">
-                <Label text=" " styleClass="form-label"/>
-                <HBox spacing="8">
-                    <Button fx:id="btnGenerate"
-                            text="📊  Generate Report"
-                            styleClass="btn-primary-small"
-                            onAction="#handleGenerateReport"
-                            style="-fx-padding: 9 18 9 18; -fx-font-size: 13px;"/>
-                    <Button fx:id="btnReset"
-                            text="↺  Reset"
-                            styleClass="btn-outline-small"
-                            onAction="#handleReset"
-                            style="-fx-padding: 9 14 9 14; -fx-font-size: 13px;"/>
-                </HBox>
-            </VBox>
-
-        </HBox>
-
-        
-        <HBox fx:id="boxPeriodeInfo" spacing="6" alignment="CENTER_LEFT"
-              style="-fx-background-color: #f0f4ff; -fx-background-radius: 8; -fx-padding: 7 12 7 12;"
-              visible="false" managed="false">
-            <Label text="📅" style="-fx-font-size: 12px;"/>
-            <Label fx:id="lblPeriodeInfo" text="Menampilkan data periode: ..."
-                   style="-fx-font-size: 12px; -fx-text-fill: #1a56db;"/>
-        </HBox>
-
-    </VBox>
-
-    
-    <HBox spacing="12">
-
-        
-        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-            <HBox spacing="8" alignment="TOP_LEFT">
-                <Label text="📊" style="-fx-font-size: 22px;"/>
-                <VBox spacing="3">
-                    <Label text="TOTAL TRANSAKSI" style="-fx-font-size: 11px; -fx-text-fill: #9ba3b8; -fx-font-weight: bold;"/>
-                    <Label fx:id="lblTotalTx" text="0"
-                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-                    <Label text="transaksi di periode ini" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                </VBox>
-            </HBox>
-        </VBox>
-
-        
-        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-            <HBox spacing="8" alignment="TOP_LEFT">
-                <Label text="📥" style="-fx-font-size: 22px;"/>
-                <VBox spacing="3">
-                    <Label text="TOTAL MASUK" style="-fx-font-size: 11px; -fx-text-fill: #10b981; -fx-font-weight: bold;"/>
-                    <Label fx:id="lblTotalMasuk" text="0"
-                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-                    <Label text="qty barang masuk" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                </VBox>
-            </HBox>
-        </VBox>
-
-        
-        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-            <HBox spacing="8" alignment="TOP_LEFT">
-                <Label text="📤" style="-fx-font-size: 22px;"/>
-                <VBox spacing="3">
-                    <Label text="TOTAL KELUAR" style="-fx-font-size: 11px; -fx-text-fill: #ef4444; -fx-font-weight: bold;"/>
-                    <Label fx:id="lblTotalKeluar" text="0"
-                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-                    <Label text="qty barang keluar" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                </VBox>
-            </HBox>
-        </VBox>
-
-        
-        <VBox styleClass="stat-card" spacing="6" HBox.hgrow="ALWAYS">
-            <HBox spacing="8" alignment="TOP_LEFT">
-                <Label text="📦" style="-fx-font-size: 22px;"/>
-                <VBox spacing="3">
-                    <Label text="BARANG AKTIF" style="-fx-font-size: 11px; -fx-text-fill: #1a56db; -fx-font-weight: bold;"/>
-                    <Label fx:id="lblBarangAktif" text="0"
-                           style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1a56db;"/>
-                    <Label text="jenis barang bergerak" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                </VBox>
-            </HBox>
-        </VBox>
-
-    </HBox>
-
-    
-    <HBox spacing="16" VBox.vgrow="ALWAYS">
-
-        
-        <VBox styleClass="card" spacing="12" HBox.hgrow="ALWAYS">
-            <HBox alignment="CENTER_LEFT" spacing="8">
-                <Label text="📋 Tabel Laporan Transaksi" styleClass="card-title"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="lblJumlahData" text="0 data" styleClass="card-badge"/>
-                <Button text="🔄 Refresh" styleClass="btn-outline-small"
-                        onAction="#handleRefresh"
-                        style="-fx-padding: 6 12 6 12;"/>
-            </HBox>
-
-            <TableView fx:id="tableReport" prefHeight="380" styleClass="data-table">
-                <columns>
-                    <TableColumn fx:id="colNo"          text="No"              prefWidth="45"  minWidth="40"/>
-                    <TableColumn fx:id="colKodeTx"      text="Kode Transaksi"  prefWidth="110" minWidth="90"/>
-                    <TableColumn fx:id="colTipe"        text="Tipe"            prefWidth="80"  minWidth="65"/>
-                    <TableColumn fx:id="colBarang"      text="Barang"          prefWidth="140" minWidth="110"/>
-                    <TableColumn fx:id="colSupplier"    text="Supplier / Info" prefWidth="120" minWidth="100"/>
-                    <TableColumn fx:id="colJumlah"      text="Jumlah"          prefWidth="75"  minWidth="60"/>
-                    <TableColumn fx:id="colRak"         text="Rak"             prefWidth="70"  minWidth="55"/>
-                    <TableColumn fx:id="colTanggal"     text="Tanggal"         prefWidth="130" minWidth="110"/>
-                </columns>
-                <placeholder>
-                    <VBox alignment="CENTER" spacing="8">
-                        <Label text="📋" style="-fx-font-size: 32px;"/>
-                        <Label text="Belum ada data"
-                               style="-fx-text-fill: #9ba3b8; -fx-font-size: 13px; -fx-font-weight: bold;"/>
-                        <Label text="Pilih periode dan klik Generate Report"
-                               style="-fx-text-fill: #c4c9d6; -fx-font-size: 11px;"/>
-                    </VBox>
-                </placeholder>
-            </TableView>
-        </VBox>
-
-        
-        <VBox spacing="12" style="-fx-pref-width: 240px; -fx-min-width: 220px; -fx-max-width: 260px;">
-
-            
-            <VBox styleClass="card" spacing="12" VBox.vgrow="ALWAYS">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="🏆 Top Barang Aktif" styleClass="card-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="Top 5" styleClass="card-badge"/>
-                </HBox>
-
-                
-                <VBox fx:id="vboxTopBarang" spacing="6">
-                    <Label text="Generate report untuk melihat top barang"
-                           style="-fx-text-fill: #9ba3b8; -fx-font-size: 11px; -fx-wrap-text: true;"/>
-                </VBox>
-            </VBox>
-
-            
-            <VBox styleClass="card" spacing="10">
-                <Label text="📌 Keterangan" styleClass="card-title"/>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="📥" style="-fx-font-size: 14px;"/>
-                    <VBox spacing="1">
-                        <Label text="Masuk" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #10b981;"/>
-                        <Label text="Barang diterima ke gudang" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8; -fx-wrap-text: true;"/>
-                    </VBox>
-                </HBox>
-                <Pane styleClass="table-row-separator"/>
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="📤" style="-fx-font-size: 14px;"/>
-                    <VBox spacing="1">
-                        <Label text="Keluar" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #ef4444;"/>
-                        <Label text="Barang dikeluarkan dari gudang" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8; -fx-wrap-text: true;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-
-        </VBox>
-
-    </HBox>
-
->>>>>>> origin/main
 </VBox>

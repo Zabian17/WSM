@@ -22,6 +22,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -98,6 +102,47 @@ class InventoryTransferServiceTest {
         assertEquals(5, movedLot.getQuantity());
         verify(lotAllocationRepository).save(any(InventoryTransferLotAllocation.class));
         verify(barangRepository, never()).save(any());
+    }
+
+    @Test
+    void scannedTransferValidatesItemBatchExpiryAndBothLocations() {
+        Barang barang = Barang.builder().id(1).kodeBarang("SKU-1").namaBarang("Box").stok(8).build();
+        Rak source = new Rak(2, null, "A-01", 100, 8);
+        Rak destination = new Rak(3, null, "A-02", 100, 0);
+        User user = User.builder().id(4).fullName("Operator").build();
+        LocalDate expiry = LocalDate.now().plusDays(40);
+        InventoryBalance sourceBalance = new InventoryBalance(barang, source, "RAK-2", 8);
+        InventoryBalance destinationBalance = new InventoryBalance(barang, destination, "RAK-3", 0);
+        InventoryLotBalance sourceLot = new InventoryLotBalance(barang, source, "RAK-2", "LOT-A",
+                expiry, LocalDateTime.now().minusDays(4), 8);
+        when(barangRepository.findByKodeBarang("SKU-1")).thenReturn(Optional.of(barang));
+        when(rakRepository.findByKodeRak("A-01")).thenReturn(Optional.of(source));
+        when(rakRepository.findByKodeRak("A-02")).thenReturn(Optional.of(destination));
+        when(barangRepository.findByIdForUpdate(1)).thenReturn(Optional.of(barang));
+        when(rakRepository.findByIdForUpdate(2)).thenReturn(Optional.of(source));
+        when(rakRepository.findByIdForUpdate(3)).thenReturn(Optional.of(destination));
+        when(balanceRepository.findByBarangIdAndLocationKeyForUpdate(1, "RAK-2"))
+                .thenReturn(Optional.of(sourceBalance));
+        when(balanceRepository.findByBarangIdAndLocationKeyForUpdate(1, "RAK-3"))
+                .thenReturn(Optional.of(destinationBalance));
+        when(lotBalanceRepository.findAllPositiveForUpdate(1, "RAK-2")).thenReturn(java.util.List.of(sourceLot));
+        when(lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(1, "RAK-3", "LOT-A"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findById(4)).thenReturn(Optional.of(user));
+
+        String itemQr = "WMS1|" + encode("SKU-1") + "|" + encode("LOT-A") + "|" + expiry;
+        assertTrue(service.transferStockWithBarcodes(itemQr,
+                "SLOC1|" + encode("A-01"), "SLOC1|" + encode("A-02"), 5, "scanned", 4));
+
+        assertEquals(3, sourceLot.getQuantity());
+        assertEquals(3, sourceBalance.getQuantity());
+        assertEquals(5, destinationBalance.getQuantity());
+        verify(lotAllocationRepository).save(any(InventoryTransferLotAllocation.class));
+    }
+
+    private String encode(String value) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
     @Test

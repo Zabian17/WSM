@@ -122,21 +122,7 @@ public class LoginController implements Initializable {
             return;
         }
 
-<<<<<<< HEAD
         User user = userService.login(email, password);
-=======
-        if (!DatabaseConnection.getInstance().isConnected()) {
-            showAlert(Alert.AlertType.ERROR, "Koneksi Database Error",
-                    "Tidak dapat terhubung ke database.\n\n" +
-                    "Pastikan:\n" +
-                    "• MySQL Server sedang berjalan\n" +
-                    "• Database 'gudang_akhir' sudah dibuat\n" +
-                    "• Username/password database benar");
-            return;
-        }
-
-        UserDAO.User user = userDAO.login(email, password);
->>>>>>> origin/main
 
         if (user != null) {
             navigateToDashboard(user);
@@ -149,32 +135,21 @@ public class LoginController implements Initializable {
 
     private void navigateToDashboard(User user) {
         try {
-<<<<<<< HEAD
             FXMLLoader loader = fxmlLoader.getLoader("/fxml/dashboard.fxml");
-=======
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/fxml/dashboard.fxml")
-            );
->>>>>>> origin/main
-            Scene scene = new Scene(loader.load(), 1200, 720);
+            Scene scene = new Scene(loader.load(), 1200, 760);
 
             DashboardController dashCtrl = loader.getController();
-            
+            dashCtrl.initUser(user);
             Stage stage = (Stage) tfLoginEmail.getScene().getWindow();
             stage.setTitle("GudangKu - Dashboard");
             stage.hide();
             stage.setResizable(true);
+            stage.setMinWidth(1050);
+            stage.setMinHeight(680);
             stage.setScene(scene);
-<<<<<<< HEAD
             stage.setWidth(1200);
-            stage.setHeight(720);
+            stage.setHeight(760);
             stage.centerOnScreen();
-=======
-
-            dashCtrl.setPrimaryStage(stage);
-            dashCtrl.initUser(user);
-            
->>>>>>> origin/main
             stage.show();
         } catch (IOException e) {
             log.error("Gagal membuka dashboard: {}", e.getMessage(), e);

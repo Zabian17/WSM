@@ -1,0 +1,8 @@
+package com.mycompany.tugas_akhir.model;
+
+public enum StockCountStatus {
+    COUNTING,
+    COUNTED,
+    POSTED,
+    CANCELLED
+}

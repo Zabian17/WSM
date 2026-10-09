@@ -28,9 +28,11 @@ public class GudangKuApplication extends Application {
         SpringFXMLLoader fxmlLoader = springContext.getBean(SpringFXMLLoader.class);
         Parent root = fxmlLoader.load("/fxml/login.fxml");
 
-        Scene scene = new Scene(root, 950, 600);
-        stage.setTitle("GudangKu - Sistem Management Gudang");
-        stage.setResizable(false);
+        Scene scene = new Scene(root, 1024, 680);
+        stage.setTitle("GudangKu | Sistem Manajemen Gudang");
+        stage.setMinWidth(900);
+        stage.setMinHeight(560);
+        stage.setResizable(true);
         stage.setScene(scene);
         stage.show();
     }

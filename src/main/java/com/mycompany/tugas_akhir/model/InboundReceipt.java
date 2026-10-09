@@ -23,6 +23,10 @@ public class InboundReceipt {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "purchase_order_line_id")
+    private PurchaseOrderLine purchaseOrderLine;
+
     @Column(nullable = false)
     private Integer quantity;
 
@@ -81,6 +85,7 @@ public class InboundReceipt {
     public String getReceiptCode() { return receiptCode; }
     public Barang getBarang() { return barang; }
     public Supplier getSupplier() { return supplier; }
+    public PurchaseOrderLine getPurchaseOrderLine() { return purchaseOrderLine; }
     public Integer getQuantity() { return quantity; }
     public String getBatchCode() { return batchCode; }
     public LocalDate getExpiryDate() { return expiryDate; }
@@ -98,4 +103,7 @@ public class InboundReceipt {
     public void setQcBy(User qcBy) { this.qcBy = qcBy; }
     public void setQcAt(LocalDateTime qcAt) { this.qcAt = qcAt; }
     public void setPutawayRak(Rak putawayRak) { this.putawayRak = putawayRak; }
+    public void setPurchaseOrderLine(PurchaseOrderLine purchaseOrderLine) {
+        this.purchaseOrderLine = purchaseOrderLine;
+    }
 }

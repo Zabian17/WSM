@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -44,7 +43,8 @@ class TransaksiServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransaksiService(transaksiRepository, barangRepository, supplierRepository,
-            userRepository, balanceRepository, rakRepository, lotBalanceRepository, lotAllocationRepository);
+            userRepository, balanceRepository, rakRepository, lotBalanceRepository, lotAllocationRepository,
+            new InventoryPickingPolicy(lotBalanceRepository, "FEFO"));
     }
 
     @Test
@@ -143,7 +143,9 @@ class TransaksiServiceTest {
 
         @Test
         void lefoConsumesTheLatestExpiryLotFirst() {
-        ReflectionTestUtils.setField(service, "pickingStrategy", "LEFO");
+            service = new TransaksiService(transaksiRepository, barangRepository, supplierRepository,
+                userRepository, balanceRepository, rakRepository, lotBalanceRepository, lotAllocationRepository,
+                new InventoryPickingPolicy(lotBalanceRepository, "LEFO"));
         Barang barang = Barang.builder().id(5).namaBarang("Box").stok(6).build();
         User user = User.builder().id(9).fullName("Operator").build();
         Rak rak = new Rak(2, null, "A-01", 100, 6);

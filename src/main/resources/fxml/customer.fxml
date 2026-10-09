@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<<<<<<< HEAD
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.*?>
@@ -18,11 +17,12 @@
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
         <TextField fx:id="searchField"
-                   promptText="🔍  Cari customer..."
+                   promptText="Cari pelanggan..."
                    styleClass="search-box"
                    onKeyReleased="#handleSearch"
                    prefWidth="240"/>
-        <Button text="＋  Tambah Customer" styleClass="btn-primary" onAction="#handleTambah"/>
+        <Button text="Impor Master Data" styleClass="btn-outline" onAction="#handleImportMasterData"/>
+        <Button text="+  Tambah Pelanggan" styleClass="btn-primary" onAction="#handleTambah"/>
     </HBox>
 
     <!-- TABLE CARD 100% RESPONSIVE WIDTH -->
@@ -31,7 +31,7 @@
             <Label text="Daftar Customer" styleClass="card-title"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="lblTotalCustomer" text="0 Customer" styleClass="card-badge"/>
-            <Button text="🔄 Refresh" styleClass="btn-outline" onAction="#handleRefresh"/>
+            <Button text="Muat Ulang" styleClass="btn-outline" onAction="#handleRefresh"/>
         </HBox>
 
         <TableView fx:id="tableCustomer" prefHeight="500" styleClass="data-table" VBox.vgrow="ALWAYS">
@@ -48,61 +48,4 @@
         </TableView>
     </VBox>
 
-=======
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-
-<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.mycompany.tugas_akhir.CustomerController"
-      spacing="0" style="-fx-background-color: #f8f9fa;">
-
-    
-    <VBox spacing="20" style="-fx-padding: 24px;">
-        <Label text="Customer" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #1f2937;"/>
-
-        
-        <HBox spacing="12" alignment="CENTER_LEFT">
-            
-            <ComboBox fx:id="cbCategory" 
-                      promptText="All"
-                      prefWidth="150"
-                      styleClass="form-combo"
-                      onAction="#handleFilterChange"/>
-
-            
-            <ComboBox fx:id="cbStatus" 
-                      promptText="All status"
-                      prefWidth="150"
-                      styleClass="form-combo"
-                      onAction="#handleFilterChange"/>
-
-            <Region HBox.hgrow="ALWAYS"/>
-
-            
-            <Button text="➕ Add Customer" 
-                    styleClass="btn-primary"
-                    onAction="#handleAddCustomer"
-                    prefWidth="140"/>
-
-            
-            <TextField fx:id="tfSearch"
-                       promptText="Search name, id, company..."
-                       styleClass="form-field"
-                       prefWidth="200"
-                       onKeyReleased="#handleSearch"/>
-        </HBox>
-    </VBox>
-
-    
-    <ScrollPane fitToWidth="true" style="-fx-background-color: #f8f9fa; -fx-border-color: transparent;">
-        <TilePane fx:id="tileCustomers"
-                  prefColumns="3"
-                  hgap="20"
-                  vgap="20"
-                  style="-fx-padding: 20px;"
-                  prefWidth="1200"/>
-    </ScrollPane>
-
->>>>>>> origin/main
 </VBox>

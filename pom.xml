@@ -62,7 +62,6 @@
         </dependency>
 
         <dependency>
-<<<<<<< HEAD
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
@@ -93,6 +92,19 @@
             <version>${atlantafx.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports</artifactId>
+            <version>6.21.3</version>
+        </dependency>
+
+        <!-- Excel master-data templates and imports -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.1</version>
+        </dependency>
+
         <!-- Database Driver -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -106,20 +118,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-=======
-            <groupId>at.favre.lib</groupId>
-            <artifactId>bcrypt</artifactId>
-            <version>0.10.2</version>
-        </dependency>
-
-        <!-- JasperReports for PDF report generation -->
-        <dependency>
-            <groupId>net.sf.jasperreports</groupId>
-            <artifactId>jasperreports</artifactId>
-            <version>6.21.3</version>
-        </dependency>
-
->>>>>>> origin/main
     </dependencies>
 
     <build>

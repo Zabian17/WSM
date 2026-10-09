@@ -1,20 +1,18 @@
 package com.mycompany.tugas_akhir;
 
-<<<<<<< HEAD
 import com.mycompany.tugas_akhir.model.Barang;
 import com.mycompany.tugas_akhir.model.InventoryBalance;
+import com.mycompany.tugas_akhir.model.Rak;
+import com.mycompany.tugas_akhir.model.Section;
+import com.mycompany.tugas_akhir.model.User;
+import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.BarangService;
 import com.mycompany.tugas_akhir.service.InventoryBalanceService;
-=======
-import java.net.URL;
-import java.util.Optional;
-import java.util.ResourceBundle;
->>>>>>> origin/main
+import com.mycompany.tugas_akhir.service.StockCountService;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-<<<<<<< HEAD
 import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -32,6 +30,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 @Component
 public class StorageController implements Initializable {
@@ -39,9 +39,15 @@ public class StorageController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(StorageController.class);
     private final BarangService barangService;
     private final InventoryBalanceService inventoryBalanceService;
+    private final SectionService sectionService;
+    private final StockCountService stockCountService;
     private final ObservableList<Barang> barangList = FXCollections.observableArrayList();
+    private FilteredList<Barang> filteredBarangList;
+    private User currentUser;
 
     @FXML private TextField searchField;
+    @FXML private ComboBox<String> categoryFilter;
+    @FXML private ComboBox<String> stockStatusFilter;
     @FXML private Label lblTotalBarang;
     @FXML private Label lblStokRendah;
     @FXML private Label lblStokHabis;
@@ -54,14 +60,22 @@ public class StorageController implements Initializable {
     @FXML private TableColumn<Barang, String> colStatus;
     @FXML private TableColumn<Barang, Void> colAksi;
 
-    public StorageController(BarangService barangService, InventoryBalanceService inventoryBalanceService) {
+    public StorageController(BarangService barangService, InventoryBalanceService inventoryBalanceService,
+                             SectionService sectionService, StockCountService stockCountService) {
         this.barangService = barangService;
         this.inventoryBalanceService = inventoryBalanceService;
+        this.sectionService = sectionService;
+        this.stockCountService = stockCountService;
+    }
+
+    public void initUser(User user) {
+        currentUser = user;
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         setupColumns();
+        configureFilters();
         loadData();
     }
 
@@ -72,95 +86,11 @@ public class StorageController implements Initializable {
         colKategori.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getKategori()));
         colStok.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getStok()));
 
-=======
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.geometry.Insets;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.stage.FileChooser;
-
-
-public class StorageController implements Initializable {
-
-    private final BarangDAO barangDAO = new BarangDAO();
-    private final ObservableList<BarangDAO.Barang> barangList = FXCollections.observableArrayList();
-
-    
-    @FXML private TextField  searchField;
-    @FXML private ComboBox<String> comboFilter1;
-    @FXML private ComboBox<String> comboStatusFilter;
-    @FXML private ComboBox<String> comboCategoryFilter;
-    
-    @FXML private Label      lblTotalBarang;
-    @FXML private Label      lblStokSehat;
-    @FXML private Label      lblStokRendah;
-    @FXML private Label      lblStokHabis;
-
-    @FXML private TableView<BarangDAO.Barang>             tableBarang;
-    @FXML private TableColumn<BarangDAO.Barang, Number>   colNo;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colKode;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colKategori;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colLokasi;
-    @FXML private TableColumn<BarangDAO.Barang, Number>   colStok;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colStokMin;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colStatus;
-    @FXML private TableColumn<BarangDAO.Barang, String>   colLastUpdate;
-
-    
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
-        initializeFilters();
-        setupColumns();
-        loadData();
-    }
-    
-    private void initializeFilters() {
-        comboFilter1.setItems(FXCollections.observableArrayList("All"));
-        comboFilter1.setValue("All");
-        
-        comboStatusFilter.setItems(FXCollections.observableArrayList(
-            "All status", "In Stock", "Low Stock", "No Stock"));
-        comboStatusFilter.setValue("All status");
-        
-        comboCategoryFilter.setItems(FXCollections.observableArrayList("All categories"));
-        comboCategoryFilter.setValue("All categories");
-    }
-
-    private void setupColumns() {
-        
-        colNo.setCellValueFactory(data ->
-            new SimpleIntegerProperty(tableBarang.getItems().indexOf(data.getValue()) + 1));
-        colNo.setSortable(false);
-
-        
-        colKode.setCellValueFactory(d -> new SimpleStringProperty(
-            d.getValue().kodeBarang + " • " + d.getValue().namaBarang));
-
-        colKategori.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().kategori));
-        colKategori.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String s, boolean empty) {
-                super.updateItem(s, empty);
-                if (empty || s == null) { setGraphic(null); return; }
-                Label badge = new Label(s);
-                badge.getStyleClass().setAll("badge", "badge-info");
-                badge.setStyle("-fx-padding: 4 8 4 8; -fx-font-size: 11px;");
-                setGraphic(badge);
-                setText(null);
-            }
-        });
-
-        colLokasi.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().lokasi));
-
-        colStok.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().stok));
->>>>>>> origin/main
         colStok.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(Number n, boolean empty) {
                 super.updateItem(n, empty);
                 if (empty || n == null) { setText(null); setStyle(""); return; }
-<<<<<<< HEAD
                 Barang b = getTableView().getItems().get(getIndex());
                 setText(n.toString() + " " + (b.getSatuan() != null ? b.getSatuan() : "pcs"));
                 setStyle(b.getStok() < b.getStokMin()
@@ -169,36 +99,7 @@ public class StorageController implements Initializable {
             }
         });
 
-        colStatus.setCellValueFactory(d -> {
-            Barang b = d.getValue();
-            if (b.getStok() <= 0)               return new SimpleStringProperty("Habis");
-            if (b.getStok() < b.getStokMin())     return new SimpleStringProperty("Kritis");
-            if (b.getStok() < b.getStokMin() * 2) return new SimpleStringProperty("Rendah");
-            return new SimpleStringProperty("Aman");
-=======
-                BarangDAO.Barang b = getTableView().getItems().get(getIndex());
-                setText(n.toString());
-                if (b.stok <= 0)
-                    setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
-                else if (b.stok < b.stokMin)
-                    setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
-                else
-                    setStyle("-fx-text-fill: #10b981;");
-            }
-        });
-
-        
-        colStokMin.setCellValueFactory(d -> new SimpleStringProperty(
-            d.getValue().stokMin + " / " + d.getValue().stokMax));
-
-        
-        colStatus.setCellValueFactory(d -> {
-            BarangDAO.Barang b = d.getValue();
-            if (b.stok <= 0)                return new SimpleStringProperty("No Stock");
-            if (b.stok < b.stokMin)         return new SimpleStringProperty("Low Stock");
-            return new SimpleStringProperty("In Stock");
->>>>>>> origin/main
-        });
+        colStatus.setCellValueFactory(d -> new SimpleStringProperty(stockStatus(d.getValue())));
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String s, boolean empty) {
@@ -207,25 +108,18 @@ public class StorageController implements Initializable {
                 Label badge = new Label(s);
                 badge.getStyleClass().setAll("badge",
                     switch (s) {
-<<<<<<< HEAD
                         case "Habis", "Kritis" -> "badge-danger";
                         case "Rendah"          -> "badge-warn";
                         default                -> "badge-ok";
-=======
-                        case "No Stock"  -> "badge-danger";
-                        case "Low Stock" -> "badge-warn";
-                        default          -> "badge-ok";
->>>>>>> origin/main
                     });
                 setGraphic(badge);
                 setText(null);
             }
         });
 
-<<<<<<< HEAD
         colAksi.setCellFactory(col -> new TableCell<>() {
             private final Button btnEdit = new Button("✏");
-            private final Button btnDel  = new Button("🗑");
+            private final Button btnDel  = new Button("×");
             private final HBox box       = new HBox(6, btnEdit, btnDel);
             {
                 btnEdit.getStyleClass().add("btn-action-edit");
@@ -239,19 +133,22 @@ public class StorageController implements Initializable {
                 super.updateItem(v, empty);
                 setGraphic(empty ? null : box);
             }
-=======
-        
-        colLastUpdate.setCellValueFactory(d -> {
-            long timestamp = d.getValue().lastUpdate;
-            String formatted = formatLastUpdate(timestamp);
-            return new SimpleStringProperty(formatted);
->>>>>>> origin/main
         });
 
-        tableBarang.setItems(barangList);
+        filteredBarangList = new FilteredList<>(barangList, barang -> true);
+        tableBarang.setItems(filteredBarangList);
     }
 
-<<<<<<< HEAD
+    private void configureFilters() {
+        categoryFilter.setItems(FXCollections.observableArrayList("Semua Kategori"));
+        categoryFilter.getSelectionModel().selectFirst();
+        stockStatusFilter.setItems(FXCollections.observableArrayList(
+                "Semua Status", "Habis", "Kritis", "Rendah", "Aman"));
+        stockStatusFilter.getSelectionModel().selectFirst();
+        categoryFilter.valueProperty().addListener((observable, oldValue, newValue) -> applyInventoryFilters());
+        stockStatusFilter.valueProperty().addListener((observable, oldValue, newValue) -> applyInventoryFilters());
+    }
+
     private void loadData() {
         Task<List<Barang>> task = new Task<>() {
             @Override
@@ -262,6 +159,18 @@ public class StorageController implements Initializable {
 
         task.setOnSucceeded(e -> {
             barangList.setAll(task.getValue());
+            List<String> categories = barangList.stream()
+                    .map(barang -> barang.getKategori() == null || barang.getKategori().isBlank()
+                            ? "Umum" : barang.getKategori().trim())
+                    .distinct()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+            categoryFilter.getItems().setAll("Semua Kategori");
+            categoryFilter.getItems().addAll(categories);
+            if (categoryFilter.getValue() == null || !categoryFilter.getItems().contains(categoryFilter.getValue())) {
+                categoryFilter.getSelectionModel().selectFirst();
+            }
+            applyInventoryFilters();
             updateStats();
         });
 
@@ -270,19 +179,14 @@ public class StorageController implements Initializable {
         Thread th = new Thread(task);
         th.setDaemon(true);
         th.start();
-=======
-    
-    private void loadData() {
-        barangList.setAll(barangDAO.getAllBarang());
-        updateStats();
->>>>>>> origin/main
     }
 
     private void updateStats() {
-        long total  = barangList.size();
-<<<<<<< HEAD
-        long habis  = barangList.stream().filter(b -> b.getStok() <= 0).count();
-        long rendah = barangList.stream().filter(b -> b.getStok() > 0 && b.getStok() < b.getStokMin()).count();
+        List<Barang> visibleItems = filteredBarangList == null ? List.copyOf(barangList)
+                : filteredBarangList.stream().toList();
+        long total  = visibleItems.size();
+        long habis  = visibleItems.stream().filter(b -> b.getStok() <= 0).count();
+        long rendah = visibleItems.stream().filter(b -> b.getStok() > 0 && b.getStok() < b.getStokMin()).count();
         lblTotalBarang.setText(String.valueOf(total));
         lblStokHabis.setText(String.valueOf(habis));
         lblStokRendah.setText(String.valueOf(rendah));
@@ -290,41 +194,39 @@ public class StorageController implements Initializable {
 
     @FXML
     private void handleSearch() {
-        String kw = searchField.getText().trim();
-        Task<List<Barang>> searchTask = new Task<>() {
-            @Override
-            protected List<Barang> call() {
-                return barangService.searchBarang(kw);
-            }
-        };
+        applyInventoryFilters();
+    }
 
-        searchTask.setOnSucceeded(e -> {
-            barangList.setAll(searchTask.getValue());
-            updateStats();
+    private void applyInventoryFilters() {
+        if (filteredBarangList == null) return;
+        String keyword = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase(Locale.ROOT);
+        String category = categoryFilter.getValue();
+        String status = stockStatusFilter.getValue();
+        filteredBarangList.setPredicate(barang -> {
+            boolean matchesKeyword = keyword.isEmpty()
+                    || contains(barang.getKodeBarang(), keyword)
+                    || contains(barang.getNamaBarang(), keyword)
+                    || contains(barang.getKategori(), keyword);
+            String itemCategory = barang.getKategori() == null || barang.getKategori().isBlank()
+                    ? "Umum" : barang.getKategori().trim();
+            boolean matchesCategory = category == null || "Semua Kategori".equals(category)
+                    || category.equalsIgnoreCase(itemCategory);
+            boolean matchesStatus = status == null || "Semua Status".equals(status)
+                    || status.equals(stockStatus(barang));
+            return matchesKeyword && matchesCategory && matchesStatus;
         });
-
-        searchTask.setOnFailed(e -> log.error("Gagal pencarian barang", searchTask.getException()));
-
-        Thread th = new Thread(searchTask);
-        th.setDaemon(true);
-        th.start();
-=======
-        long sehat  = barangList.stream().filter(b -> b.stok > 0 && b.stok >= b.stokMin).count();
-        long rendah = barangList.stream().filter(b -> b.stok > 0 && b.stok < b.stokMin).count();
-        long habis  = barangList.stream().filter(b -> b.stok <= 0).count();
-        lblTotalBarang.setText(String.valueOf(total));
-        lblStokSehat.setText(String.valueOf(sehat));
-        lblStokRendah.setText(String.valueOf(rendah));
-        lblStokHabis.setText(String.valueOf(habis));
+        updateStats();
     }
 
-    
-    @FXML
-    private void handleSearch() {
-        String kw = searchField.getText().trim();
-        barangList.setAll(kw.isEmpty() ? barangDAO.getAllBarang() : barangDAO.searchBarang(kw));
-        updateStats();
->>>>>>> origin/main
+    private boolean contains(String value, String keyword) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(keyword);
+    }
+
+    private String stockStatus(Barang barang) {
+        if (barang.getStok() <= 0) return "Habis";
+        if (barang.getStok() < barang.getStokMin()) return "Kritis";
+        if ((long) barang.getStok() < (long) barang.getStokMin() * 2) return "Rendah";
+        return "Aman";
     }
 
     @FXML
@@ -333,7 +235,6 @@ public class StorageController implements Initializable {
     }
 
     @FXML
-<<<<<<< HEAD
     private void handleViewSLOCStock() {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Stok per SLOC");
@@ -387,6 +288,118 @@ public class StorageController implements Initializable {
         thread.start();
     }
 
+    @FXML
+    private void handleWarehouseLayout() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Layout Gudang 2D");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        VBox layout = new VBox(14);
+        Label help = new Label("Pilih rak untuk melihat ringkasan stok. Warna menunjukkan tingkat keterisian.");
+        GridPane sectionsGrid = new GridPane();
+        sectionsGrid.setHgap(14);
+        sectionsGrid.setVgap(14);
+        VBox rackDetails = new VBox(8);
+        rackDetails.getStyleClass().add("card");
+        rackDetails.getChildren().add(new Label("Pilih rak pada layout untuk melihat isinya."));
+        layout.getChildren().addAll(help, sectionsGrid, rackDetails);
+        ScrollPane scroll = new ScrollPane(layout);
+        scroll.setFitToWidth(true);
+        dialog.getDialogPane().setContent(scroll);
+        dialog.getDialogPane().setPrefSize(900, 620);
+        dialog.show();
+
+        Task<WarehouseViewData> task = new Task<>() {
+            @Override
+            protected WarehouseViewData call() {
+                return new WarehouseViewData(sectionService.getAllSections(),
+                        inventoryBalanceService.getAllBalancesByLocation());
+            }
+        };
+        task.setOnSucceeded(event -> populateWarehouseLayout(sectionsGrid, rackDetails, task.getValue()));
+        task.setOnFailed(event -> {
+            log.error("Gagal memuat layout gudang", task.getException());
+            help.setText("Layout gudang gagal dimuat.");
+        });
+        Thread thread = new Thread(task, "warehouse-layout");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void populateWarehouseLayout(GridPane sectionsGrid, VBox rackDetails, WarehouseViewData data) {
+        sectionsGrid.getChildren().clear();
+        List<Section> sections = data.sections().stream()
+                .sorted(Comparator.comparing(Section::getKodeSection, String.CASE_INSENSITIVE_ORDER)).toList();
+        for (int sectionIndex = 0; sectionIndex < sections.size(); sectionIndex++) {
+            Section section = sections.get(sectionIndex);
+            VBox sectionCard = new VBox(10);
+            sectionCard.getStyleClass().add("card");
+            Label sectionTitle = new Label(section.getKodeSection() + " - " + section.getNamaSection());
+            sectionTitle.getStyleClass().add("card-title");
+            GridPane rackGrid = new GridPane();
+            rackGrid.setHgap(8);
+            rackGrid.setVgap(8);
+            List<Rak> raks = section.getRaks().stream()
+                    .sorted(Comparator.comparing(Rak::getKodeRak, String.CASE_INSENSITIVE_ORDER)).toList();
+            for (int rackIndex = 0; rackIndex < raks.size(); rackIndex++) {
+                Rak rack = raks.get(rackIndex);
+                Button rackButton = createRackButton(rack, () -> showRackBalances(rackDetails, rack, data.balances()));
+                rackGrid.add(rackButton, rackIndex % 4, rackIndex / 4);
+            }
+            sectionCard.getChildren().addAll(sectionTitle, rackGrid);
+            sectionsGrid.add(sectionCard, sectionIndex % 2, sectionIndex / 2);
+        }
+    }
+
+    private Button createRackButton(Rak rack, Runnable onSelected) {
+        int capacity = Math.max(rack.getKapasitas(), 1);
+        double fill = Math.max(0, Math.min(1, (double) rack.getTerisi() / capacity));
+        String fillColor = fill >= 0.9 ? "#fee2e2" : fill >= 0.75 ? "#fef3c7" : "#dcfce7";
+        String fillText = fill >= 0.9 ? "#b91c1c" : fill >= 0.75 ? "#92400e" : "#166534";
+        Button button = new Button(rack.getKodeRak() + "\n" + rack.getTerisi() + "/" + rack.getKapasitas());
+        button.setWrapText(true);
+        button.setMinSize(105, 58);
+        button.setStyle("-fx-background-color: " + fillColor + "; -fx-text-fill: " + fillText
+                + "; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;");
+        button.setTooltip(new Tooltip(rack.getTerisi() + " dari " + rack.getKapasitas()
+                + " unit (" + rack.getPersentase() + "%)"));
+        button.setOnAction(event -> onSelected.run());
+        return button;
+    }
+
+    private void showRackBalances(VBox rackDetails, Rak rack, List<InventoryBalance> balances) {
+        rackDetails.getChildren().clear();
+        Label title = new Label("Stok di " + rack.getKodeRak());
+        title.getStyleClass().add("card-title");
+        TableView<InventoryBalance> table = new TableView<>();
+        table.setPrefHeight(230);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.getColumns().add(balanceColumn("Kode", balance -> balance.getBarang().getKodeBarang()));
+        table.getColumns().add(balanceColumn("Barang", balance -> balance.getBarang().getNamaBarang()));
+        table.getColumns().add(balanceColumn("Saldo", balance -> balance.getQuantity() + " "
+                + (balance.getBarang().getSatuan() == null ? "pcs" : balance.getBarang().getSatuan())));
+        List<InventoryBalance> rackBalances = balances.stream()
+                .filter(balance -> balance.getRak() != null && rack.getId().equals(balance.getRak().getId()))
+                .filter(balance -> balance.getQuantity() > 0)
+                .sorted(Comparator.comparing(balance -> balance.getBarang().getNamaBarang(),
+                        String.CASE_INSENSITIVE_ORDER)).collect(Collectors.toList());
+        table.setItems(FXCollections.observableArrayList(rackBalances));
+        table.setPlaceholder(new Label("Rak ini belum memiliki saldo barang."));
+        rackDetails.getChildren().addAll(title, table);
+    }
+
+    private record WarehouseViewData(List<Section> sections, List<InventoryBalance> balances) {}
+
+    @FXML
+    private void handleStockCount() {
+        if (currentUser == null || currentUser.getId() == null) {
+            showAlert(Alert.AlertType.ERROR, "Sesi tidak tersedia", "Login ulang sebelum memulai stock opname.");
+            return;
+        }
+        new StockCountDialog(stockCountService, currentUser)
+                .show(searchField.getScene().getWindow(), this::loadData);
+    }
+
     private TableColumn<InventoryBalance, String> balanceColumn(
             String title, java.util.function.Function<InventoryBalance, String> value) {
         TableColumn<InventoryBalance, String> column = new TableColumn<>(title);
@@ -395,14 +408,11 @@ public class StorageController implements Initializable {
     }
 
     @FXML
-=======
->>>>>>> origin/main
     private void handleRefresh() {
         searchField.clear();
         loadData();
     }
 
-<<<<<<< HEAD
     private void handleDelete(Barang b) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Hapus Barang");
@@ -437,42 +447,15 @@ public class StorageController implements Initializable {
     }
 
     private void showBarangDialog(Barang existing) {
-=======
-    @FXML
-    private void handleExport() {
-        if (barangList.isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "Export Gagal", "Tidak ada data barang untuk diekspor.");
-            return;
-        }
-        try {
-            ReportGeneratorService.showInventarisReport(new java.util.ArrayList<>(barangList));
-        } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Error Report",
-                "Gagal menampilkan report:\n" + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    
-    private void showBarangDialog(BarangDAO.Barang existing) {
->>>>>>> origin/main
         boolean isEdit = existing != null;
 
         Dialog<ButtonType> dlg = new Dialog<>();
         dlg.setTitle(isEdit ? "Edit Barang" : "Tambah Barang Baru");
-<<<<<<< HEAD
 
-=======
-        dlg.getDialogPane().getStylesheets().add(
-            getClass().getResource("/css/dashboard.css").toExternalForm());
-
-        
->>>>>>> origin/main
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(14);
         grid.setPadding(new Insets(20, 28, 20, 28));
-<<<<<<< HEAD
 
         TextField tfKode = new TextField(isEdit ? existing.getKodeBarang() : barangService.generateKodeBarang());
         tfKode.setEditable(!isEdit);
@@ -498,54 +481,10 @@ public class StorageController implements Initializable {
         addRow(grid, 3, "Satuan", tfSatuan);
         addRow(grid, 4, isEdit ? "Stok Saat Ini" : "Stok Awal", tfStok);
         addRow(grid, 5, "Stok Min. (Alert)", tfStokMin);
-=======
-        grid.setMinWidth(440);
-
-        ColumnConstraints c0 = new ColumnConstraints(130);
-        ColumnConstraints c1 = new ColumnConstraints(230, 230, Double.MAX_VALUE);
-        c1.setHgrow(Priority.ALWAYS);
-        grid.getColumnConstraints().addAll(c0, c1);
-
-        
-        TextField tfKode = styledField(isEdit ? existing.kodeBarang : barangDAO.generateKodeBarang());
-        tfKode.setEditable(!isEdit);
-        if (isEdit) tfKode.setStyle("-fx-background-color: #f0f2f5; -fx-text-fill: #9ba3b8; "
-                                  + "-fx-background-radius: 8; -fx-border-radius: 8;");
-
-        TextField tfNama     = styledField(isEdit ? existing.namaBarang : "");
-        tfNama.setPromptText("Nama barang...");
-
-        TextField tfKategori = styledField(isEdit ? existing.kategori : "");
-        tfKategori.setPromptText("Umum, Elektronik, dll.");
-
-        TextField tfSatuan   = styledField(isEdit ? existing.satuan : "pcs");
-
-        TextField tfStok     = styledField(isEdit ? String.valueOf(existing.stok) : "0");
-        tfStok.setPromptText("0");
-
-        TextField tfStokMin  = styledField(isEdit ? String.valueOf(existing.stokMin) : "0");
-        tfStokMin.setPromptText("0");
-
-        addRow(grid, 0, "Kode Barang",              tfKode);
-        addRow(grid, 1, "Nama Barang *",             tfNama);
-        addRow(grid, 2, "Kategori",                  tfKategori);
-        addRow(grid, 3, "Satuan",                    tfSatuan);
-        addRow(grid, 4, isEdit ? "Stok Saat Ini" : "Stok Awal",  tfStok);
-        addRow(grid, 5, "Stok Min. (Alert)",         tfStokMin);
->>>>>>> origin/main
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-<<<<<<< HEAD
-=======
-        
-        Button okBtn = (Button) dlg.getDialogPane().lookupButton(ButtonType.OK);
-        okBtn.setText(isEdit ? "💾  Simpan" : "➕  Tambah");
-        okBtn.getStyleClass().add("btn-primary");
-
-        
->>>>>>> origin/main
         Optional<ButtonType> result = dlg.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             String nama = tfNama.getText().trim();
@@ -563,7 +502,6 @@ public class StorageController implements Initializable {
                 return;
             }
 
-<<<<<<< HEAD
             Task<Boolean> saveTask = new Task<>() {
                 @Override
                 protected Boolean call() {
@@ -599,36 +537,6 @@ public class StorageController implements Initializable {
 
     private void addRow(GridPane grid, int row, String labelText, TextField field) {
         Label lbl = new Label(labelText);
-=======
-            boolean ok = isEdit
-                ? barangDAO.updateBarang(existing.id, nama, tfKategori.getText().trim(),
-                                         tfSatuan.getText().trim(), stok, stokMin)
-                : barangDAO.addBarang(kode, nama, tfKategori.getText().trim(),
-                                      tfSatuan.getText().trim(), stok, stokMin);
-
-            if (ok) {
-                loadData();
-                showAlert(Alert.AlertType.INFORMATION, "Berhasil",
-                    isEdit ? "Data barang berhasil diperbarui." : "Barang baru berhasil ditambahkan.");
-            } else {
-                showAlert(Alert.AlertType.ERROR, "Gagal",
-                    isEdit ? "Gagal memperbarui data barang."
-                           : "Gagal menambah barang. Kode barang mungkin sudah digunakan.");
-            }
-        }
-    }
-
-    
-    private TextField styledField(String value) {
-        TextField tf = new TextField(value);
-        tf.getStyleClass().add("form-field");
-        return tf;
-    }
-
-    private void addRow(GridPane grid, int row, String labelText, TextField field) {
-        Label lbl = new Label(labelText);
-        lbl.getStyleClass().add("form-label");
->>>>>>> origin/main
         lbl.setMinWidth(130);
         grid.add(lbl, 0, row);
         grid.add(field, 1, row);
@@ -641,27 +549,4 @@ public class StorageController implements Initializable {
         alert.setContentText(msg);
         alert.showAndWait();
     }
-<<<<<<< HEAD
-=======
-
-    
-    private String formatLastUpdate(long timestamp) {
-        if (timestamp == 0) return "-";
-        long now = System.currentTimeMillis();
-        long diffMs = now - timestamp;
-        long diffSec = diffMs / 1000;
-        long diffMin = diffSec / 60;
-        long diffHour = diffMin / 60;
-        long diffDay = diffHour / 24;
-
-        if (diffSec < 60) return "Just now";
-        if (diffMin < 60) return diffMin + " min ago";
-        if (diffHour < 24) return diffHour + " h ago";
-        if (diffDay < 7) return diffDay + " d ago";
-        
-        java.time.LocalDateTime ldt = java.time.LocalDateTime
-            .ofInstant(java.time.Instant.ofEpochMilli(timestamp), java.time.ZoneId.systemDefault());
-        return ldt.format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy"));
-    }
->>>>>>> origin/main
 }

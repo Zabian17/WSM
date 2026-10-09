@@ -1,0 +1,115 @@
+package com.mycompany.tugas_akhir.service;
+
+import com.mycompany.tugas_akhir.model.Barang;
+import com.mycompany.tugas_akhir.model.PurchaseOrder;
+import com.mycompany.tugas_akhir.model.PurchaseOrderLine;
+import com.mycompany.tugas_akhir.model.Supplier;
+import com.mycompany.tugas_akhir.model.User;
+import com.mycompany.tugas_akhir.repository.BarangRepository;
+import com.mycompany.tugas_akhir.repository.PurchaseOrderRepository;
+import com.mycompany.tugas_akhir.repository.SupplierRepository;
+import com.mycompany.tugas_akhir.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+@Service
+public class PurchaseOrderService {
+
+    private final PurchaseOrderRepository purchaseOrderRepository;
+    private final BarangRepository barangRepository;
+    private final SupplierRepository supplierRepository;
+    private final UserRepository userRepository;
+    private final ApprovalRouter approvalRoutingService;
+
+    public PurchaseOrderService(PurchaseOrderRepository purchaseOrderRepository,
+                                BarangRepository barangRepository,
+                                SupplierRepository supplierRepository,
+                                UserRepository userRepository,
+                                ApprovalRouter approvalRoutingService) {
+        this.purchaseOrderRepository = purchaseOrderRepository;
+        this.barangRepository = barangRepository;
+        this.supplierRepository = supplierRepository;
+        this.userRepository = userRepository;
+        this.approvalRoutingService = approvalRoutingService;
+    }
+
+    @Transactional(readOnly = true)
+    public List<PurchaseOrder> getRecentPurchaseOrders() {
+        return purchaseOrderRepository.findTop100ByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PurchaseOrder> getPendingApproval() {
+        return purchaseOrderRepository.findPendingApproval();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PurchaseOrderLine> getOpenLines() {
+        return purchaseOrderRepository.findOpenLines();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PurchaseOrderLine> getReceivedLines() {
+        return purchaseOrderRepository.findReceivedLines();
+    }
+
+    @Transactional
+    public PurchaseOrder createPurchaseOrder(Integer supplierId, Integer userId,
+                                             Map<Integer, Integer> requestedQuantities, String notes) {
+        if (supplierId == null || userId == null || requestedQuantities == null
+                || requestedQuantities.isEmpty() || requestedQuantities.size() > 100) {
+            return null;
+        }
+        Supplier supplier = supplierRepository.findById(supplierId).orElse(null);
+        User creator = userRepository.findById(userId).orElse(null);
+        if (supplier == null || creator == null) return null;
+
+        PurchaseOrder order = new PurchaseOrder("PO-" + UUID.randomUUID().toString().replace("-", "")
+                .substring(0, 16).toUpperCase(java.util.Locale.ROOT),
+                supplier, creator, notes, LocalDateTime.now());
+        for (Map.Entry<Integer, Integer> request : requestedQuantities.entrySet()) {
+            if (request.getKey() == null || request.getValue() == null || request.getValue() <= 0) return null;
+            Barang barang = barangRepository.findById(request.getKey()).orElse(null);
+            if (barang == null) return null;
+            order.addLine(new PurchaseOrderLine(barang, request.getValue()));
+        }
+        return purchaseOrderRepository.save(order);
+    }
+
+    @Transactional
+    public boolean approvePurchaseOrder(Integer purchaseOrderId, Integer reviewerId) {
+        return reviewPurchaseOrder(purchaseOrderId, reviewerId, true, null);
+    }
+
+    @Transactional
+    public boolean rejectPurchaseOrder(Integer purchaseOrderId, Integer reviewerId, String reason) {
+        if (reason == null || reason.isBlank() || reason.trim().length() > 2000) return false;
+        return reviewPurchaseOrder(purchaseOrderId, reviewerId, false, reason.trim());
+    }
+
+    private boolean reviewPurchaseOrder(Integer purchaseOrderId, Integer reviewerId,
+                                        boolean approved, String notes) {
+        if (purchaseOrderId == null || reviewerId == null) return false;
+        PurchaseOrder order = purchaseOrderRepository.findByIdWithLinesForUpdate(purchaseOrderId).orElse(null);
+        User reviewer = userRepository.findById(reviewerId).orElse(null);
+        if (order == null || reviewer == null || order.getStatus() !=
+                com.mycompany.tugas_akhir.model.PurchaseOrderStatus.PENDING_APPROVAL
+                || order.getCreatedBy().getId().equals(reviewerId)
+                || !approvalRoutingService.canReview(order.getCreatedBy(), reviewer)) {
+            return false;
+        }
+        order.setReviewedBy(reviewer);
+        order.setReviewedAt(LocalDateTime.now());
+        order.setReviewNotes(notes);
+        order.setStatus(approved
+                ? com.mycompany.tugas_akhir.model.PurchaseOrderStatus.APPROVED
+                : com.mycompany.tugas_akhir.model.PurchaseOrderStatus.REJECTED);
+        purchaseOrderRepository.save(order);
+        return true;
+    }
+}

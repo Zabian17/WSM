@@ -1,6 +1,7 @@
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "  GUDANGKU - Git Branch Update & Release Automation" -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
+Set-Location (Join-Path $PSScriptRoot "..\..")
 
 # 1. Checkout new branch update-3.0
 Write-Host "1. Switching to branch 'update-3.0'..." -ForegroundColor Yellow

@@ -2,6 +2,7 @@ package com.mycompany.tugas_akhir.repository;
 
 import com.mycompany.tugas_akhir.model.InboundReceipt;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -12,7 +13,11 @@ import java.util.Optional;
 
 public interface InboundReceiptRepository extends JpaRepository<InboundReceipt, Integer> {
 
-    List<InboundReceipt> findTop100ByOrderByCreatedAtDesc();
+    @Query("SELECT r FROM InboundReceipt r "
+            + "LEFT JOIN FETCH r.purchaseOrderLine line "
+            + "LEFT JOIN FETCH line.purchaseOrder "
+            + "ORDER BY r.createdAt DESC")
+    List<InboundReceipt> findRecentWithPurchaseOrder(Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM InboundReceipt r WHERE r.id = :id")

@@ -2,5 +2,6 @@
     "css.validate": false,
     "css.lint.vendorPrefix": "ignore",
     "css.lint.unknownProperties": "ignore",
-    "java.compile.nullAnalysis.mode": "disabled"
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

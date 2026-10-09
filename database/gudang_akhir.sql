@@ -3,24 +3,15 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
-<<<<<<< HEAD
 -- Generation Time: Oct 01, 2026 at 04:00 AM
 -- Server version: 8.4.11
 -- PHP Version: 8.1.10
-=======
--- Generation Time: Jun 08, 2026 at 06:00 AM
--- Server version: 8.4.3
--- PHP Version: 8.3.16
->>>>>>> origin/main
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/main
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -38,17 +29,10 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `barang` (
   `id` int NOT NULL,
-<<<<<<< HEAD
   `kode_barang` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nama_barang` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `kategori` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `satuan` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'pcs',
-=======
-  `kode_barang` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama_barang` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `kategori` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `satuan` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'pcs',
->>>>>>> origin/main
   `stok` int DEFAULT '0',
   `stok_min` int DEFAULT '0',
   `stok_max` int DEFAULT '0',
@@ -61,7 +45,6 @@ CREATE TABLE `barang` (
 --
 
 INSERT INTO `barang` (`id`, `kode_barang`, `nama_barang`, `kategori`, `satuan`, `stok`, `stok_min`, `stok_max`, `created_at`, `updated_at`) VALUES
-<<<<<<< HEAD
 (1, 'BRG-001', 'Barang A', 'Umum', 'pcs', 900, 50, 100, '2026-05-21 10:44:41', '2026-07-01 06:15:16'),
 (2, 'BRG-002', 'Barang B', 'Umum', 'pcs', 200, 30, 60, '2026-05-21 10:44:41', '2026-07-01 06:15:42'),
 (3, 'BRG-003', 'Barang C', 'Umum', 'pcs', 100, 20, 40, '2026-05-21 10:44:41', '2026-06-17 06:09:43'),
@@ -103,13 +86,6 @@ INSERT INTO `customer` (`id`, `nama_customer`, `posisi`, `alamat`, `kontak`, `em
 (8, 'CV. Dagang Ekspor', 'General Manager', 'Semarang', '+62 827234567', 'dagang@example.com', 'Nonaktif', '2026-06-17 05:50:09', '2026-06-17 05:50:09'),
 (9, 'PT. Teknologi Maju', 'IT Manager', 'Yogyakarta', '+62 828234567', 'teknologi@example.com', 'Aktif', '2026-06-17 05:50:09', '2026-06-17 05:50:09'),
 (10, 'PT Cahaya', 'Manager', 'Jakarta barat', '1661', 'Perusahaan@gmail.com', 'Aktif', '2026-07-01 13:46:07', '2026-07-01 13:46:07');
-=======
-(1, 'BRG-001', 'Barang A', 'Umum', 'pcs', 500, 50, 100, '2026-05-21 10:44:41', '2026-05-27 01:32:19'),
-(2, 'BRG-002', 'Barang B', 'Umum', 'pcs', 300, 30, 60, '2026-05-21 10:44:41', '2026-05-27 01:32:19'),
-(3, 'BRG-003', 'Barang C', 'Umum', 'pcs', 150, 20, 40, '2026-05-21 10:44:41', '2026-05-27 01:32:19'),
-(4, 'BRG-004', 'Barang D', 'Umum', 'pcs', 200, 25, 50, '2026-05-21 10:44:41', '2026-05-27 01:32:19'),
-(5, 'BRG-005', 'Barang E', 'Umum', 'pcs', 769, 100, 200, '2026-05-21 10:44:41', '2026-05-27 01:32:19');
->>>>>>> origin/main
 
 -- --------------------------------------------------------
 
@@ -120,11 +96,7 @@ INSERT INTO `customer` (`id`, `nama_customer`, `posisi`, `alamat`, `kontak`, `em
 CREATE TABLE `rak` (
   `id` int NOT NULL,
   `section_id` int NOT NULL,
-<<<<<<< HEAD
   `kode_rak` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-=======
-  `kode_rak` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
->>>>>>> origin/main
   `kapasitas` int DEFAULT '100',
   `terisi` int DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
@@ -180,13 +152,8 @@ INSERT INTO `rak` (`id`, `section_id`, `kode_rak`, `kapasitas`, `terisi`, `creat
 
 CREATE TABLE `section` (
   `id` int NOT NULL,
-<<<<<<< HEAD
   `kode_section` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nama_section` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-=======
-  `kode_section` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nama_section` varchar(80) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
->>>>>>> origin/main
   `kapasitas` int DEFAULT '12',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -203,58 +170,15 @@ INSERT INTO `section` (`id`, `kode_section`, `nama_section`, `kapasitas`, `creat
 -- --------------------------------------------------------
 
 --
-<<<<<<< HEAD
-=======
--- Table structure for table `customer`
---
-
-CREATE TABLE `customer` (
-  `id` int NOT NULL,
-  `nama_customer` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `posisi` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `alamat` text COLLATE utf8mb4_unicode_ci,
-  `kontak` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('Aktif','Nonaktif') COLLATE utf8mb4_unicode_ci DEFAULT 'Aktif',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `customer`
---
-
-INSERT INTO `customer` (`id`, `nama_customer`, `posisi`, `alamat`, `kontak`, `email`, `status`) VALUES
-(1, 'PT. Bangun Bersama', 'Tatang Sederhana', 'Jonggol', '+62 812345678', 'bangun@example.com', 'Aktif'),
-(2, 'PT. Maju Jaya', 'Direktur Operasional', 'Jakarta Selatan', '+62 821234567', 'majujaya@example.com', 'Aktif'),
-(3, 'PT. Sukses Mandiri', 'Manager Pembelian', 'Bandung', '+62 822234567', 'sukses@example.com', 'Aktif'),
-(4, 'CV. Niaga Indo', 'Kepala Bagian', 'Surabaya', '+62 823234567', 'niaga@example.com', 'Nonaktif'),
-(5, 'PT. Sejahtera Utama', 'Sales Manager', 'Medan', '+62 824234567', 'sejahtera@example.com', 'Aktif'),
-(6, 'PT. Global Bisnis', 'Direktur Keuangan', 'Makassar', '+62 825234567', 'global@example.com', 'Aktif'),
-(7, 'PT. Mitra Produksi', 'Supervisor', 'Batam', '+62 826234567', 'mitra@example.com', 'Aktif'),
-(8, 'CV. Dagang Ekspor', 'General Manager', 'Semarang', '+62 827234567', 'dagang@example.com', 'Nonaktif'),
-(9, 'PT. Teknologi Maju', 'IT Manager', 'Yogyakarta', '+62 828234567', 'teknologi@example.com', 'Aktif');
-
--- --------------------------------------------------------
-
---
->>>>>>> origin/main
 -- Table structure for table `supplier`
 --
 
 CREATE TABLE `supplier` (
   `id` int NOT NULL,
-<<<<<<< HEAD
   `nama_supplier` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `kontak` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `alamat` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-=======
-  `nama_supplier` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `kontak` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `email` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `alamat` text COLLATE utf8mb4_unicode_ci,
->>>>>>> origin/main
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -266,15 +190,7 @@ INSERT INTO `supplier` (`id`, `nama_supplier`, `kontak`, `email`, `alamat`, `cre
 (1, 'PT. Satu', '08111111111', 'satu@example.com', NULL, '2026-05-21 10:44:41'),
 (2, 'PT. Dua', '08222222222', 'dua@example.com', NULL, '2026-05-21 10:44:41'),
 (3, 'PT. Tiga', '08333333333', 'tiga@example.com', NULL, '2026-05-21 10:44:41'),
-<<<<<<< HEAD
 (4, 'PT. Empat', '08444444444', 'empat@example.com', NULL, '2026-05-21 10:44:41');
-=======
-(4, 'PT. Empat', '08444444444', 'empat@example.com', NULL, '2026-05-21 10:44:41'),
-(5, 'PT. Satu', '08111111111', 'satu@example.com', NULL, '2026-05-27 01:32:04'),
-(6, 'PT. Dua', '08222222222', 'dua@example.com', NULL, '2026-05-27 01:32:04'),
-(7, 'PT. Tiga', '08333333333', 'tiga@example.com', NULL, '2026-05-27 01:32:04'),
-(8, 'PT. Empat', '08444444444', 'empat@example.com', NULL, '2026-05-27 01:32:04');
->>>>>>> origin/main
 
 -- --------------------------------------------------------
 
@@ -284,27 +200,17 @@ INSERT INTO `supplier` (`id`, `nama_supplier`, `kontak`, `email`, `alamat`, `cre
 
 CREATE TABLE `transaksi` (
   `id` int NOT NULL,
-<<<<<<< HEAD
   `kode_transaksi` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `tipe` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-=======
-  `kode_transaksi` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tipe` enum('masuk','keluar') COLLATE utf8mb4_unicode_ci NOT NULL,
->>>>>>> origin/main
   `barang_id` int NOT NULL,
   `supplier_id` int DEFAULT NULL,
   `rak_id` int DEFAULT NULL,
   `jumlah` int NOT NULL,
-<<<<<<< HEAD
   `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-=======
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
->>>>>>> origin/main
   `user_id` int NOT NULL,
   `tanggal` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-<<<<<<< HEAD
 --
 -- Dumping data for table `transaksi`
 --
@@ -316,8 +222,6 @@ INSERT INTO `transaksi` (`id`, `kode_transaksi`, `tipe`, `barang_id`, `supplier_
 (9, 'TRX-00004', 'masuk', 6, 4, NULL, 400, 'Barang masuk Gudang B', 2, '2026-07-01 13:31:42'),
 (10, 'TRX-00005', 'keluar', 6, NULL, NULL, 100, 'cacat sistem - Wleeeee', 2, '2026-07-01 13:32:19');
 
-=======
->>>>>>> origin/main
 -- --------------------------------------------------------
 
 --
@@ -326,7 +230,6 @@ INSERT INTO `transaksi` (`id`, `kode_transaksi`, `tipe`, `barang_id`, `supplier_
 
 CREATE TABLE `users` (
   `id` int NOT NULL,
-<<<<<<< HEAD
   `full_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `password_hash` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -337,29 +240,15 @@ CREATE TABLE `users` (
   `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `bio` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `profile_picture_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL
-=======
-  `full_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `role` enum('admin','user') COLLATE utf8mb4_unicode_ci DEFAULT 'user',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
->>>>>>> origin/main
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-<<<<<<< HEAD
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `created_at`, `updated_at`, `display_name`, `phone`, `bio`, `profile_picture_path`) VALUES
 (1, 'Test User', 'testuser@example.com', 'Testing123', 'user', '2026-05-21 10:44:42', '2026-05-21 10:44:42', NULL, NULL, NULL, NULL),
 (2, 'Alza', 'alzabilly123@gmail.com', 'Admin123', 'user', '2026-05-25 04:58:23', '2026-07-01 13:47:55', 'Delores O\'Riordan', NULL, NULL, 'C:\\Users\\Axioo\\.gudangku\\avatars\\user_2.png');
-=======
-INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `created_at`, `updated_at`) VALUES
-(1, 'Test User', 'testuser@example.com', 'Testing123', 'user', '2026-05-21 10:44:42', '2026-05-21 10:44:42'),
-(2, 'Alza', 'alzabilly123@gmail.com', 'Admin123', 'user', '2026-05-25 04:58:23', '2026-05-25 04:58:23');
->>>>>>> origin/main
 
 --
 -- Indexes for dumped tables
@@ -374,7 +263,6 @@ ALTER TABLE `barang`
   ADD KEY `idx_barang_stok` (`stok`,`stok_min`);
 
 --
-<<<<<<< HEAD
 -- Indexes for table `customer`
 --
 ALTER TABLE `customer`
@@ -383,8 +271,6 @@ ALTER TABLE `customer`
   ADD KEY `idx_customer_nama` (`nama_customer`);
 
 --
-=======
->>>>>>> origin/main
 -- Indexes for table `rak`
 --
 ALTER TABLE `rak`
@@ -400,17 +286,6 @@ ALTER TABLE `section`
   ADD UNIQUE KEY `kode_section` (`kode_section`);
 
 --
-<<<<<<< HEAD
-=======
--- Indexes for table `customer`
---
-ALTER TABLE `customer`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_customer_status` (`status`),
-  ADD KEY `idx_customer_nama` (`nama_customer`);
-
---
->>>>>>> origin/main
 -- Indexes for table `supplier`
 --
 ALTER TABLE `supplier`
@@ -442,7 +317,6 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `barang`
 --
 ALTER TABLE `barang`
-<<<<<<< HEAD
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
@@ -450,9 +324,6 @@ ALTER TABLE `barang`
 --
 ALTER TABLE `customer`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-=======
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
->>>>>>> origin/main
 
 --
 -- AUTO_INCREMENT for table `rak`
@@ -467,15 +338,6 @@ ALTER TABLE `section`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
-<<<<<<< HEAD
-=======
--- AUTO_INCREMENT for table `customer`
---
-ALTER TABLE `customer`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
-
---
->>>>>>> origin/main
 -- AUTO_INCREMENT for table `supplier`
 --
 ALTER TABLE `supplier`
@@ -485,11 +347,7 @@ ALTER TABLE `supplier`
 -- AUTO_INCREMENT for table `transaksi`
 --
 ALTER TABLE `transaksi`
-<<<<<<< HEAD
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
-=======
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
->>>>>>> origin/main
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -515,10 +373,6 @@ ALTER TABLE `transaksi`
   ADD CONSTRAINT `transaksi_ibfk_2` FOREIGN KEY (`supplier_id`) REFERENCES `supplier` (`id`),
   ADD CONSTRAINT `transaksi_ibfk_3` FOREIGN KEY (`rak_id`) REFERENCES `rak` (`id`),
   ADD CONSTRAINT `transaksi_ibfk_4` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

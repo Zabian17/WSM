@@ -5,6 +5,7 @@ import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +16,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -112,6 +114,11 @@ public class UserService {
         }
 
         return null;
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getUsersForAssignment() {
+        return userRepository.findAll(Sort.by(Sort.Direction.ASC, "fullName"));
     }
 
     @Transactional

@@ -2,8 +2,10 @@ package com.mycompany.tugas_akhir.service;
 
 import com.mycompany.tugas_akhir.model.Rak;
 import com.mycompany.tugas_akhir.model.Section;
+import com.mycompany.tugas_akhir.model.Warehouse;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.SectionRepository;
+import com.mycompany.tugas_akhir.repository.WarehouseRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,13 +21,16 @@ public class SectionService {
     private static final Logger log = LoggerFactory.getLogger(SectionService.class);
     private final SectionRepository sectionRepository;
     private final RakRepository rakRepository;
+    private final WarehouseRepository warehouseRepository;
 
-    public SectionService(SectionRepository sectionRepository, RakRepository rakRepository) {
+    public SectionService(SectionRepository sectionRepository, RakRepository rakRepository,
+                          WarehouseRepository warehouseRepository) {
         this.sectionRepository = sectionRepository;
         this.rakRepository = rakRepository;
+        this.warehouseRepository = warehouseRepository;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Section> getAllSections() {
         List<Section> sections = sectionRepository.findAllByOrderByIdAsc();
         if (sections.isEmpty()) {
@@ -42,10 +47,17 @@ public class SectionService {
     @Transactional
     public List<Section> createDefaultSections() {
         List<Section> defaults = new ArrayList<>();
+        Warehouse warehouse = getOrCreateDefaultWarehouse();
 
         Section secA = Section.builder().kodeSection("A").namaSection("Section A - Umum").kapasitas(12).alertThreshold(80).alertType("Kapasitas Penuh (>= %)").build();
         Section secB = Section.builder().kodeSection("B").namaSection("Section B - Fast Moving").kapasitas(12).alertThreshold(90).alertType("Kapasitas Penuh (>= %)").build();
         Section secC = Section.builder().kodeSection("C").namaSection("Section C - Overflow").kapasitas(12).alertThreshold(75).alertType("Kapasitas Penuh (>= %)").build();
+        secA.setWarehouse(warehouse);
+        secB.setWarehouse(warehouse);
+        secC.setWarehouse(warehouse);
+        secA.setWarehouse(warehouse);
+        secB.setWarehouse(warehouse);
+        secC.setWarehouse(warehouse);
 
         secA = sectionRepository.save(secA);
         secB = sectionRepository.save(secB);
@@ -87,10 +99,43 @@ public class SectionService {
                 .alertType(alertType)
                 .alertActive(true)
                 .build();
+        section.setWarehouse(getOrCreateDefaultWarehouse());
 
         section = sectionRepository.save(section);
         createRaksForSection(section, kapasitas, null);
         return section;
+    }
+
+    @Transactional
+    public boolean assignSectionToWarehouse(Integer sectionId, Integer warehouseId) {
+        if (sectionId == null || warehouseId == null) return false;
+        Section section = sectionRepository.findById(sectionId).orElse(null);
+        Warehouse warehouse = warehouseRepository.findById(warehouseId).orElse(null);
+        if (section == null || warehouse == null || !Boolean.TRUE.equals(warehouse.getActive())) return false;
+        section.setWarehouse(warehouse);
+        sectionRepository.save(section);
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Warehouse> getActiveWarehouses() {
+        return warehouseRepository.findByActiveTrueOrderByWarehouseCodeAsc();
+    }
+
+    @Transactional
+    public Warehouse createWarehouse(String code, String name, String address) {
+        if (code == null || name == null || code.isBlank() || name.isBlank()
+                || code.trim().length() > 20 || name.trim().length() > 100
+                || address != null && address.trim().length() > 255) return null;
+        String normalizedCode = code.trim().toUpperCase(java.util.Locale.ROOT);
+        if (warehouseRepository.findByWarehouseCodeIgnoreCase(normalizedCode).isPresent()) return null;
+        return warehouseRepository.save(new Warehouse(normalizedCode, name.trim(),
+                address == null || address.isBlank() ? null : address.trim()));
+    }
+
+    private Warehouse getOrCreateDefaultWarehouse() {
+        return warehouseRepository.findFirstByOrderByIdAsc().orElseGet(() ->
+                warehouseRepository.save(new Warehouse("WH-MAIN", "Gudang Utama", null)));
     }
 
     @Transactional

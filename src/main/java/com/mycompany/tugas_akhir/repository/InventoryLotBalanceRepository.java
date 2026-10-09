@@ -13,6 +13,10 @@ import java.util.Optional;
 
 public interface InventoryLotBalanceRepository extends JpaRepository<InventoryLotBalance, Integer> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM InventoryLotBalance l WHERE l.id = :id")
+    Optional<InventoryLotBalance> findByIdForUpdate(@Param("id") Integer id);
+
     @Query("SELECT CASE WHEN COUNT(l) > 0 THEN true ELSE false END FROM InventoryLotBalance l "
             + "WHERE l.barang.id = :barangId AND l.locationKey = :locationKey")
     boolean existsByBarangIdAndLocationKey(
@@ -66,5 +70,19 @@ public interface InventoryLotBalanceRepository extends JpaRepository<InventoryLo
             + "AND l.quantity > l.reservedQuantity AND (l.expiryDate IS NULL OR l.expiryDate >= :today) "
             + "ORDER BY CASE WHEN l.expiryDate IS NULL THEN 1 ELSE 0 END, l.expiryDate, l.receivedAt, l.id")
     List<InventoryLotBalance> findAvailableFefoAcrossLocationsForUpdate(
+            @Param("barangId") Integer barangId, @Param("today") LocalDate today);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM InventoryLotBalance l WHERE l.barang.id = :barangId "
+            + "AND l.quantity > l.reservedQuantity AND (l.expiryDate IS NULL OR l.expiryDate >= :today) "
+            + "ORDER BY l.receivedAt, l.id")
+    List<InventoryLotBalance> findAvailableFifoAcrossLocationsForUpdate(
+            @Param("barangId") Integer barangId, @Param("today") LocalDate today);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM InventoryLotBalance l WHERE l.barang.id = :barangId "
+            + "AND l.quantity > l.reservedQuantity AND (l.expiryDate IS NULL OR l.expiryDate >= :today) "
+            + "ORDER BY CASE WHEN l.expiryDate IS NULL THEN 1 ELSE 0 END, l.expiryDate DESC, l.receivedAt, l.id")
+    List<InventoryLotBalance> findAvailableLefoAcrossLocationsForUpdate(
             @Param("barangId") Integer barangId, @Param("today") LocalDate today);
 }

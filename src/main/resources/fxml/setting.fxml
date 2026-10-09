@@ -2,21 +2,14 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<<<<<<< HEAD
 <?import javafx.geometry.*?>
 <?import javafx.scene.image.*?>
-=======
-<?import javafx.scene.image.*?>
-<?import javafx.scene.shape.*?>
-<?import javafx.geometry.*?>
->>>>>>> origin/main
 
 <VBox styleClass="content-area" spacing="16"
       xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mycompany.tugas_akhir.SettingController">
 
-<<<<<<< HEAD
     <!-- HEADER BAR -->
     <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
         <VBox spacing="3">
@@ -46,13 +39,13 @@
                 </GridPane>
 
                 <HBox alignment="CENTER_RIGHT">
-                    <Button text="💾 Simpan Profil" styleClass="btn-primary" onAction="#handleSaveProfile"/>
+                    <Button text="Simpan Profil" styleClass="btn-primary" onAction="#handleSaveProfile"/>
                 </HBox>
             </VBox>
 
             <!-- CARD PROFILE PICTURE -->
             <VBox styleClass="card" spacing="14">
-                <Label text="Profile Picture" styleClass="card-title"/>
+                <Label text="Foto Profil" styleClass="card-title"/>
                 <HBox alignment="CENTER_LEFT" spacing="16">
                     <StackPane styleClass="profile-avatar-preview" prefWidth="96" prefHeight="96" minWidth="96" minHeight="96" maxWidth="96" maxHeight="96">
                         <Label fx:id="lblAvatarInitials" text="U" styleClass="profile-avatar-initial"/>
@@ -60,7 +53,7 @@
                     </StackPane>
                     <VBox spacing="8" HBox.hgrow="ALWAYS">
                         <Label text="JPG, JPEG, PNG, atau WEBP. Maksimal 2 MB." styleClass="form-hint" wrapText="true"/>
-                        <Label fx:id="lblPhotoStatus" text="Belum ada profile picture." styleClass="form-hint" wrapText="true"/>
+                        <Label fx:id="lblPhotoStatus" text="Belum ada foto profil." styleClass="form-hint" wrapText="true"/>
                         <HBox spacing="8">
                             <Button text="Ubah Foto" styleClass="btn-outline" onAction="#handleChoosePhoto"/>
                             <Button fx:id="btnRemovePhoto" text="Hapus Foto" styleClass="btn-outline" onAction="#handleRemovePhoto" visible="false" managed="false"/>
@@ -89,198 +82,11 @@
                 </GridPane>
 
                 <HBox alignment="CENTER_RIGHT">
-                    <Button text="🔒 Ubah Password" styleClass="btn-primary" onAction="#handleChangePassword"/>
-=======
-    
-    <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-padding: 0 0 4 0;">
-        <VBox spacing="3">
-            <Label text="Setting" styleClass="section-page-title"/>
-            <Label text="Kelola informasi akun dan keamanan Anda" styleClass="section-page-sub"/>
-        </VBox>
-    </HBox>
-
-    
-    <HBox spacing="0" styleClass="setting-tab-bar">
-        <Button fx:id="btnTabProfile" text="👤  Profile"
-                styleClass="setting-tab-active"
-                onAction="#handleTabProfile"/>
-        <Button fx:id="btnTabSecurity" text="🔐  Security"
-                styleClass="setting-tab"
-                onAction="#handleTabSecurity"/>
-        <Region HBox.hgrow="ALWAYS"/>
-    </HBox>
-
-    
-    <HBox fx:id="tabProfile" spacing="20">
-
-        
-        <VBox spacing="16" style="-fx-pref-width: 260px; -fx-min-width: 240px; -fx-max-width: 280px;">
-
-            
-            <VBox styleClass="card" spacing="16" alignment="CENTER">
-
-                
-                <StackPane fx:id="avatarStack" styleClass="setting-avatar-stack">
-                    
-                    <ImageView fx:id="imgAvatar"
-                               fitWidth="100" fitHeight="100"
-                               preserveRatio="false"
-                               visible="false" managed="false">
-                        <clip>
-                            <Circle centerX="50" centerY="50" radius="50"/>
-                        </clip>
-                    </ImageView>
-                    
-                    <StackPane fx:id="avatarFallback" styleClass="setting-avatar-circle">
-                        <Label fx:id="lblAvatarInitial" text="?" styleClass="setting-avatar-initial"/>
-                    </StackPane>
-                </StackPane>
-
-                
-                <VBox spacing="4" alignment="CENTER">
-                    <Label fx:id="lblProfileName" text="Nama User"
-                           styleClass="setting-profile-name"/>
-                    <Label fx:id="lblProfileRole" text="user"
-                           styleClass="setting-profile-role"/>
-                    <Label fx:id="lblProfileEmail" text="email@example.com"
-                           styleClass="setting-profile-email"/>
-                </VBox>
-
-                
-                <Button text="📷  Ganti Foto"
-                        styleClass="btn-outline-small"
-                        onAction="#handleUploadPhoto"
-                        maxWidth="Infinity"
-                        style="-fx-padding: 8 16 8 16; -fx-font-size: 12px;"/>
-
-                
-                <Button fx:id="btnHapusFoto" text="🗑  Hapus Foto"
-                        styleClass="setting-btn-danger-outline"
-                        onAction="#handleHapusFoto"
-                        maxWidth="Infinity"
-                        visible="false" managed="false"
-                        style="-fx-padding: 7 16 7 16; -fx-font-size: 12px;"/>
-            </VBox>
-
-            
-            <VBox styleClass="card" spacing="10">
-                <Label text="Info Akun" styleClass="card-title"/>
-                <Pane styleClass="table-row-separator"/>
-
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="🆔" style="-fx-font-size: 13px;"/>
-                    <VBox spacing="1">
-                        <Label text="User ID" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                        <Label fx:id="lblInfoId" text="-"
-                               style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
-                    </VBox>
-                </HBox>
-
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="🛡" style="-fx-font-size: 13px;"/>
-                    <VBox spacing="1">
-                        <Label text="Role" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                        <Label fx:id="lblInfoRole" text="-"
-                               style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
-                    </VBox>
-                </HBox>
-
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label text="📅" style="-fx-font-size: 13px;"/>
-                    <VBox spacing="1">
-                        <Label text="Member sejak" style="-fx-font-size: 10px; -fx-text-fill: #9ba3b8;"/>
-                        <Label fx:id="lblInfoSince" text="-"
-                               style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #374151;"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-        </VBox>
-
-        
-        <VBox spacing="16" HBox.hgrow="ALWAYS">
-
-            
-            <VBox styleClass="card" spacing="16">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="Edit Profil" styleClass="card-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="lblSaveStatus" text=""
-                           style="-fx-font-size: 12px; -fx-text-fill: #10b981;"/>
-                </HBox>
-                <Pane styleClass="table-row-separator"/>
-
-                
-                <HBox spacing="16">
-                    <VBox spacing="6" HBox.hgrow="ALWAYS">
-                        <HBox alignment="CENTER_LEFT" spacing="4">
-                            <Label text="Full Name" styleClass="form-label"/>
-                            <Label text="*" style="-fx-text-fill: #ef4444; -fx-font-size: 12px;"/>
-                        </HBox>
-                        <TextField fx:id="tfFullName"
-                                   promptText="Masukkan nama lengkap..."
-                                   styleClass="form-field"/>
-                    </VBox>
-                    <VBox spacing="6" HBox.hgrow="ALWAYS">
-                        <HBox alignment="CENTER_LEFT" spacing="4">
-                            <Label text="Display Name" styleClass="form-label"/>
-                            <Label text="(opsional)" style="-fx-text-fill: #9ba3b8; -fx-font-size: 10px;"/>
-                        </HBox>
-                        <TextField fx:id="tfDisplayName"
-                                   promptText="Nama tampilan..."
-                                   styleClass="form-field"/>
-                    </VBox>
-                </HBox>
-
-                
-                <HBox spacing="16">
-                    <VBox spacing="6" HBox.hgrow="ALWAYS">
-                        <HBox alignment="CENTER_LEFT" spacing="4">
-                            <Label text="Email" styleClass="form-label"/>
-                            <Label text="(tidak dapat diubah)"
-                                   style="-fx-text-fill: #9ba3b8; -fx-font-size: 10px;"/>
-                        </HBox>
-                        <TextField fx:id="tfEmail"
-                                   promptText="email@example.com"
-                                   styleClass="form-field-readonly"
-                                   editable="false"/>
-                    </VBox>
-                    <VBox spacing="6" HBox.hgrow="ALWAYS">
-                        <Label text="Nomor Telepon" styleClass="form-label"/>
-                        <TextField fx:id="tfPhone"
-                                   promptText="08xxxxxxxxxx"
-                                   styleClass="form-field"/>
-                    </VBox>
-                </HBox>
-
-                
-                <VBox spacing="6">
-                    <HBox alignment="CENTER_LEFT" spacing="4">
-                        <Label text="Bio" styleClass="form-label"/>
-                        <Label text="(opsional)" style="-fx-text-fill: #9ba3b8; -fx-font-size: 10px;"/>
-                    </HBox>
-                    <TextArea fx:id="taBio"
-                              promptText="Ceritakan sedikit tentang diri Anda..."
-                              styleClass="form-area"
-                              prefRowCount="3"
-                              wrapText="true"/>
-                </VBox>
-
-                
-                <HBox alignment="CENTER_RIGHT" spacing="10">
-                    <Button text="↺  Reset Form"
-                            styleClass="btn-outline-small"
-                            onAction="#handleResetForm"
-                            style="-fx-padding: 9 16 9 16;"/>
-                    <Button text="💾  Simpan Perubahan"
-                            styleClass="btn-primary"
-                            onAction="#handleSimpanProfile"
-                            style="-fx-padding: 9 20 9 20; -fx-font-size: 13px;"/>
->>>>>>> origin/main
+                    <Button text="Ubah Kata Sandi" styleClass="btn-primary" onAction="#handleChangePassword"/>
                 </HBox>
             </VBox>
 
         </VBox>
-<<<<<<< HEAD
 
         <!-- RIGHT COLUMN: INFORMASI SISTEM -->
         <VBox spacing="16" style="-fx-pref-width: 360px; -fx-min-width: 320px; -fx-max-width: 380px;">
@@ -309,148 +115,55 @@
                         <Label text="🟢 Connected (HikariCP)" style="-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-font-size: 13px;"/>
                     </HBox>
                 </VBox>
-=======
-    </HBox>
-
-    
-    <HBox fx:id="tabSecurity" spacing="20" managed="false" visible="false">
-
-        
-        <VBox spacing="16" style="-fx-pref-width: 420px; -fx-min-width: 380px; -fx-max-width: 460px;">
-            <VBox styleClass="card" spacing="16">
-                <HBox alignment="CENTER_LEFT" spacing="8">
-                    <Label text="🔑 Ubah Password" styleClass="card-title"/>
-                </HBox>
-                <Pane styleClass="table-row-separator"/>
-
-                
-                <VBox spacing="6">
-                    <HBox alignment="CENTER_LEFT" spacing="4">
-                        <Label text="Password Saat Ini" styleClass="form-label"/>
-                        <Label text="*" style="-fx-text-fill: #ef4444; -fx-font-size: 12px;"/>
-                    </HBox>
-                    <PasswordField fx:id="pfOldPassword"
-                                   promptText="Masukkan password saat ini..."
-                                   styleClass="form-field"/>
-                </VBox>
-
-                
-                <VBox spacing="6">
-                    <HBox alignment="CENTER_LEFT" spacing="4">
-                        <Label text="Password Baru" styleClass="form-label"/>
-                        <Label text="*" style="-fx-text-fill: #ef4444; -fx-font-size: 12px;"/>
-                    </HBox>
-                    <PasswordField fx:id="pfNewPassword"
-                                   promptText="Minimal 6 karakter..."
-                                   styleClass="form-field"
-                                   onKeyReleased="#handlePasswordStrength"/>
-
-                    
-                    <HBox spacing="8" alignment="CENTER_LEFT">
-                        <HBox fx:id="strengthBar" spacing="4">
-                            <Pane fx:id="bar1" styleClass="strength-bar-inactive"
-                                  style="-fx-pref-width: 48px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                            <Pane fx:id="bar2" styleClass="strength-bar-inactive"
-                                  style="-fx-pref-width: 48px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                            <Pane fx:id="bar3" styleClass="strength-bar-inactive"
-                                  style="-fx-pref-width: 48px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                            <Pane fx:id="bar4" styleClass="strength-bar-inactive"
-                                  style="-fx-pref-width: 48px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                        </HBox>
-                        <Label fx:id="lblStrength" text=""
-                               style="-fx-font-size: 11px; -fx-text-fill: #9ba3b8;"/>
-                    </HBox>
-                </VBox>
-
-                
-                <VBox spacing="6">
-                    <HBox alignment="CENTER_LEFT" spacing="4">
-                        <Label text="Konfirmasi Password Baru" styleClass="form-label"/>
-                        <Label text="*" style="-fx-text-fill: #ef4444; -fx-font-size: 12px;"/>
-                    </HBox>
-                    <PasswordField fx:id="pfConfirmPassword"
-                                   promptText="Ulangi password baru..."
-                                   styleClass="form-field"/>
-                    <Label fx:id="lblConfirmMatch" text=""
-                           style="-fx-font-size: 11px;"/>
-                </VBox>
-
-                
-                <Button text="🔒  Ubah Password"
-                        styleClass="btn-primary"
-                        onAction="#handleUbahPassword"
-                        maxWidth="Infinity"
-                        style="-fx-padding: 10 20 10 20; -fx-font-size: 13px;"/>
-            </VBox>
-        </VBox>
-
-        
-        <VBox spacing="16" HBox.hgrow="ALWAYS">
-            <VBox styleClass="card" spacing="14">
-                <Label text="🛡 Tips Keamanan Password" styleClass="card-title"/>
-                <Pane styleClass="table-row-separator"/>
-
-                <HBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="✅" style="-fx-font-size: 13px;"/>
-                    <Label text="Gunakan minimal 8 karakter"
-                           style="-fx-font-size: 12px; -fx-text-fill: #374151; -fx-wrap-text: true;" HBox.hgrow="ALWAYS"/>
-                </HBox>
-                <HBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="✅" style="-fx-font-size: 13px;"/>
-                    <Label text="Kombinasikan huruf besar, kecil, angka, dan simbol"
-                           style="-fx-font-size: 12px; -fx-text-fill: #374151; -fx-wrap-text: true;" HBox.hgrow="ALWAYS"/>
-                </HBox>
-                <HBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="✅" style="-fx-font-size: 13px;"/>
-                    <Label text="Jangan gunakan informasi pribadi seperti nama atau tanggal lahir"
-                           style="-fx-font-size: 12px; -fx-text-fill: #374151; -fx-wrap-text: true;" HBox.hgrow="ALWAYS"/>
-                </HBox>
-                <HBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="✅" style="-fx-font-size: 13px;"/>
-                    <Label text="Gunakan password yang berbeda untuk setiap akun"
-                           style="-fx-font-size: 12px; -fx-text-fill: #374151; -fx-wrap-text: true;" HBox.hgrow="ALWAYS"/>
-                </HBox>
-                <HBox spacing="10" alignment="TOP_LEFT">
-                    <Label text="⚠️" style="-fx-font-size: 13px;"/>
-                    <Label text="Jangan bagikan password kepada siapapun termasuk admin"
-                           style="-fx-font-size: 12px; -fx-text-fill: #374151; -fx-wrap-text: true;" HBox.hgrow="ALWAYS"/>
-                </HBox>
-
-                <Pane styleClass="table-row-separator"/>
-
-                
-                <Label text="Indikator Kekuatan Password:" styleClass="form-label"/>
-                <HBox spacing="12" alignment="CENTER_LEFT">
-                    <HBox spacing="4" alignment="CENTER_LEFT">
-                        <Pane style="-fx-background-color: #ef4444; -fx-pref-width: 24px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                        <Label text="Lemah" style="-fx-font-size: 11px; -fx-text-fill: #ef4444;"/>
-                    </HBox>
-                    <HBox spacing="4" alignment="CENTER_LEFT">
-                        <Pane style="-fx-background-color: #f59e0b; -fx-pref-width: 24px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                        <Label text="Sedang" style="-fx-font-size: 11px; -fx-text-fill: #f59e0b;"/>
-                    </HBox>
-                    <HBox spacing="4" alignment="CENTER_LEFT">
-                        <Pane style="-fx-background-color: #10b981; -fx-pref-width: 24px; -fx-pref-height: 4px; -fx-background-radius: 2;"/>
-                        <Label text="Kuat" style="-fx-font-size: 11px; -fx-text-fill: #10b981;"/>
-                    </HBox>
-                </HBox>
-            </VBox>
-
-            
-            <VBox styleClass="setting-danger-card" spacing="12">
-                <Label text="⚠️ Danger Zone" styleClass="card-title"
-                       style="-fx-text-fill: #ef4444;"/>
-                <Pane style="-fx-background-color: #fecaca; -fx-pref-height: 1px; -fx-min-height: 1px;"/>
-                <Label text="Tindakan di bawah ini bersifat permanen dan tidak dapat dibatalkan."
-                       style="-fx-font-size: 12px; -fx-text-fill: #6b7280; -fx-wrap-text: true;"/>
-                <Button text="🚪  Logout dari Semua Perangkat"
-                        styleClass="setting-btn-danger-outline"
-                        onAction="#handleLogoutAll"
-                        style="-fx-padding: 9 16 9 16; -fx-font-size: 12px;"/>
->>>>>>> origin/main
             </VBox>
         </VBox>
 
     </HBox>
+
+    <VBox fx:id="approvalAdminCard" styleClass="card" spacing="12" visible="false" managed="false">
+        <Label text="Administrasi Departemen &amp; Approval" styleClass="card-title"/>
+        <Label text="Hanya admin yang dapat menetapkan departemen pengguna dan routing approval."
+               styleClass="form-hint" wrapText="true"/>
+        <HBox spacing="16">
+            <VBox spacing="8" HBox.hgrow="ALWAYS">
+                <Label text="Departemen Pengguna" styleClass="form-label"/>
+                <TableView fx:id="userDepartmentTable" prefHeight="190">
+                    <columns>
+                        <TableColumn fx:id="colDepartmentUser" text="Nama" prefWidth="150"/>
+                        <TableColumn fx:id="colDepartmentEmail" text="Email" prefWidth="190"/>
+                        <TableColumn fx:id="colUserDepartment" text="Departemen" prefWidth="140"/>
+                    </columns>
+                </TableView>
+                <HBox spacing="8">
+                    <TextField fx:id="tfUserDepartment" promptText="Contoh: Purchasing" HBox.hgrow="ALWAYS"/>
+                    <Button text="Tetapkan Departemen" styleClass="btn-primary"
+                            onAction="#handleSaveUserDepartment"/>
+                </HBox>
+            </VBox>
+            <VBox spacing="8" HBox.hgrow="ALWAYS">
+                <Label text="Routing: Departemen Pemohon ke Departemen Approver" styleClass="form-label"/>
+                <TableView fx:id="approvalRuleTable" prefHeight="190">
+                    <columns>
+                        <TableColumn fx:id="colRequesterDepartment" text="Pemohon" prefWidth="160"/>
+                        <TableColumn fx:id="colApproverDepartment" text="Approver" prefWidth="160"/>
+                    </columns>
+                </TableView>
+                <HBox spacing="8">
+                    <TextField fx:id="tfRequesterDepartment" promptText="Departemen pemohon"
+                               HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="tfApproverDepartment" promptText="Departemen approver"
+                               HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox spacing="8">
+                    <Button text="Simpan Routing" styleClass="btn-primary"
+                            onAction="#handleSaveApprovalRule"/>
+                    <Button text="Hapus Routing" styleClass="btn-outline"
+                            onAction="#handleDeleteApprovalRule"/>
+                </HBox>
+            </VBox>
+        </HBox>
+        <Label fx:id="lblApprovalAdminStatus" text="Tetapkan departemen sebelum membuat routing."
+               styleClass="form-hint" wrapText="true"/>
+    </VBox>
 
 </VBox>

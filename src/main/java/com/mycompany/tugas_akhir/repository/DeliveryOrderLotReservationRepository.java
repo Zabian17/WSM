@@ -11,6 +11,10 @@ import java.util.List;
 
 public interface DeliveryOrderLotReservationRepository extends JpaRepository<DeliveryOrderLotReservation, Integer> {
 
+    @Query("SELECT r FROM DeliveryOrderLotReservation r JOIN FETCH r.lotBalance "
+            + "WHERE r.deliveryOrderLine.deliveryOrder.id = :orderId ORDER BY r.deliveryOrderLine.id, r.id")
+    List<DeliveryOrderLotReservation> findByOrderId(@Param("orderId") Integer orderId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM DeliveryOrderLotReservation r JOIN FETCH r.lotBalance "
             + "WHERE r.deliveryOrderLine.deliveryOrder.id = :orderId ORDER BY r.id")

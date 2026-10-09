@@ -19,7 +19,6 @@ import com.mycompany.tugas_akhir.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -40,9 +39,7 @@ public class TransaksiService implements InboundStockPoster, OutboundStockPoster
     private final RakRepository rakRepository;
     private final InventoryLotBalanceRepository lotBalanceRepository;
     private final TransactionLotAllocationRepository lotAllocationRepository;
-
-    @Value("${gudangku.inventory.picking-strategy:FEFO}")
-    private String pickingStrategy = "FEFO";
+    private final InventoryPickingPolicy pickingPolicy;
 
     public TransaksiService(TransaksiRepository transaksiRepository,
                             BarangRepository barangRepository,
@@ -51,7 +48,8 @@ public class TransaksiService implements InboundStockPoster, OutboundStockPoster
                             InventoryBalanceRepository balanceRepository,
                             RakRepository rakRepository,
                             InventoryLotBalanceRepository lotBalanceRepository,
-                            TransactionLotAllocationRepository lotAllocationRepository) {
+                            TransactionLotAllocationRepository lotAllocationRepository,
+                            InventoryPickingPolicy pickingPolicy) {
         this.transaksiRepository = transaksiRepository;
         this.barangRepository = barangRepository;
         this.supplierRepository = supplierRepository;
@@ -60,6 +58,7 @@ public class TransaksiService implements InboundStockPoster, OutboundStockPoster
         this.rakRepository = rakRepository;
         this.lotBalanceRepository = lotBalanceRepository;
         this.lotAllocationRepository = lotAllocationRepository;
+        this.pickingPolicy = pickingPolicy;
     }
 
     @Transactional(readOnly = true)
@@ -155,15 +154,7 @@ public class TransaksiService implements InboundStockPoster, OutboundStockPoster
             }
             outboundAllocations.put(lot, jumlah);
         } else {
-            String strategy = pickingStrategy == null || pickingStrategy.isBlank()
-                    ? "FEFO" : pickingStrategy.trim().toUpperCase(Locale.ROOT);
-            if ("FIFO".equals(strategy)) {
-                outboundLots = lotBalanceRepository.findAvailableFifoForUpdate(barangId, locationKey, LocalDate.now());
-            } else if ("LEFO".equals(strategy)) {
-                outboundLots = lotBalanceRepository.findAvailableLefoForUpdate(barangId, locationKey, LocalDate.now());
-            } else {
-                outboundLots = lotBalanceRepository.findAvailableFefoForUpdate(barangId, locationKey, LocalDate.now());
-            }
+            outboundLots = pickingPolicy.availableAt(barangId, locationKey, LocalDate.now());
             int remaining = jumlah;
             for (InventoryLotBalance lot : outboundLots) {
                 int allocated = Math.min(remaining, lot.getAvailableQuantity());

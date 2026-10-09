@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -60,6 +61,29 @@ public class InventoryTransferService {
     @Transactional
     public boolean transferStock(Integer barangId, Integer sourceRakId, Integer destinationRakId,
                                  int quantity, String notes, Integer userId) {
+        return transferStock(barangId, sourceRakId, destinationRakId, quantity, notes, userId, null, null);
+    }
+
+    @Transactional
+    public boolean transferStockWithBarcodes(String itemQrPayload, String sourceLocationBarcode,
+                                             String destinationLocationBarcode, int quantity,
+                                             String notes, Integer userId) {
+        BarcodePayload.Item itemBarcode = BarcodePayload.parseItem(itemQrPayload);
+        String sourceCode = BarcodePayload.parseLocation(sourceLocationBarcode);
+        String destinationCode = BarcodePayload.parseLocation(destinationLocationBarcode);
+        if (itemBarcode == null || sourceCode == null || destinationCode == null
+                || sourceCode.equalsIgnoreCase(destinationCode)) return false;
+        Barang item = barangRepository.findByKodeBarang(itemBarcode.sku()).orElse(null);
+        Rak source = rakRepository.findByKodeRak(sourceCode).orElse(null);
+        Rak destination = rakRepository.findByKodeRak(destinationCode).orElse(null);
+        if (item == null || source == null || destination == null) return false;
+        return transferStock(item.getId(), source.getId(), destination.getId(), quantity, notes, userId,
+                itemBarcode.batchCode(), itemBarcode.expiryDate());
+    }
+
+    private boolean transferStock(Integer barangId, Integer sourceRakId, Integer destinationRakId,
+                                  int quantity, String notes, Integer userId,
+                                  String scannedBatchCode, LocalDate scannedExpiryDate) {
         if (barangId == null || destinationRakId == null || userId == null || quantity <= 0
                 || destinationRakId.equals(sourceRakId)) {
             return false;
@@ -103,6 +127,12 @@ public class InventoryTransferService {
 
         List<InventoryLotBalance> sourceLots = lotBalanceRepository
                 .findAllPositiveForUpdate(barangId, sourceKey);
+        if (scannedBatchCode != null) {
+            sourceLots = sourceLots.stream()
+                    .filter(lot -> lot.getBatchCode().equalsIgnoreCase(scannedBatchCode)
+                            && java.util.Objects.equals(lot.getExpiryDate(), scannedExpiryDate))
+                    .toList();
+        }
         LinkedHashMap<InventoryLotBalance, Integer> lotMoves = new LinkedHashMap<>();
         LinkedHashMap<InventoryLotBalance, InventoryLotBalance> destinationLots = new LinkedHashMap<>();
         LinkedHashMap<InventoryLotBalance, Integer> destinationLotQuantities = new LinkedHashMap<>();

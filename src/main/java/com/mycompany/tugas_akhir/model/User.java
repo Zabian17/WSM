@@ -23,6 +23,9 @@ public class User {
     @Column(length = 20)
     private String role;
 
+    @Column(length = 100)
+    private String department;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -61,6 +64,9 @@ public class User {
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
 
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -77,6 +83,7 @@ public class User {
         private String email;
         private String passwordHash;
         private String role;
+        private String department;
         private LocalDateTime createdAt;
         private String profilePicturePath;
 
@@ -85,11 +92,13 @@ public class User {
         public UserBuilder email(String email) { this.email = email; return this; }
         public UserBuilder passwordHash(String passwordHash) { this.passwordHash = passwordHash; return this; }
         public UserBuilder role(String role) { this.role = role; return this; }
+        public UserBuilder department(String department) { this.department = department; return this; }
         public UserBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public UserBuilder profilePicturePath(String profilePicturePath) { this.profilePicturePath = profilePicturePath; return this; }
 
         public User build() {
             User user = new User(id, fullName, email, passwordHash, role, createdAt);
+            user.setDepartment(department);
             user.setProfilePicturePath(profilePicturePath);
             return user;
         }

@@ -15,6 +15,10 @@ public class Section {
     @Column(name = "kode_section", nullable = false, unique = true, length = 10)
     private String kodeSection;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @Column(name = "nama_section", length = 80)
     private String namaSection;
 
@@ -50,6 +54,8 @@ public class Section {
 
     public String getKodeSection() { return kodeSection; }
     public void setKodeSection(String kodeSection) { this.kodeSection = kodeSection; }
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
 
     public String getNamaSection() { return namaSection; }
     public void setNamaSection(String namaSection) { this.namaSection = namaSection; }

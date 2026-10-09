@@ -1,4 +1,5 @@
 @echo off
+pushd "%~dp0..\.."
 echo ========================================================
 echo   GUDANGKU - Git Branch Update & Release Automation
 echo ========================================================
@@ -28,4 +29,5 @@ gh release create v1.0.0 --title "First Release v1.0.0" --notes "First release v
 echo ========================================================
 echo   SUCCESS! All steps for update-3.0 & v1.0.0 completed.
 echo ========================================================
+popd
 pause

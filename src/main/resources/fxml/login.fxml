@@ -9,7 +9,7 @@
 <HBox xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.mycompany.tugas_akhir.LoginController"
-      prefHeight="600.0" prefWidth="950.0"
+      prefHeight="620.0" prefWidth="980.0"
       stylesheets="@../css/login.css">
 
     <AnchorPane styleClass="left-panel">
@@ -31,21 +31,21 @@
 
             <StackPane fx:id="tabSignUp" styleClass="tab-btn-active"
                        onMouseClicked="#showSignUp">
-                <Label fx:id="lblSignUp" text="SIGN UP" styleClass="tab-label-active"/>
+                <Label fx:id="lblSignUp" text="DAFTAR" styleClass="tab-label-active"/>
             </StackPane>
 
             <StackPane fx:id="tabSignIn" styleClass="tab-btn"
                        onMouseClicked="#showSignIn">
-                <Label fx:id="lblSignIn" text="SIGN IN" styleClass="tab-label"/>
+                <Label fx:id="lblSignIn" text="MASUK" styleClass="tab-label"/>
             </StackPane>
         </VBox>
 
         <VBox spacing="6" AnchorPane.bottomAnchor="30" AnchorPane.leftAnchor="24" AnchorPane.rightAnchor="16">
             <TextFlow>
-                <Text text="Monitor&#10;Gudang anda&#10;secara " styleClass="hero-title"/>
-                <Text text="Real time" styleClass="hero-highlight"/>
+                <Text text="Kelola gudang&#10;dengan lebih " styleClass="hero-title"/>
+                <Text text="teratur" styleClass="hero-highlight"/>
             </TextFlow>
-            <Label text="Stok, movement, report&#10;dalam satu platform"
+            <Label text="Pantau stok dan aktivitas gudang&#10;dalam satu aplikasi."
                    styleClass="hero-subtitle" wrapText="true"/>
         </VBox>
     </AnchorPane>
@@ -56,34 +56,34 @@
               AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0"
               AnchorPane.leftAnchor="60" AnchorPane.rightAnchor="60">
 
-            <Label text="Welcome 👋" styleClass="welcome-title"/>
-            <Label text="Create account to continue" styleClass="welcome-subtitle"/>
+            <Label text="Buat akun" styleClass="welcome-title"/>
+            <Label text="Daftar untuk mulai menggunakan GudangKu." styleClass="welcome-subtitle"/>
             <VBox spacing="12" maxWidth="420" fillWidth="true">
                 <VBox.margin><Insets top="10"/></VBox.margin>
 
                 <HBox styleClass="field-container" alignment="CENTER_LEFT">
-                    <Label text="👤" styleClass="field-icon"/>
+                    <Label text="U" styleClass="field-icon"/>
                     <Rectangle styleClass="field-divider" width="1.2" height="28"/>
-                    <TextField fx:id="tfFullName" promptText="Full Name"
+                    <TextField fx:id="tfFullName" promptText="Nama lengkap"
                                styleClass="text-field-clean" HBox.hgrow="ALWAYS"/>
                 </HBox>
 
                 <HBox styleClass="field-container" alignment="CENTER_LEFT">
-                    <Label text="✉" styleClass="field-icon"/>
+                    <Label text="E" styleClass="field-icon"/>
                     <Rectangle styleClass="field-divider" width="1.2" height="28"/>
-                    <TextField fx:id="tfEmail" promptText="Email Address"
+                    <TextField fx:id="tfEmail" promptText="Alamat email"
                                styleClass="text-field-clean" HBox.hgrow="ALWAYS"/>
                 </HBox>
 
                 <HBox styleClass="field-container" alignment="CENTER_LEFT">
-                    <Label text="🔒" styleClass="field-icon"/>
+                    <Label text="•" styleClass="field-icon"/>
                     <Rectangle styleClass="field-divider" width="1.2" height="28"/>
-                    <PasswordField fx:id="pfPassword" promptText="Password"
+                    <PasswordField fx:id="pfPassword" promptText="Kata sandi"
                                   styleClass="password-field-clean" HBox.hgrow="ALWAYS"/>
                 </HBox>
             </VBox>
 
-            <Button text="Get Started" styleClass="btn-primary" maxWidth="420"
+            <Button text="Buat Akun" styleClass="btn-primary" maxWidth="420"
                     prefWidth="420" onAction="#handleSignUp"/>
         </VBox>
 
@@ -91,35 +91,35 @@
               AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0"
               AnchorPane.leftAnchor="60" AnchorPane.rightAnchor="60">
 
-            <Label text="Welcome Back 👋" styleClass="welcome-title"/>
-            <Label text="Sign in to continue to Dashboard" styleClass="welcome-subtitle"/>
+            <Label text="Selamat datang kembali" styleClass="welcome-title"/>
+            <Label text="Masuk untuk melanjutkan ke dashboard." styleClass="welcome-subtitle"/>
             <VBox spacing="12" maxWidth="420" fillWidth="true">
                 <VBox.margin><Insets top="10"/></VBox.margin>
 
                 <HBox styleClass="field-container" alignment="CENTER_LEFT">
-                    <Label text="👤" styleClass="field-icon"/>
+                    <Label text="U" styleClass="field-icon"/>
                     <Rectangle styleClass="field-divider" width="1.2" height="28"/>
-                    <TextField fx:id="tfLoginEmail" promptText="Email / Username"
+                    <TextField fx:id="tfLoginEmail" promptText="Email atau nama pengguna"
                                styleClass="text-field-clean" HBox.hgrow="ALWAYS"/>
                 </HBox>
 
                 <HBox styleClass="field-container" alignment="CENTER_LEFT">
-                    <Label text="🔒" styleClass="field-icon"/>
+                    <Label text="•" styleClass="field-icon"/>
                     <Rectangle styleClass="field-divider" width="1.2" height="28"/>
-                    <PasswordField fx:id="pfLoginPassword" promptText="Password"
+                    <PasswordField fx:id="pfLoginPassword" promptText="Kata sandi"
                                   styleClass="password-field-clean" HBox.hgrow="ALWAYS"/>
                 </HBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <CheckBox fx:id="cbRemember"/>
-                    <Label text="Remember me" styleClass="remember-label"/>
+                    <Label text="Ingat saya" styleClass="remember-label"/>
                 </HBox>
             </VBox>
 
-            <Button text="Get Started" styleClass="btn-primary" maxWidth="420"
+            <Button text="Masuk" styleClass="btn-primary" maxWidth="420"
                     prefWidth="420" onAction="#handleSignIn"/>
 
-            <Label text="Forgot Your Password?" styleClass="link-label"
+            <Label text="Lupa kata sandi?" styleClass="link-label"
                    onMouseClicked="#handleForgotPassword"/>
         </VBox>
 

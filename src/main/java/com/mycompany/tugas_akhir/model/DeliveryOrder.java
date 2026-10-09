@@ -20,6 +20,10 @@ public class DeliveryOrder {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sales_order_id")
+    private SalesOrder salesOrder;
+
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
@@ -48,6 +52,12 @@ public class DeliveryOrder {
         this.status = DeliveryOrderStatus.DRAFT;
     }
 
+    public DeliveryOrder(String orderCode, Customer customer, SalesOrder salesOrder,
+                         User createdBy, String notes, LocalDateTime createdAt) {
+        this(orderCode, customer, createdBy, notes, createdAt);
+        this.salesOrder = salesOrder;
+    }
+
     public void addLine(DeliveryOrderLine line) {
         lines.add(line);
         line.setDeliveryOrder(this);
@@ -56,6 +66,7 @@ public class DeliveryOrder {
     public Integer getId() { return id; }
     public String getOrderCode() { return orderCode; }
     public Customer getCustomer() { return customer; }
+    public SalesOrder getSalesOrder() { return salesOrder; }
     public User getCreatedBy() { return createdBy; }
     public DeliveryOrderStatus getStatus() { return status; }
     public String getNotes() { return notes; }

@@ -1,0 +1,84 @@
+# ========================
+# Java / Maven
+# ========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# Maven Wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+
+# Graphify generated graphs, reports, manifests, and extraction caches
+/graphify-out/
+
+# ========================
+# NetBeans
+# ========================
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ========================
+# VS Code
+# ========================
+.vscode/*
+!.vscode/settings.json
+
+# ========================
+# IntelliJ IDEA
+# ========================
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# ========================
+# Eclipse
+# ========================
+.classpath
+.project
+.settings/
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# Logs & Environment
+# ========================
+*.log
+logs/
+.env
+
+# ========================
+# Helper / Automation Scripts
+# ========================
+push_release.*
+!scripts/release/push_release.*
+run.bat
+run.ps1
+
+# ========================
+# Project Notes & Proposals (local only)
+# ========================
+/PROGRESS.txt
+/WMS_Proposal_PT_Rotaryana_Prima.md
+*.md
+!README.md
+!AGENTS.md
+!CLAUDE.md
+!.claude/
+!.claude/**
+!.codex/
+!.codex/**

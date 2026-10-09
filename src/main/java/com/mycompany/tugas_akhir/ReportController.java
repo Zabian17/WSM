@@ -1,10 +1,11 @@
 package com.mycompany.tugas_akhir;
 
-<<<<<<< HEAD
 import com.mycompany.tugas_akhir.model.Barang;
 import com.mycompany.tugas_akhir.model.Transaksi;
 import com.mycompany.tugas_akhir.service.BarangService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
+import com.mycompany.tugas_akhir.service.OperationalReportRow;
+import com.mycompany.tugas_akhir.service.OperationalReportService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -12,23 +13,62 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.io.IOException;
 
 @Component
 public class ReportController implements Initializable {
 
+    public static class ReportRow {
+        private final int no;
+        private final String kodeTx;
+        private final String tipe;
+        private final String barang;
+        private final String supplier;
+        private final String jumlah;
+        private final String rak;
+        private final String tanggal;
+
+        public ReportRow(int no, String kodeTx, String tipe, String barang,
+                         String supplier, String jumlah, String rak, String tanggal) {
+            this.no = no;
+            this.kodeTx = kodeTx;
+            this.tipe = tipe;
+            this.barang = barang;
+            this.supplier = supplier;
+            this.jumlah = jumlah;
+            this.rak = rak;
+            this.tanggal = tanggal;
+        }
+
+        public int getNo() { return no; }
+        public String getKodeTx() { return kodeTx; }
+        public String getTipe() { return tipe; }
+        public String getBarang() { return barang; }
+        public String getSupplier() { return supplier; }
+        public String getJumlah() { return jumlah; }
+        public String getRak() { return rak; }
+        public String getTanggal() { return tanggal; }
+    }
+
     private static final Logger log = LoggerFactory.getLogger(ReportController.class);
     private final TransaksiService transaksiService;
     private final BarangService barangService;
+    private final OperationalReportService operationalReportService;
 
     private final ObservableList<Transaksi> reportList = FXCollections.observableArrayList();
     private List<Transaksi> rawReportList;
@@ -50,92 +90,15 @@ public class ReportController implements Initializable {
     @FXML private TableColumn<Transaksi, String> colTanggal;
     @FXML private TableColumn<Transaksi, String> colKeterangan;
 
-    public ReportController(TransaksiService transaksiService, BarangService barangService) {
+    public ReportController(TransaksiService transaksiService, BarangService barangService,
+                            OperationalReportService operationalReportService) {
         this.transaksiService = transaksiService;
         this.barangService = barangService;
-=======
-import java.net.URL;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.ResourceBundle;
-
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
-
-
-public class ReportController implements Initializable {
-
-    private final TransaksiDAO transaksiDAO = new TransaksiDAO();
-
-    private static final DateTimeFormatter DB_FORMAT   = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter DISP_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-    @FXML private DatePicker dpStartDate;
-    @FXML private DatePicker dpEndDate;
-    @FXML private ComboBox<String> cbTipe;
-    @FXML private HBox boxPeriodeInfo;
-    @FXML private Label lblPeriodeInfo;
-
-    @FXML private Label lblTotalTx;
-    @FXML private Label lblTotalMasuk;
-    @FXML private Label lblTotalKeluar;
-    @FXML private Label lblBarangAktif;
-
-    @FXML private TableView<ReportRow> tableReport;
-    @FXML private TableColumn<ReportRow, Integer> colNo;
-    @FXML private TableColumn<ReportRow, String>  colKodeTx;
-    @FXML private TableColumn<ReportRow, String>  colTipe;
-    @FXML private TableColumn<ReportRow, String>  colBarang;
-    @FXML private TableColumn<ReportRow, String>  colSupplier;
-    @FXML private TableColumn<ReportRow, String>  colJumlah;
-    @FXML private TableColumn<ReportRow, String>  colRak;
-    @FXML private TableColumn<ReportRow, String>  colTanggal;
-    @FXML private Label lblJumlahData;
-
-    @FXML private VBox vboxTopBarang;
-
-    public static class ReportRow {
-        private final int    no;
-        private final String kodeTx;
-        private final String tipe;
-        private final String barang;
-        private final String supplier;
-        private final String jumlah;
-        private final String rak;
-        private final String tanggal;
-
-        public ReportRow(int no, String kodeTx, String tipe, String barang,
-                         String supplier, String jumlah, String rak, String tanggal) {
-            this.no       = no;
-            this.kodeTx   = kodeTx;
-            this.tipe     = tipe;
-            this.barang   = barang;
-            this.supplier = supplier;
-            this.jumlah   = jumlah;
-            this.rak      = rak;
-            this.tanggal  = tanggal;
-        }
-
-        public int    getNo()       { return no; }
-        public String getKodeTx()   { return kodeTx; }
-        public String getTipe()     { return tipe.substring(0, 1).toUpperCase() + tipe.substring(1); }
-        public String getBarang()   { return barang; }
-        public String getSupplier() { return supplier; }
-        public String getJumlah()   { return jumlah; }
-        public String getRak()      { return rak; }
-        public String getTanggal()  { return tanggal; }
->>>>>>> origin/main
+        this.operationalReportService = operationalReportService;
     }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-<<<<<<< HEAD
         cbFilterTipe.setItems(FXCollections.observableArrayList("Semua Tipe", "Barang Masuk", "Barang Keluar"));
         cbFilterTipe.setValue("Semua Tipe");
 
@@ -271,146 +234,10 @@ public class ReportController implements Initializable {
         }).collect(Collectors.toList());
 
         reportList.setAll(filtered);
-=======
-        setupComboTipe();
-        setupTableColumns();
-        setDefaultDateRange();
-        loadReport(false);
-    }
-
-
-    public void initUser(UserDAO.User user) {
-    }
-
-
-    private void setupComboTipe() {
-        cbTipe.setItems(FXCollections.observableArrayList("Semua", "Masuk", "Keluar"));
-        cbTipe.setValue("Semua");
-    }
-
-    private void setupTableColumns() {
-        colNo.setCellValueFactory(new PropertyValueFactory<>("no"));
-        colKodeTx.setCellValueFactory(new PropertyValueFactory<>("kodeTx"));
-        colBarang.setCellValueFactory(new PropertyValueFactory<>("barang"));
-        colSupplier.setCellValueFactory(new PropertyValueFactory<>("supplier"));
-        colJumlah.setCellValueFactory(new PropertyValueFactory<>("jumlah"));
-        colRak.setCellValueFactory(new PropertyValueFactory<>("rak"));
-        colTanggal.setCellValueFactory(new PropertyValueFactory<>("tanggal"));
-
-        colTipe.setCellValueFactory(new PropertyValueFactory<>("tipe"));
-        colTipe.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                } else {
-                    setText(item);
-                    if (item.equalsIgnoreCase("Masuk")) {
-                        setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-font-size: 12px;");
-                    } else {
-                        setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 12px;");
-                    }
-                }
-            }
-        });
-
-        colJumlah.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item);
-                    setStyle("-fx-alignment: CENTER-RIGHT; -fx-font-weight: bold; -fx-text-fill: #374151;");
-                }
-            }
-        });
-    }
-
-    private void setDefaultDateRange() {
-        LocalDate today = LocalDate.now();
-        dpEndDate.setValue(today);
-        dpStartDate.setValue(today.minusDays(29));
-    }
-
-
-    @FXML
-    private void handleGenerateReport() {
-        loadReport(true);
-    }
-
-
-    private void loadReport(boolean openViewer) {
-        LocalDate start = dpStartDate.getValue();
-        LocalDate end   = dpEndDate.getValue();
-
-        if (start == null || end == null) {
-            showAlert("Validasi", "Silakan pilih tanggal awal dan akhir.");
-            return;
-        }
-        if (start.isAfter(end)) {
-            showAlert("Validasi", "Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
-            return;
-        }
-
-        String startStr = start.format(DB_FORMAT);
-        String endStr   = end.format(DB_FORMAT);
-        String tipe     = cbTipe.getValue() != null ? cbTipe.getValue() : "Semua";
-
-        loadSummary(startStr, endStr);
-        loadTable(startStr, endStr, tipe);
-        loadTopBarang(startStr, endStr);
-
-        lblPeriodeInfo.setText("Menampilkan data periode: "
-            + start.format(DISP_FORMAT) + "  \u2192  " + end.format(DISP_FORMAT)
-            + "   |   Tipe: " + tipe);
-        boxPeriodeInfo.setVisible(true);
-        boxPeriodeInfo.setManaged(true);
-
-        if (openViewer) {
-            try {
-                int[] summary = transaksiDAO.getReportSummary(startStr, endStr);
-                String periodeInfo = "Periode: " + start.format(DISP_FORMAT)
-                    + " \u2192 " + end.format(DISP_FORMAT) + "  |  Tipe: " + tipe;
-                ReportGeneratorService.showReportPeriode(
-                    new java.util.ArrayList<>(tableReport.getItems()),
-                    periodeInfo,
-                    summary
-                );
-            } catch (Exception e) {
-                showAlert("Generate Report Gagal",
-                    "Terjadi kesalahan saat menampilkan laporan: " + e.getMessage());
-                e.printStackTrace();
-            }
-        }
-    }
-
-    @FXML
-    private void handleReset() {
-        setDefaultDateRange();
-        cbTipe.setValue("Semua");
-        tableReport.getItems().clear();
-        lblTotalTx.setText("0");
-        lblTotalMasuk.setText("0");
-        lblTotalKeluar.setText("0");
-        lblBarangAktif.setText("0");
-        lblJumlahData.setText("0 data");
-        vboxTopBarang.getChildren().clear();
-        vboxTopBarang.getChildren().add(
-            buildInfoLabel("Generate report untuk melihat top barang")
-        );
-        boxPeriodeInfo.setVisible(false);
-        boxPeriodeInfo.setManaged(false);
-        loadReport(false);
->>>>>>> origin/main
     }
 
     @FXML
     private void handleRefresh() {
-<<<<<<< HEAD
         if (searchField != null) searchField.clear();
         cbFilterTipe.setValue("Semua Tipe");
         loadData();
@@ -418,14 +245,176 @@ public class ReportController implements Initializable {
 
     @FXML
     private void handleExportPDF() {
-        showAlert(Alert.AlertType.INFORMATION, "Cetak Laporan PDF",
-                "📄 Fitur Ekspor Laporan ke PDF berhasil dibuat.\nTotal data tercetak: " + reportList.size() + " baris transaksi.");
+        showAlert(Alert.AlertType.INFORMATION, "Ekspor PDF",
+                "Ekspor PDF belum tersedia. Gunakan ekspor CSV untuk menyimpan data laporan.");
     }
 
     @FXML
     private void handleExportCSV() {
-        showAlert(Alert.AlertType.INFORMATION, "Cetak Laporan CSV",
-                "📊 Fitur Ekspor Laporan ke CSV (Excel) berhasil dibuat.\nTotal data tercetak: " + reportList.size() + " baris transaksi.");
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Simpan Laporan Transaksi CSV");
+        chooser.setInitialFileName("laporan-transaksi.csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        java.io.File file = chooser.showSaveDialog(tableReport.getScene().getWindow());
+        if (file == null) return;
+        try (var writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
+            writer.write("Kode Transaksi,Tipe,Barang,Supplier,Jumlah,SLOC,Petugas,Tanggal,Keterangan");
+            writer.newLine();
+            for (Transaksi transaction : reportList) {
+                writeCsvRow(writer, List.of(
+                        value(transaction.getKodeTransaksi()),
+                        value(transaction.getTipe()),
+                        transaction.getBarang() == null ? "-" : value(transaction.getBarang().getNamaBarang()),
+                        transaction.getSupplier() == null ? "-" : value(transaction.getSupplier().getNamaSupplier()),
+                        String.valueOf(transaction.getJumlah()),
+                        transaction.getRak() == null ? "-" : value(transaction.getRak().getKodeRak()),
+                        transaction.getUser() == null ? "-" : value(transaction.getUser().getFullName()),
+                        transaction.getTanggal() == null ? "-" : value(transaction.getTanggal().toString()),
+                        value(transaction.getKeterangan())));
+            }
+            showAlert(Alert.AlertType.INFORMATION, "CSV Tersimpan", "Laporan berhasil disimpan.");
+        } catch (IOException exception) {
+            log.error("Gagal menulis laporan transaksi CSV ke {}", file.getAbsolutePath(), exception);
+            showAlert(Alert.AlertType.ERROR, "Ekspor Gagal", "File CSV tidak dapat disimpan.");
+        }
+    }
+
+    @FXML
+    private void handleOpenOperationalReports() {
+        Task<List<OperationalReportRow>> task = new Task<>() {
+            @Override
+            protected List<OperationalReportRow> call() {
+                return operationalReportService.getRecentOperationalReport();
+            }
+        };
+        task.setOnSucceeded(event -> showOperationalReports(task.getValue()));
+        task.setOnFailed(event -> {
+            log.error("Gagal memuat laporan operasional", task.getException());
+            showAlert(Alert.AlertType.ERROR, "Gagal", "Laporan operasional tidak dapat dimuat.");
+        });
+        Thread thread = new Thread(task, "operational-report-load");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void showOperationalReports(List<OperationalReportRow> rows) {
+        ObservableList<OperationalReportRow> allRows = FXCollections.observableArrayList(rows);
+        ComboBox<String> category = new ComboBox<>();
+        category.getItems().add("Semua");
+        rows.stream().map(OperationalReportRow::category).distinct().sorted().forEach(category.getItems()::add);
+        category.setValue("Semua");
+        DatePicker fromDate = new DatePicker();
+        fromDate.setPromptText("Dari tanggal");
+        DatePicker toDate = new DatePicker();
+        toDate.setPromptText("Sampai tanggal");
+        TableView<OperationalReportRow> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.getColumns().add(operationalColumn("Jenis", OperationalReportRow::category));
+        table.getColumns().add(operationalColumn("Dokumen", OperationalReportRow::documentCode));
+        table.getColumns().add(operationalColumn("Status", OperationalReportRow::status));
+        table.getColumns().add(operationalColumn("Mitra / Petugas", OperationalReportRow::partner));
+        table.getColumns().add(operationalColumn("SKU", OperationalReportRow::itemCode));
+        table.getColumns().add(operationalColumn("Jumlah", row -> String.valueOf(row.quantity())));
+        table.getColumns().add(operationalColumn("Metrik / Detail", OperationalReportRow::metric));
+        table.getColumns().add(operationalColumn("Waktu", row -> row.timestamp() == null ? "-"
+                : row.timestamp().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+        table.getItems().setAll(allRows);
+        category.setOnAction(event -> applyOperationalCategory(allRows, table, category));
+        Button applyFilters = new Button("Terapkan Filter");
+        applyFilters.setOnAction(event -> loadOperationalReport(
+                fromDate.getValue(), toDate.getValue(), allRows, table, category));
+        Button export = new Button("Ekspor CSV");
+        export.setOnAction(event -> exportOperationalCsv(table.getItems()));
+        VBox content = new VBox(10, new javafx.scene.layout.HBox(10,
+                new Label("Kategori"), category, new Label("Dari"), fromDate,
+                new Label("Sampai"), toDate, applyFilters, export), table);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Laporan Operasional WMS");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefSize(1120, 600);
+        dialog.showAndWait();
+    }
+
+    private void loadOperationalReport(LocalDate from, LocalDate to,
+                                       ObservableList<OperationalReportRow> allRows,
+                                       TableView<OperationalReportRow> table,
+                                       ComboBox<String> category) {
+        if (from != null && to != null && from.isAfter(to)) {
+            showAlert(Alert.AlertType.WARNING, "Rentang Tanggal Tidak Valid",
+                    "Tanggal awal harus sama dengan atau sebelum tanggal akhir.");
+            return;
+        }
+        Task<List<OperationalReportRow>> task = new Task<>() {
+            @Override
+            protected List<OperationalReportRow> call() {
+                return operationalReportService.getRecentOperationalReport(from, to);
+            }
+        };
+        task.setOnSucceeded(event -> {
+            allRows.setAll(task.getValue());
+            String selectedCategory = category.getValue();
+            category.getItems().setAll("Semua");
+            allRows.stream().map(OperationalReportRow::category).distinct().sorted()
+                    .forEach(category.getItems()::add);
+            if (selectedCategory == null || !category.getItems().contains(selectedCategory)) {
+                category.setValue("Semua");
+            }
+            applyOperationalCategory(allRows, table, category);
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal memfilter laporan operasional", task.getException());
+            showAlert(Alert.AlertType.ERROR, "Gagal", "Laporan tidak dapat difilter.");
+        });
+        Thread thread = new Thread(task, "operational-report-filter");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void applyOperationalCategory(List<OperationalReportRow> rows,
+                                          TableView<OperationalReportRow> table,
+                                          ComboBox<String> category) {
+        String selected = category.getValue();
+        table.getItems().setAll(rows.stream().filter(row -> "Semua".equals(selected)
+                || row.category().equals(selected)).toList());
+    }
+
+    private TableColumn<OperationalReportRow, String> operationalColumn(
+            String title, java.util.function.Function<OperationalReportRow, String> value) {
+        TableColumn<OperationalReportRow, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cell -> new SimpleStringProperty(value.apply(cell.getValue())));
+        return column;
+    }
+
+    private void exportOperationalCsv(List<OperationalReportRow> rows) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Simpan Laporan Operasional CSV");
+        chooser.setInitialFileName("laporan-operasional-wms.csv");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        java.io.File file = chooser.showSaveDialog(tableReport.getScene().getWindow());
+        if (file == null) return;
+        try (var writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
+            writer.write("Kategori,Dokumen,Status,Mitra,SKU,Jumlah,Metrik,Petugas,Waktu");
+            writer.newLine();
+            for (OperationalReportRow row : rows) {
+                writeCsvRow(writer, List.of(value(row.category()), value(row.documentCode()),
+                        value(row.status()), value(row.partner()), value(row.itemCode()),
+                        String.valueOf(row.quantity()), value(row.metric()), value(row.actor()),
+                        row.timestamp() == null ? "-" : value(row.timestamp().toString())));
+            }
+            showAlert(Alert.AlertType.INFORMATION, "CSV Tersimpan", "Laporan operasional berhasil disimpan.");
+        } catch (IOException exception) {
+            log.error("Gagal menulis laporan operasional CSV ke {}", file.getAbsolutePath(), exception);
+            showAlert(Alert.AlertType.ERROR, "Ekspor Gagal", "File CSV operasional tidak dapat disimpan.");
+        }
+    }
+
+    private String value(String value) { return value == null ? "-" : value; }
+
+    private void writeCsvRow(java.io.BufferedWriter writer, List<String> values) throws IOException {
+        writer.write(values.stream().map(value -> "\"" + value.replace("\"", "\"\"") + "\"")
+                .collect(Collectors.joining(",")));
+        writer.newLine();
     }
 
     private void showAlert(Alert.AlertType type, String title, String msg) {
@@ -435,120 +424,4 @@ public class ReportController implements Initializable {
         alert.setContentText(msg);
         alert.showAndWait();
     }
-=======
-        handleGenerateReport();
-    }
-
-
-
-
-    private void loadSummary(String startDate, String endDate) {
-        int[] summary = transaksiDAO.getReportSummary(startDate, endDate);
-        lblTotalTx.setText(formatAngka(summary[0]));
-        lblTotalMasuk.setText(formatAngka(summary[1]));
-        lblTotalKeluar.setText(formatAngka(summary[2]));
-        lblBarangAktif.setText(formatAngka(summary[3]));
-    }
-
-    private void loadTable(String startDate, String endDate, String tipe) {
-        List<TransaksiDAO.Transaksi> list = transaksiDAO.getTransaksiByPeriod(startDate, endDate, tipe);
-
-        ObservableList<ReportRow> rows = FXCollections.observableArrayList();
-        int no = 1;
-        for (TransaksiDAO.Transaksi t : list) {
-            rows.add(new ReportRow(
-                no++,
-                t.kodeTransaksi,
-                t.tipe,
-                t.namaBarang,
-                t.namaSupplier,
-                formatAngka(t.jumlah) + " pcs",
-                t.kodeRak,
-                t.tanggal
-            ));
-        }
-
-        tableReport.setItems(rows);
-        lblJumlahData.setText(rows.size() + " data");
-        System.out.println("[ReportController] Loaded " + rows.size() + " transaksi.");
-    }
-
-    private void loadTopBarang(String startDate, String endDate) {
-        List<TransaksiDAO.TopBarang> topList = transaksiDAO.getTopBarang(startDate, endDate, 5);
-        vboxTopBarang.getChildren().clear();
-
-        if (topList.isEmpty()) {
-            vboxTopBarang.getChildren().add(
-                buildInfoLabel("Tidak ada data di periode ini")
-            );
-            return;
-        }
-
-        String[] rankColors = {"#f59e0b", "#9ba3b8", "#b45309", "#1a56db", "#6b7280"};
-        String[] medals     = {"🥇", "🥈", "🥉", "4", "5"};
-
-        int rank = 0;
-        for (TransaksiDAO.TopBarang tb : topList) {
-            String color  = rankColors[Math.min(rank, rankColors.length - 1)];
-            String medal  = medals[Math.min(rank, medals.length - 1)];
-
-            HBox row = new HBox(8);
-            row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-            Label lblMedal = new Label(medal);
-            lblMedal.setStyle("-fx-font-size: 16px;");
-
-            VBox info = new VBox(2);
-            HBox.setHgrow(info, Priority.ALWAYS);
-
-            Label lblNama = new Label(tb.namaBarang);
-            lblNama.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-wrap-text: true;");
-            lblNama.setMaxWidth(Double.MAX_VALUE);
-
-            Label lblDetail = new Label(tb.kodeBarang + " · " + formatAngka(tb.totalJumlah) + " pcs");
-            lblDetail.setStyle("-fx-font-size: 10px; -fx-text-fill: #9ba3b8;");
-
-            info.getChildren().addAll(lblNama, lblDetail);
-
-            Label lblTotal = new Label(String.valueOf(tb.totalTransaksi) + " tx");
-            lblTotal.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " + color
-                + "; -fx-background-color: derive(" + color + ", 85%); -fx-background-radius: 6;"
-                + " -fx-padding: 2 6 2 6;");
-
-            row.getChildren().addAll(lblMedal, info, lblTotal);
-
-            vboxTopBarang.getChildren().add(row);
-
-            if (rank < topList.size() - 1) {
-                Pane sep = new Pane();
-                sep.setStyle("-fx-background-color: #f0f2f5; -fx-pref-height: 1px; -fx-min-height: 1px; -fx-max-height: 1px;");
-                vboxTopBarang.getChildren().add(sep);
-            }
-
-            rank++;
-        }
-    }
-
-    private Label buildInfoLabel(String text) {
-        Label lbl = new Label(text);
-        lbl.setStyle("-fx-text-fill: #9ba3b8; -fx-font-size: 11px; -fx-wrap-text: true;");
-        lbl.setMaxWidth(Double.MAX_VALUE);
-        return lbl;
-    }
-
-    private String formatAngka(int n) {
-        return String.format("%,d", n).replace(',', '.');
-    }
-
-
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-
->>>>>>> origin/main
 }

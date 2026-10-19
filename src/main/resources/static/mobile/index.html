@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#263247">
+  <meta name="robots" content="noindex, nofollow">
+  <title>GudangKu Mobile</title>
+  <link rel="stylesheet" href="/mobile/mobile.css">
+  <script src="/mobile/mobile.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <section id="loginView" class="login-view" aria-labelledby="loginTitle">
+      <div class="brand-mark" aria-hidden="true">G</div>
+      <p class="eyebrow">GUDANGKU · OPERASIONAL</p>
+      <h1 id="loginTitle">Masuk ke gudang</h1>
+      <p class="muted">Gunakan akun GudangKu untuk menjalankan tugas gudang.</p>
+      <form id="loginForm" class="stack">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" maxlength="150" required>
+        <label for="password">Kata sandi</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" maxlength="72" required>
+        <button class="button primary" type="submit">Masuk</button>
+      </form>
+      <p id="loginMessage" class="notice" role="status" aria-live="polite"></p>
+      <p class="help">Token hanya aktif di tab ini; sesi server kedaluwarsa setelah 8 jam.</p>
+    </section>
+
+    <section id="appView" class="app-view" hidden>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GUDANGKU</p>
+          <h1 id="greeting">Operasional</h1>
+        </div>
+        <button id="logoutButton" class="button quiet" type="button">Keluar</button>
+      </header>
+
+      <p id="appMessage" class="notice" role="status" aria-live="polite"></p>
+      <nav class="tabs" aria-label="Tugas gudang">
+        <button type="button" data-tab="count" aria-pressed="true">Opname</button>
+        <button type="button" data-tab="putaway" aria-pressed="false">Putaway</button>
+        <button type="button" data-tab="picking" aria-pressed="false">Picking</button>
+      </nav>
+
+      <section class="task-area" aria-live="polite">
+        <div class="section-heading">
+          <div>
+            <h2 id="taskTitle">Hitung stok</h2>
+            <p id="taskHint" class="muted">Pilih sesi opname yang tersedia.</p>
+          </div>
+          <button id="refreshButton" class="button outline" type="button">Muat ulang</button>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="scannerDialog" class="scanner-dialog" aria-labelledby="scannerTitle">
+    <div class="scanner-head">
+      <h2 id="scannerTitle">Pindai barcode</h2>
+      <button id="closeScanner" class="button quiet" type="button">Tutup</button>
+    </div>
+    <video id="scannerVideo" playsinline muted></video>
+    <p id="scannerMessage" class="muted" aria-live="polite">Arahkan kamera ke barcode.</p>
+  </dialog>
+</body>
+</html>

@@ -6,8 +6,9 @@ stock control. The desktop interface is built with JavaFX; Spring Boot and
 Spring Data JPA provide the application and persistence layers, with MySQL as
 the database.
 
-The application currently targets desktop workflows. It does not include a
-mobile application, REST/HTTP API, or live ERP integration.
+The application includes a JavaFX desktop client and a mobile web client for
+cycle counts, putaway, and assigned picking. Live ERP integration is not
+implemented.
 
 ## Capabilities
 
@@ -25,6 +26,7 @@ mobile application, REST/HTTP API, or live ERP integration.
 - FIFO, FEFO, or LEFO lot-allocation configuration shared by stock issues,
   SO/DO reservations, MRO Goods Issue, and STO dispatch. FEFO is the default.
 - Interactive schematic warehouse map, inventory filters, and stock alerts.
+- Mobile web execution for scheduled stock counts, putaway, and assigned DO picking.
 - Desktop stock count by rack, including book-stock snapshot, physical count,
   variance review, guarded posting, and on-demand count-priority
   recommendations.
@@ -196,6 +198,11 @@ enable `MOBILE_API_TLS_ENABLED=true`, and configure the standard Spring Boot
 and `SERVER_SSL_KEY_ALIAS` environment variables. Startup rejects non-loopback
 binding without TLS.
 
+Open the mobile interface at `/mobile/` on the same server. Camera barcode
+scanning requires HTTPS (or localhost) and a browser with `BarcodeDetector`;
+keyboard-wedge scanners and manual entry remain available as fallbacks. The
+access token stays in tab memory and is not persisted by the browser.
+
 An optional Windows launcher is available:
 
 ```powershell
@@ -256,9 +263,11 @@ src/
 
 ## Current limitations
 
-- Desktop-only: no mobile application, camera-based scanning, or REST/HTTP API.
-- QR/barcode entry is designed for keyboard-wedge scanners; physical scanner
-  hardware has not been integration-tested.
+- The mobile web client covers cycle counting, putaway, and assigned picking.
+  MRO, return, and STO mobile workflows remain pending.
+- Camera scanning depends on HTTPS (or localhost) and browser `BarcodeDetector`
+  support; keyboard-wedge and manual entry are fallback methods. Physical
+  scanner hardware has not been integration-tested.
 - PO, MRO, returns, and STO approvals now use an admin-managed department
   routing matrix in Settings. Admins assign each user's department and route a
   request department to a distinct approver department; missing routes block
@@ -273,6 +282,9 @@ src/
   camera/mobile scanning and multi-item label batches are not implemented.
 - STO scan history supports partial dispatch and receipt, but does not create
   a separate pick-task lifecycle or support multi-picker/shift scheduling.
+- The dashboard shows rolling 30-day fulfillment, picker, packing, loading,
+  and supplier turnaround metrics. Supplier target SLA and business-calendar
+  compliance are not configured.
 - Operational reports are limited to recent records (up to 200 receipts,
   100 delivery orders, 200 STOs, and 500 scans/audit rows); date filters apply
   within those limits. Supplier lead-time metrics include only receipts linked

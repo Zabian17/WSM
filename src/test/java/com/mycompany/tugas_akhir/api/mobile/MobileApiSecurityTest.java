@@ -17,8 +17,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MobileApiAuthenticationController.class)
@@ -33,6 +35,15 @@ class MobileApiSecurityTest {
         mockMvc.perform(delete("/api/mobile/v1/auth/sessions/current"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void mobileWebShellIsPublicWithRestrictiveContentSecurityPolicy() throws Exception {
+        mockMvc.perform(get("/mobile/"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Security-Policy",
+                        org.hamcrest.Matchers.containsString("default-src 'self'")))
+                .andExpect(header().string("X-Frame-Options", "DENY"));
     }
 
     @Test

@@ -43,6 +43,22 @@ public class MobileApiSecurityConfig {
 
     @Bean
     @Order(2)
+    SecurityFilterChain mobileShellFilterChain(HttpSecurity http) throws Exception {
+        http.securityMatcher("/mobile/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; "
+                                + "script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                                + "media-src 'self' blob:; connect-src 'self'; object-src 'none'; "
+                                + "base-uri 'self'; frame-ancestors 'none'; form-action 'self'"))
+                        .frameOptions(frame -> frame.deny()));
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
     SecurityFilterChain denyOtherHttpRequests(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(authorize -> authorize.anyRequest().denyAll())
                 .csrf(csrf -> csrf.disable());

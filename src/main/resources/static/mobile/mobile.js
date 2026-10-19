@@ -106,7 +106,8 @@ async function loadCurrentTab() {
     count: ["Hitung stok", "Pilih sesi opname yang tersedia."],
     putaway: ["Simpan barang", "Pilih receipt dan lokasi rak yang disarankan."],
     picking: ["Ambil pesanan", "Tugas yang diberikan kepada akun ini."],
-    mro: ["Pengeluaran MRO", "Ambil barang perawatan sesuai QR dan lokasi lot." ]
+    mro: ["Pengeluaran MRO", "Ambil barang perawatan sesuai QR dan lokasi lot."],
+    returns: ["Posting retur", "Pindai setiap baris return yang telah disetujui."]
   };
   document.querySelector("#taskTitle").textContent = names[currentTab][0];
   document.querySelector("#taskHint").textContent = names[currentTab][1];
@@ -116,7 +117,8 @@ async function loadCurrentTab() {
     if (currentTab === "count") await loadCounts();
     else if (currentTab === "putaway") await loadPutaway();
     else if (currentTab === "picking") await loadPicking();
-    else await loadMro();
+    else if (currentTab === "mro") await loadMro();
+    else await loadReturns();
     message(appMessage, "");
   } catch (error) {
     message(appMessage, error.message, "error");
@@ -325,6 +327,60 @@ async function openMroTask(id) {
     card.append(row);
   });
   card.append(button("Kembali ke daftar", loadMro, "outline"));
+  taskList.append(card);
+}
+
+async function loadReturns() {
+  const page = await request("/returns?page=0&size=100");
+  if (!page.data.length) return showEmpty("Tidak ada return yang menunggu posting.");
+  page.data.forEach(returnRequest => {
+    const type = returnRequest.returnType === "PURCHASE" ? "Purchase Return" : "Sales Return";
+    const card = taskCard(returnRequest.returnCode, `${type} · ${returnRequest.reason}`,
+      `${returnRequest.lineCount} baris · disetujui`);
+    card.append(button("Verifikasi scan", () => openReturn(returnRequest.id)));
+    taskList.append(card);
+  });
+}
+
+async function openReturn(id) {
+  const detail = await request(`/returns/${id}`);
+  taskList.replaceChildren();
+  document.querySelector("#taskTitle").textContent = detail.request.returnCode;
+  const sourceOrDestination = detail.request.returnType === "PURCHASE" ? "lokasi sumber" : "lokasi tujuan";
+  document.querySelector("#taskHint").textContent = `${detail.request.returnType === "PURCHASE" ? "Purchase" : "Sales"} Return · scan ${sourceOrDestination} sesuai setiap baris.`;
+  const card = workflowCard();
+  const scans = [];
+  detail.lines.forEach(line => {
+    const row = element("div", "line-row");
+    const description = element("div");
+    description.append(text("p", line.itemCode, "line-title"),
+      text("p", `${line.itemName} · ${line.quantity} unit · batch ${line.batchCode}`),
+      text("p", `${line.rackCode}${line.expiryDate ? ` · kedaluwarsa ${line.expiryDate}` : ""}`));
+    const fields = element("div");
+    const itemBarcode = input("QR barang dan batch", "text", { autocomplete: "off", maxlength: "512" });
+    const locationBarcode = input(sourceOrDestination, "text", { autocomplete: "off", maxlength: "512" });
+    fields.append(fieldWithButton(itemBarcode, button("Kamera", () => openScanner(itemBarcode), "outline")),
+      fieldWithButton(locationBarcode, button("Kamera", () => openScanner(locationBarcode), "outline")));
+    row.append(description, fields);
+    card.append(row);
+    scans.push({ line, itemBarcode, locationBarcode });
+  });
+  card.append(button("Posting return", async () => {
+    if (scans.some(scan => !scan.itemBarcode.value.trim() || !scan.locationBarcode.value.trim())) {
+      return message(appMessage, "Pindai barang dan lokasi untuk setiap baris.", "error");
+    }
+    try {
+      await request(`/returns/${id}/post`, { method: "POST", body: JSON.stringify({
+        scans: scans.map(({ line, itemBarcode, locationBarcode }) => ({
+          lineId: line.lineId, itemBarcode: itemBarcode.value.trim(),
+          locationBarcode: locationBarcode.value.trim()
+        }))
+      }) });
+      message(appMessage, "Return tervalidasi dan berhasil diposting.", "success");
+      await loadReturns();
+    } catch (error) { message(appMessage, error.message, "error"); }
+  }));
+  card.append(button("Kembali ke daftar", loadReturns, "outline"));
   taskList.append(card);
 }
 

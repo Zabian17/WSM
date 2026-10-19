@@ -113,6 +113,42 @@ class ReturnRequestServiceTest {
                 eq(LocalDate.now().plusDays(30)), eq(1), any(), eq(4));
     }
 
+    @Test
+    void scannedApprovedSalesReturnRequiresMatchingItemAndRackBeforePosting() {
+        ReturnRequest request = salesReturn();
+        ReflectionTestUtils.setField(request.getLines().get(0), "id", 1);
+        request.review(user(4), true, null, LocalDateTime.now());
+        when(returnRepository.findByIdWithLinesForUpdate(15)).thenReturn(Optional.of(request));
+
+        assertFalse(service.postApprovedReturnWithBarcodes(15, 4,
+                java.util.List.of(new ReturnRequestService.MobileReturnScan(99,
+                        itemQr("SKU-1", "RETURN-LOT", LocalDate.now().plusDays(30)), locationQr("A-01")))));
+        verify(inboundStockPoster, never()).postInbound(any(), any(), any(), any(), any(), anyInt(), any(), any());
+    }
+
+    @Test
+    void scannedApprovedSalesReturnPostsOnlyAfterMatchingItemBatchExpiryAndRack() {
+        ReturnRequest request = salesReturn();
+        ReflectionTestUtils.setField(request.getLines().get(0), "id", 1);
+        request.review(user(4), true, null, LocalDateTime.now());
+        DeliveryOrder sourceOrder = dispatchedOrder();
+        when(returnRepository.findByIdWithLinesForUpdate(15)).thenReturn(Optional.of(request));
+        when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
+        when(deliveryOrderLineRepository.findByIdForUpdate(9)).thenReturn(Optional.of(request
+                .getLines().get(0).getDeliveryOrderLine()));
+        when(returnRepository.sumSalesReturnQuantity(eq(9), any())).thenReturn(2L);
+        when(inboundStockPoster.postInbound(1, null, 2, "RETURN-LOT", LocalDate.now().plusDays(30),
+                1, "Sales Return " + request.getReturnCode() + " dari DO " + sourceOrder.getOrderCode(), 4))
+                .thenReturn(true);
+
+        assertTrue(service.postApprovedReturnWithBarcodes(15, 4,
+                java.util.List.of(new ReturnRequestService.MobileReturnScan(1,
+                        itemQr("SKU-1", "RETURN-LOT", LocalDate.now().plusDays(30)), locationQr("A-01")))));
+        assertEquals(ReturnStatus.POSTED, request.getStatus());
+        verify(inboundStockPoster).postInbound(eq(1), isNull(), eq(2), eq("RETURN-LOT"),
+                eq(LocalDate.now().plusDays(30)), eq(1), any(), eq(4));
+    }
+
     private PurchaseOrderLine purchaseLine() {
         PurchaseOrder order = new PurchaseOrder("PO-1", new Supplier(4, "Supplier", null, null, null),
                 user(3), null, LocalDateTime.now());

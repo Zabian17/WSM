@@ -4,6 +4,8 @@ import com.mycompany.tugas_akhir.model.*;
 import com.mycompany.tugas_akhir.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +51,54 @@ public class ReturnRequestService {
     @Transactional(readOnly = true)
     public List<ReturnRequest> getRecentReturns() {
         return returnRepository.findTop200ByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReturnRequest> getMobileApprovedReturns(Pageable pageable) {
+        return returnRepository.findByStatusOrderByCreatedAtAsc(ReturnStatus.APPROVED, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<ReturnRequest> getMobileApprovedReturn(Integer requestId) {
+        if (requestId == null) return java.util.Optional.empty();
+        return returnRepository.findById(requestId).filter(request -> request.getStatus() == ReturnStatus.APPROVED);
+    }
+
+    @Transactional
+    public boolean postApprovedReturnWithBarcodes(Integer requestId, Integer userId,
+                                                   List<MobileReturnScan> scans) {
+        if (requestId == null || userId == null || scans == null || scans.isEmpty() || scans.size() > 100) {
+            return false;
+        }
+        ReturnRequest request = returnRepository.findByIdWithLinesForUpdate(requestId).orElse(null);
+        if (request == null || request.getStatus() != ReturnStatus.APPROVED || request.getLines().isEmpty()
+                || scans.size() != request.getLines().size()) return false;
+        java.util.Map<Integer, MobileReturnScan> scansByLine = new java.util.HashMap<>();
+        for (MobileReturnScan scan : scans) {
+            if (scan == null || scan.lineId() == null || scan.itemBarcode() == null
+                    || scan.itemBarcode().isBlank() || scan.itemBarcode().length() > 512
+                    || scan.locationBarcode() == null || scan.locationBarcode().isBlank()
+                    || scan.locationBarcode().length() > 512
+                    || scansByLine.putIfAbsent(scan.lineId(), scan) != null) return false;
+        }
+        for (ReturnRequestLine line : request.getLines()) {
+            MobileReturnScan scan = scansByLine.get(line.getId());
+            BarcodePayload.Item item = scan == null ? null : BarcodePayload.parseItem(scan.itemBarcode());
+            String rackCode = scan == null ? null : BarcodePayload.parseLocation(scan.locationBarcode());
+            if (item == null || rackCode == null
+                    || !line.getBarang().getKodeBarang().equalsIgnoreCase(item.sku())
+                    || !line.getRak().getKodeRak().equalsIgnoreCase(rackCode)
+                    || !line.getBatchCode().equals(item.batchCode())) return false;
+            if (request.getReturnType() == ReturnType.PURCHASE) {
+                InventoryLotBalance lot = lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(
+                        line.getBarang().getId(), "RAK-" + line.getRak().getId(), line.getBatchCode()).orElse(null);
+                if (lot == null || !java.util.Objects.equals(lot.getExpiryDate(), item.expiryDate())
+                        || lot.getAvailableQuantity() < line.getQuantity()) return false;
+            } else if (!java.util.Objects.equals(line.getExpiryDate(), item.expiryDate())) {
+                return false;
+            }
+        }
+        return postApprovedReturn(requestId, userId);
     }
 
     @Transactional
@@ -198,6 +248,8 @@ public class ReturnRequestService {
     private boolean invalidReason(String reason) {
         return reason == null || reason.isBlank() || reason.trim().length() > 2000;
     }
+
+    public record MobileReturnScan(Integer lineId, String itemBarcode, String locationBarcode) {}
 
     private String returnCode() {
         return "RET-" + UUID.randomUUID().toString().replace("-", "")

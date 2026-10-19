@@ -48,7 +48,7 @@
 
 - [~] Define the provider-neutral ERP SPI and SAP/Oracle/Accurate provider keys; Accurate database discovery/session setup is implemented, while PO/SO sync needs endpoint schemas and field mappings.
 - [x] Add Accurate API-token configuration and validated database-list/open-session requests; reject database hosts outside HTTPS Accurate domains.
-- [x] Add session-aware Accurate database GET/POST transport with bounded 308 redirects, preserved authorization/session headers, and request/response size validation.
+- [x] Add session-aware Accurate database GET/POST transport with bounded 308 redirects, preserved authorization/session headers, request/response size validation, and Accurate's 8-request/8-in-flight limits.
 - [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
 - [x] Add admin-configurable Delivery Order zone exclusions to available-stock reservation.
 - [x] Apply configurable zone exclusions to manual/SLOC and barcode-based stock transfers.

@@ -28,6 +28,7 @@ public class AccurateDatabaseClient {
     private final RestClient restClient;
     private final AccurateApiProperties properties;
     private final ObjectMapper objectMapper;
+    private final AccurateRequestGate requestGate = new AccurateRequestGate();
 
     public AccurateDatabaseClient(RestClient.Builder builder, AccurateApiProperties properties,
                                   ObjectMapper objectMapper) {
@@ -59,14 +60,20 @@ public class AccurateDatabaseClient {
         Set<URI> visited = new HashSet<>();
         for (int redirects = 0; ; redirects++) {
             if (!visited.add(target)) throw new IllegalStateException("Accurate redirect loop detected.");
-            ExchangeResult result = restClient.method(method).uri(target)
-                    .headers(headers -> {
-                        headers.setBearerAuth(token);
-                        headers.set("X-Session-ID", session.session());
-                    })
-                    .body(method == HttpMethod.POST ? form : new LinkedMultiValueMap<>())
-                    .exchange((request, response) -> new ExchangeResult(response.getStatusCode().value(),
-                            response.getHeaders().getLocation(), readLimited(response.getBody())));
+            ExchangeResult result;
+            requestGate.acquire();
+            try {
+                result = restClient.method(method).uri(target)
+                        .headers(headers -> {
+                            headers.setBearerAuth(token);
+                            headers.set("X-Session-ID", session.session());
+                        })
+                        .body(method == HttpMethod.POST ? form : new LinkedMultiValueMap<>())
+                        .exchange((request, response) -> new ExchangeResult(response.getStatusCode().value(),
+                                response.getHeaders().getLocation(), readLimited(response.getBody())));
+            } finally {
+                requestGate.release();
+            }
             if (result.status() == 308) {
                 if (redirects >= MAX_REDIRECTS || result.location() == null) {
                     throw new IllegalStateException("Accurate redirect could not be followed safely.");

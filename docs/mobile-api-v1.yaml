@@ -132,6 +132,65 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /putaway/receipts:
+    get:
+      summary: List inbound receipts waiting for putaway
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Paginated pending putaway tasks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PutawayTaskPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /putaway/receipts/{receiptId}/suggestions:
+    get:
+      summary: List compatible destination rack suggestions
+      parameters:
+        - { $ref: '#/components/parameters/receiptId' }
+      responses:
+        '200':
+          description: Rack suggestions ordered by existing putaway policy
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RackSuggestion' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /putaway/receipts/{receiptId}/complete:
+    post:
+      summary: Complete putaway after scanning item and destination barcodes
+      parameters:
+        - { $ref: '#/components/parameters/receiptId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemBarcode, locationBarcode, rackId]
+              properties:
+                itemBarcode: { type: string, maxLength: 512, description: WMS1 item QR payload }
+                locationBarcode: { type: string, maxLength: 512, description: SLOC1 rack QR payload }
+                rackId: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Putaway posted to inventory
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: PUTAWAY }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     bearerAuth:
@@ -141,6 +200,11 @@ components:
   parameters:
     countId:
       name: countId
+      in: path
+      required: true
+      schema: { type: integer }
+    receiptId:
+      name: receiptId
       in: path
       required: true
       schema: { type: integer }
@@ -180,6 +244,32 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/CountLine' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    PutawayTask:
+      type: object
+      properties:
+        id: { type: integer }
+        receiptCode: { type: string }
+        itemCode: { type: string }
+        itemName: { type: string }
+        quantity: { type: integer }
+        batchCode: { type: string }
+        expiryDate: { type: [string, 'null'], format: date }
+        status: { type: string, const: PUTAWAY_PENDING }
+        createdAt: { type: string, format: date-time }
+    RackSuggestion:
+      type: object
+      properties:
+        rackId: { type: integer }
+        rackCode: { type: string }
+        availableCapacity: { type: integer }
+        categoryMatch: { type: boolean }
+        storageTypeMatch: { type: boolean }
+        availableCbm: { type: [number, 'null'] }
+    PutawayTaskPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PutawayTask' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     ApiError:
       type: object

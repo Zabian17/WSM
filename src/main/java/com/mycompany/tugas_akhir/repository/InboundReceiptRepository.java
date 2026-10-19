@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.repository;
 import com.mycompany.tugas_akhir.model.InboundReceipt;
 import com.mycompany.tugas_akhir.model.InboundReceiptStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface InboundReceiptRepository extends JpaRepository<InboundReceipt, Integer> {
+
+    Page<InboundReceipt> findAllByStatusOrderByCreatedAtAsc(InboundReceiptStatus status, Pageable pageable);
 
     @Query("SELECT r FROM InboundReceipt r "
             + "LEFT JOIN FETCH r.purchaseOrderLine line "

@@ -25,6 +25,8 @@ import com.mycompany.tugas_akhir.repository.InventoryBalanceRepository;
 import com.mycompany.tugas_akhir.model.InventoryBalance;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -263,6 +265,12 @@ public class InboundReceiptService {
     @Transactional(readOnly = true)
     public Optional<InboundReceipt> findReceipt(Integer receiptId) {
         return receiptRepository.findById(receiptId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InboundReceipt> getMobilePendingPutaway(Pageable pageable) {
+        return receiptRepository.findAllByStatusOrderByCreatedAtAsc(
+                InboundReceiptStatus.PUTAWAY_PENDING, pageable);
     }
 
     @Transactional(readOnly = true)

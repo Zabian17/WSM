@@ -157,6 +157,8 @@
                                                 promptText="Dari" visible="false" managed="false"/>
                                     <DatePicker fx:id="warehouseMetricTo" prefWidth="125"
                                                 promptText="Sampai" visible="false" managed="false"/>
+                                    <Button fx:id="warehouseTargetButton" text="Atur target" styleClass="btn-outline"
+                                            visible="false" managed="false" onAction="#handleConfigureWarehouseTargets"/>
                                     <Button text="Terapkan" styleClass="btn-outline"
                                             onAction="#handleRefreshWarehouseMetrics"/>
                                 </HBox>

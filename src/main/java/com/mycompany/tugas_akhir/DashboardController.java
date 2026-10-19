@@ -8,6 +8,7 @@ import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
 import com.mycompany.tugas_akhir.service.WarehouseDashboardService;
 import com.mycompany.tugas_akhir.service.DashboardPeriod;
+import com.mycompany.tugas_akhir.service.WarehouseDashboardService.DashboardTargets;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -31,6 +32,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -47,6 +49,7 @@ public class DashboardController implements Initializable {
 
     private User currentUser;
     private Node defaultDashboardView;
+    private DashboardTargets currentDashboardTargets = DashboardTargets.empty();
 
     @FXML private ScrollPane mainScrollPane;
     @FXML private FlowPane sectionsFlowPane;
@@ -55,6 +58,7 @@ public class DashboardController implements Initializable {
     @FXML private ComboBox<String> warehouseMetricPeriod;
     @FXML private DatePicker warehouseMetricFrom;
     @FXML private DatePicker warehouseMetricTo;
+    @FXML private Button warehouseTargetButton;
 
     @FXML private HBox navDashboard;
     @FXML private HBox navStorage;
@@ -105,6 +109,11 @@ public class DashboardController implements Initializable {
 
     public void initUser(User user) {
         this.currentUser = user;
+        if (warehouseTargetButton != null) {
+            boolean admin = user != null && "admin".equalsIgnoreCase(user.getRole());
+            warehouseTargetButton.setVisible(admin);
+            warehouseTargetButton.setManaged(admin);
+        }
         if (user != null) {
             String inisial = (user.getFullName() != null && !user.getFullName().isEmpty()) 
                     ? user.getFullName().substring(0, 1).toUpperCase() : "U";
@@ -153,6 +162,96 @@ public class DashboardController implements Initializable {
         warehouseMetricTo.setManaged(custom);
     }
 
+    @FXML
+    private void handleConfigureWarehouseTargets() {
+        if (currentUser == null || !"admin".equalsIgnoreCase(currentUser.getRole())) return;
+        DashboardTargets saved = currentDashboardTargets;
+        TextField fulfillment = targetField(saved.fulfillmentPercent());
+        TextField packing = targetField(saved.packingPercent());
+        TextField loading = targetField(saved.loadingPercent());
+        TextField supplierQc = targetField(saved.supplierQcMaxHours());
+        TextField supplierLead = targetField(saved.supplierLeadMaxHours());
+        TextField picker = targetField(saved.pickerMinimumQuantity());
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(9);
+        addTargetField(grid, 0, "Pemenuhan pesanan minimum (%)", fulfillment);
+        addTargetField(grid, 1, "Efisiensi packing minimum (%)", packing);
+        addTargetField(grid, 2, "Efisiensi loading minimum (%)", loading);
+        addTargetField(grid, 3, "Batas waktu QC supplier (jam)", supplierQc);
+        addTargetField(grid, 4, "Batas PO sampai receipt (jam)", supplierLead);
+        addTargetField(grid, 5, "Minimum unit picker per periode", picker);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Target KPI Gudang");
+        dialog.setHeaderText("Kosongkan target yang tidak ingin dinilai. Target berlaku untuk semua pengguna.");
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+        dialog.getDialogPane().setPrefWidth(520);
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+
+        DashboardTargets targets;
+        try {
+            targets = new DashboardTargets(parseDecimal(fulfillment), parseDecimal(packing), parseDecimal(loading),
+                    parseDecimal(supplierQc), parseDecimal(supplierLead), parseInteger(picker));
+        } catch (NumberFormatException exception) {
+            showDashboardAlert(Alert.AlertType.ERROR, "Target tidak valid",
+                    "Isi target dengan angka; persentase 0–100 dan nilai lainnya tidak boleh negatif.");
+            return;
+        }
+        Button button = warehouseTargetButton;
+        button.setDisable(true);
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() { return warehouseDashboardService.updateTargets(targets); }
+        };
+        task.setOnSucceeded(event -> {
+            button.setDisable(false);
+            if (!task.getValue()) {
+                showDashboardAlert(Alert.AlertType.ERROR, "Target tidak valid",
+                        "Persentase harus 0–100; jam dan jumlah unit harus nol atau lebih.");
+                return;
+            }
+            currentDashboardTargets = targets;
+            loadWarehouseMetricsAsync();
+        });
+        task.setOnFailed(event -> {
+            button.setDisable(false);
+            log.error("Gagal menyimpan target KPI dashboard", task.getException());
+            showDashboardAlert(Alert.AlertType.ERROR, "Gagal menyimpan", "Target KPI tidak dapat disimpan.");
+        });
+        Thread thread = new Thread(task, "warehouse-dashboard-target-save");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private TextField targetField(Object value) {
+        TextField field = new TextField(value == null ? "" : value.toString());
+        field.setPromptText("Nonaktif");
+        field.setPrefColumnCount(14);
+        return field;
+    }
+
+    private void addTargetField(GridPane grid, int row, String label, TextField field) {
+        grid.addRow(row, new Label(label), field);
+    }
+
+    private BigDecimal parseDecimal(TextField field) {
+        String value = field.getText().trim();
+        return value.isEmpty() ? null : new BigDecimal(value.replace(',', '.'));
+    }
+
+    private Integer parseInteger(TextField field) {
+        String value = field.getText().trim();
+        return value.isEmpty() ? null : Integer.valueOf(value);
+    }
+
+    private void showDashboardAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type, message, ButtonType.OK);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
     private void loadWarehouseMetricsAsync() {
         LocalDate today = LocalDate.now();
         String selectedPeriod = warehouseMetricPeriod == null || warehouseMetricPeriod.getValue() == null
@@ -170,10 +269,11 @@ public class DashboardController implements Initializable {
             warehouseMetricRange.setText("Pilih rentang tanggal yang valid.");
             return;
         }
-        Task<WarehouseDashboardService.DashboardMetrics> task = new Task<>() {
+        Task<DashboardSnapshot> task = new Task<>() {
             @Override
-            protected WarehouseDashboardService.DashboardMetrics call() {
-                return warehouseDashboardService.getMetrics(period.from(), period.to());
+            protected DashboardSnapshot call() {
+                return new DashboardSnapshot(warehouseDashboardService.getMetrics(period.from(), period.to()),
+                        warehouseDashboardService.getTargets());
             }
         };
         task.setOnSucceeded(event -> renderWarehouseMetrics(task.getValue(), selectedPeriod));
@@ -186,22 +286,28 @@ public class DashboardController implements Initializable {
         thread.start();
     }
 
-    private void renderWarehouseMetrics(WarehouseDashboardService.DashboardMetrics metrics, String selectedPeriod) {
+    private void renderWarehouseMetrics(DashboardSnapshot snapshot, String selectedPeriod) {
         if (warehouseMetricsPane == null) return;
+        WarehouseDashboardService.DashboardMetrics metrics = snapshot.metrics();
+        DashboardTargets targets = snapshot.targets();
+        currentDashboardTargets = targets;
         warehouseMetricRange.setText(selectedPeriod + " • " + metrics.from().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID")))
                 + " – " + metrics.to().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID"))));
         warehouseMetricsPane.getChildren().setAll(
                 metricCard("Pemenuhan pesanan", formatPercent(metrics.fulfillmentRatePercent()),
-                        formatQuantity(metrics.shippedQuantity()) + " dari " + formatQuantity(metrics.orderedQuantity()) + " unit terkirim"),
+                        formatQuantity(metrics.shippedQuantity()) + " dari " + formatQuantity(metrics.orderedQuantity()) + " unit terkirim",
+                        percentageTarget(targets.fulfillmentPercent(), metrics.fulfillmentRatePercent())),
                 metricCard("Efisiensi packing", formatPercent(metrics.packingEfficiencyPercent()),
-                        formatQuantity(metrics.packedQuantity()) + " dari " + formatQuantity(metrics.pickedQuantity()) + " unit hasil picking"),
+                        formatQuantity(metrics.packedQuantity()) + " dari " + formatQuantity(metrics.pickedQuantity()) + " unit hasil picking",
+                        percentageTarget(targets.packingPercent(), metrics.packingEfficiencyPercent())),
                 metricCard("Efisiensi loading", formatPercent(metrics.loadingEfficiencyPercent()),
-                        formatQuantity(metrics.loadedQuantity()) + " dari " + formatQuantity(metrics.packedForLoading()) + " unit hasil packing"),
-                pickerMetricCard(metrics.pickers()),
-                supplierMetricCard(metrics.suppliers()));
+                        formatQuantity(metrics.loadedQuantity()) + " dari " + formatQuantity(metrics.packedForLoading()) + " unit hasil packing",
+                        percentageTarget(targets.loadingPercent(), metrics.loadingEfficiencyPercent())),
+                pickerMetricCard(metrics.pickers(), targets.pickerMinimumQuantity()),
+                supplierMetricCard(metrics.suppliers(), targets));
     }
 
-    private VBox metricCard(String title, String value, String detail) {
+    private VBox metricCard(String title, String value, String detail, String targetStatus) {
         VBox card = new VBox(7);
         card.setStyle("-fx-background-color:#f8faff; -fx-background-radius:10; -fx-border-color:#e7ebf2; "
                 + "-fx-border-radius:10; -fx-padding:14; -fx-pref-width:210px; -fx-min-height:96px;");
@@ -212,33 +318,55 @@ public class DashboardController implements Initializable {
         Label subheading = new Label(detail);
         subheading.setWrapText(true);
         subheading.setStyle("-fx-font-size:10px; -fx-text-fill:#748198;");
-        card.getChildren().addAll(heading, number, subheading);
+        Label target = new Label(targetStatus);
+        target.setWrapText(true);
+        target.setStyle("-fx-font-size:10px; -fx-font-weight:bold; -fx-text-fill:#475569;");
+        card.getChildren().addAll(heading, number, subheading, target);
         return card;
     }
 
-    private VBox pickerMetricCard(List<WarehouseDashboardService.PickerMetric> pickers) {
+    private VBox pickerMetricCard(List<WarehouseDashboardService.PickerMetric> pickers, Integer minimumQuantity) {
         VBox card = metricListCard("Produktivitas picker");
         if (pickers.isEmpty()) addEmptyMetric(card);
         for (WarehouseDashboardService.PickerMetric picker : pickers) {
-            addMetricRow(card, picker.pickerName(), formatQuantity(picker.pickedQuantity()) + " unit • "
-                    + formatQuantity(picker.scanCount()) + " scan");
+            String result = formatQuantity(picker.pickedQuantity()) + " unit • "
+                    + formatQuantity(picker.scanCount()) + " scan";
+            if (minimumQuantity != null) result += " • target " + minimumQuantity + " unit: "
+                    + (picker.pickedQuantity() >= minimumQuantity ? "tercapai" : "belum tercapai");
+            addMetricRow(card, picker.pickerName(), result);
         }
         return card;
     }
 
-    private VBox supplierMetricCard(List<WarehouseDashboardService.SupplierMetric> suppliers) {
+    private VBox supplierMetricCard(List<WarehouseDashboardService.SupplierMetric> suppliers, DashboardTargets targets) {
         VBox card = metricListCard("Rata-rata waktu supplier");
         if (suppliers.isEmpty()) addEmptyMetric(card);
         for (WarehouseDashboardService.SupplierMetric supplier : suppliers) {
-            String qc = supplier.averageQcHours() == null ? "QC —" : "QC " + formatHours(supplier.averageQcHours());
+            String qc = supplier.averageQcHours() == null ? "QC —" : "QC " + formatHours(supplier.averageQcHours())
+                    + hoursTargetStatus(targets.supplierQcMaxHours(), supplier.averageQcHours());
             String lead = supplier.averagePoToReceiptHours() == null ? "PO–terima —"
-                    : "PO–terima " + formatHours(supplier.averagePoToReceiptHours());
+                    : "PO–terima " + formatHours(supplier.averagePoToReceiptHours())
+                    + hoursTargetStatus(targets.supplierLeadMaxHours(), supplier.averagePoToReceiptHours());
             addMetricRow(card, supplier.supplierName(), qc + " • " + lead + "\nQC "
                     + supplier.qcCompleted() + "/" + supplier.receiptCount() + " receipt • PO "
                     + supplier.poToReceiptSamples() + " sampel");
         }
         return card;
     }
+
+    private String percentageTarget(BigDecimal target, double actual) {
+        if (target == null) return "Target nonaktif";
+        boolean met = BigDecimal.valueOf(actual).compareTo(target) >= 0;
+        return "Target ≥ " + formatPercent(target.doubleValue()) + " · " + (met ? "tercapai" : "belum tercapai");
+    }
+
+    private String hoursTargetStatus(BigDecimal target, double actual) {
+        if (target == null) return "";
+        boolean met = BigDecimal.valueOf(actual).compareTo(target) <= 0;
+        return " · batas " + formatHours(target.doubleValue()) + (met ? " tercapai" : " terlampaui");
+    }
+
+    private record DashboardSnapshot(WarehouseDashboardService.DashboardMetrics metrics, DashboardTargets targets) {}
 
     private VBox metricListCard(String title) {
         VBox card = new VBox(7);

@@ -10,10 +10,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -22,13 +28,14 @@ class WarehouseDashboardServiceTest {
     @Mock private DeliveryOrderPickScanRepository pickScanRepository;
     @Mock private InboundReceiptRepository inboundReceiptRepository;
     @Mock private DeliveryOrderLotReservationRepository reservationRepository;
+    @Mock private WarehouseDashboardTargetRepository targetRepository;
 
     private WarehouseDashboardService service;
 
     @BeforeEach
     void setUp() {
         service = new WarehouseDashboardService(deliveryOrderRepository, pickScanRepository,
-                inboundReceiptRepository, reservationRepository);
+                inboundReceiptRepository, reservationRepository, targetRepository);
     }
 
     @Test
@@ -95,5 +102,40 @@ class WarehouseDashboardServiceTest {
         assertEquals(1, metrics.suppliers().get(0).poToReceiptSamples());
         assertEquals(6.0, metrics.suppliers().get(0).averageQcHours());
         assertEquals(42.0, metrics.suppliers().get(0).averagePoToReceiptHours());
+    }
+
+    @Test
+    void savesSharedTargetsAndAllowsBlankTargetsToDisableThresholds() {
+        var targets = new WarehouseDashboardService.DashboardTargets(new BigDecimal("95"), null,
+                new BigDecimal("98.5"), new BigDecimal("4"), null, 120);
+
+        assertTrue(service.updateTargets(targets));
+        verify(targetRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                saved.getFulfillmentPercent().compareTo(new BigDecimal("95")) == 0
+                        && saved.getPackingPercent() == null
+                        && saved.getLoadingPercent().compareTo(new BigDecimal("98.5")) == 0
+                        && saved.getSupplierQcMaxHours().compareTo(new BigDecimal("4")) == 0
+                        && saved.getSupplierLeadMaxHours() == null
+                        && saved.getPickerMinimumQuantity() == 120));
+    }
+
+    @Test
+    void rejectsOutOfRangeDashboardTargets() {
+        assertFalse(service.updateTargets(new WarehouseDashboardService.DashboardTargets(
+                new BigDecimal("100.01"), null, null, null, null, null)));
+        assertFalse(service.updateTargets(new WarehouseDashboardService.DashboardTargets(
+                null, null, null, new BigDecimal("-1"), null, null)));
+        assertFalse(service.updateTargets(new WarehouseDashboardService.DashboardTargets(
+                null, null, null, null, null, -1)));
+        verifyNoInteractions(targetRepository);
+    }
+
+    @Test
+    void returnsDisabledTargetsUntilAnAdminConfiguresThem() {
+        when(targetRepository.findById(1)).thenReturn(java.util.Optional.empty());
+
+        assertEquals(WarehouseDashboardService.DashboardTargets.empty(), service.getTargets());
+        verify(targetRepository).findById(1);
+        verifyNoMoreInteractions(targetRepository);
     }
 }

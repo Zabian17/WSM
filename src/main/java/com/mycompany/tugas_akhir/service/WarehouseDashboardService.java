@@ -4,12 +4,14 @@ import com.mycompany.tugas_akhir.model.DeliveryOrder;
 import com.mycompany.tugas_akhir.model.DeliveryOrderLine;
 import com.mycompany.tugas_akhir.model.InboundReceipt;
 import com.mycompany.tugas_akhir.model.PurchaseOrderLine;
+import com.mycompany.tugas_akhir.model.WarehouseDashboardTarget;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderLotReservationRepository;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderPickScanRepository;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderRepository;
 import com.mycompany.tugas_akhir.repository.InboundReceiptRepository;
 import com.mycompany.tugas_akhir.repository.PickerProductivityProjection;
 import com.mycompany.tugas_akhir.repository.WarehouseStageTotalsProjection;
+import com.mycompany.tugas_akhir.repository.WarehouseDashboardTargetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +19,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,15 +31,38 @@ public class WarehouseDashboardService {
     private final DeliveryOrderPickScanRepository pickScanRepository;
     private final InboundReceiptRepository inboundReceiptRepository;
     private final DeliveryOrderLotReservationRepository reservationRepository;
+    private final WarehouseDashboardTargetRepository targetRepository;
 
     public WarehouseDashboardService(DeliveryOrderRepository deliveryOrderRepository,
                                      DeliveryOrderPickScanRepository pickScanRepository,
                                      InboundReceiptRepository inboundReceiptRepository,
-                                     DeliveryOrderLotReservationRepository reservationRepository) {
+                                     DeliveryOrderLotReservationRepository reservationRepository,
+                                     WarehouseDashboardTargetRepository targetRepository) {
         this.deliveryOrderRepository = deliveryOrderRepository;
         this.pickScanRepository = pickScanRepository;
         this.inboundReceiptRepository = inboundReceiptRepository;
         this.reservationRepository = reservationRepository;
+        this.targetRepository = targetRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public DashboardTargets getTargets() {
+        return targetRepository.findById(1).map(target -> new DashboardTargets(
+                target.getFulfillmentPercent(), target.getPackingPercent(), target.getLoadingPercent(),
+                target.getSupplierQcMaxHours(), target.getSupplierLeadMaxHours(),
+                target.getPickerMinimumQuantity())).orElseGet(DashboardTargets::empty);
+    }
+
+    @Transactional
+    public boolean updateTargets(DashboardTargets targets) {
+        if (targets == null || !validPercent(targets.fulfillmentPercent())
+                || !validPercent(targets.packingPercent()) || !validPercent(targets.loadingPercent())
+                || !validHours(targets.supplierQcMaxHours()) || !validHours(targets.supplierLeadMaxHours())
+                || targets.pickerMinimumQuantity() != null && targets.pickerMinimumQuantity() < 0) return false;
+        targetRepository.save(new WarehouseDashboardTarget(targets.fulfillmentPercent(), targets.packingPercent(),
+                targets.loadingPercent(), targets.supplierQcMaxHours(), targets.supplierLeadMaxHours(),
+                targets.pickerMinimumQuantity()));
+        return true;
     }
 
     @Transactional(readOnly = true)
@@ -100,6 +126,11 @@ public class WarehouseDashboardService {
                                   long pickedQuantity, long packedQuantity, double packingEfficiencyPercent,
                                   long packedForLoading, long loadedQuantity, double loadingEfficiencyPercent,
                                   List<SupplierMetric> suppliers) {}
+    public record DashboardTargets(BigDecimal fulfillmentPercent, BigDecimal packingPercent,
+                                   BigDecimal loadingPercent, BigDecimal supplierQcMaxHours,
+                                   BigDecimal supplierLeadMaxHours, Integer pickerMinimumQuantity) {
+        public static DashboardTargets empty() { return new DashboardTargets(null, null, null, null, null, null); }
+    }
 
     private static int value(Integer value) { return value == null ? 0 : value; }
     private static long value(Long value) { return value == null ? 0 : value; }
@@ -108,6 +139,13 @@ public class WarehouseDashboardService {
     }
     private static Double averageHours(long totalMinutes, int count) {
         return count == 0 ? null : Math.round(totalMinutes / (double) count) / 60.0;
+    }
+    private static boolean validPercent(BigDecimal value) {
+        return value == null || value.compareTo(BigDecimal.ZERO) >= 0
+                && value.compareTo(BigDecimal.valueOf(100)) <= 0;
+    }
+    private static boolean validHours(BigDecimal value) {
+        return value == null || value.signum() >= 0 && value.compareTo(BigDecimal.valueOf(87600)) <= 0;
     }
 
     private static final class SupplierAccumulator {

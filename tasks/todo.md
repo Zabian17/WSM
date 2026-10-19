@@ -32,7 +32,7 @@
 ## Phase 5: Dashboard and reporting
 
 - [x] Add fulfillment, picker productivity, supplier turnaround, packing, and loading metrics to the dashboard.
-- [ ] Add configurable dashboard metric targets.
+- [x] Add shared configurable fulfillment, packing, loading, supplier-time, and picker-output targets.
 - [x] Add selectable dashboard periods (7/30/90 days, current month, and custom dates).
 
 ## Phase 6: Mobile execution

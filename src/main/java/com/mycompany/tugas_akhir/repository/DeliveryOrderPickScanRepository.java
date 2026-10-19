@@ -29,4 +29,11 @@ public interface DeliveryOrderPickScanRepository extends JpaRepository<DeliveryO
             + "ORDER BY s.scannedAt DESC")
     List<DeliveryOrderPickScan> findInRange(@Param("from") LocalDateTime from,
                                              @Param("to") LocalDateTime to);
+
+    @Query("SELECT new com.mycompany.tugas_akhir.repository.PickerProductivityProjection("
+            + "s.picker.fullName, COUNT(s), SUM(s.quantity)) FROM DeliveryOrderPickScan s "
+            + "WHERE s.scannedAt >= :from AND s.scannedAt <= :to "
+            + "GROUP BY s.picker.id, s.picker.fullName ORDER BY SUM(s.quantity) DESC")
+    List<PickerProductivityProjection> findPickerProductivity(@Param("from") LocalDateTime from,
+                                                               @Param("to") LocalDateTime to);
 }

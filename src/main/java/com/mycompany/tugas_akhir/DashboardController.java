@@ -6,6 +6,7 @@ import com.mycompany.tugas_akhir.model.Section;
 import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
+import com.mycompany.tugas_akhir.service.WarehouseDashboardService;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -28,7 +29,10 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 @Component
@@ -38,12 +42,15 @@ public class DashboardController implements Initializable {
     private final TransaksiService transaksiService;
     private final SectionService sectionService;
     private final SpringFXMLLoader fxmlLoader;
+    private final WarehouseDashboardService warehouseDashboardService;
 
     private User currentUser;
     private Node defaultDashboardView;
 
     @FXML private ScrollPane mainScrollPane;
     @FXML private FlowPane sectionsFlowPane;
+    @FXML private FlowPane warehouseMetricsPane;
+    @FXML private Label warehouseMetricRange;
 
     @FXML private HBox navDashboard;
     @FXML private HBox navStorage;
@@ -63,10 +70,12 @@ public class DashboardController implements Initializable {
 
     public DashboardController(TransaksiService transaksiService,
                                SectionService sectionService,
-                               SpringFXMLLoader fxmlLoader) {
+                               SpringFXMLLoader fxmlLoader,
+                               WarehouseDashboardService warehouseDashboardService) {
         this.transaksiService = transaksiService;
         this.sectionService = sectionService;
         this.fxmlLoader = fxmlLoader;
+        this.warehouseDashboardService = warehouseDashboardService;
     }
 
     @Override
@@ -79,6 +88,7 @@ public class DashboardController implements Initializable {
 
         loadStatsAsync();
         loadSectionsAsync();
+        loadWarehouseMetricsAsync();
     }
 
     public void initUser(User user) {
@@ -116,6 +126,112 @@ public class DashboardController implements Initializable {
         loadSectionsAsync();
         loadStatsAsync();
     }
+
+    @FXML
+    private void handleRefreshWarehouseMetrics() {
+        loadWarehouseMetricsAsync();
+    }
+
+    private void loadWarehouseMetricsAsync() {
+        LocalDate to = LocalDate.now();
+        LocalDate from = to.minusDays(29);
+        Task<WarehouseDashboardService.DashboardMetrics> task = new Task<>() {
+            @Override
+            protected WarehouseDashboardService.DashboardMetrics call() {
+                return warehouseDashboardService.getMetrics(from, to);
+            }
+        };
+        task.setOnSucceeded(event -> renderWarehouseMetrics(task.getValue()));
+        task.setOnFailed(event -> {
+            log.error("Gagal load KPI dashboard", task.getException());
+            if (warehouseMetricRange != null) warehouseMetricRange.setText("KPI tidak dapat dimuat. Coba muat ulang.");
+        });
+        Thread thread = new Thread(task, "warehouse-dashboard-metrics");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void renderWarehouseMetrics(WarehouseDashboardService.DashboardMetrics metrics) {
+        if (warehouseMetricsPane == null) return;
+        warehouseMetricRange.setText("30 hari terakhir • " + metrics.from().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID")))
+                + " – " + metrics.to().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID"))));
+        warehouseMetricsPane.getChildren().setAll(
+                metricCard("Pemenuhan pesanan", formatPercent(metrics.fulfillmentRatePercent()),
+                        formatQuantity(metrics.shippedQuantity()) + " dari " + formatQuantity(metrics.orderedQuantity()) + " unit terkirim"),
+                metricCard("Efisiensi packing", formatPercent(metrics.packingEfficiencyPercent()),
+                        formatQuantity(metrics.packedQuantity()) + " dari " + formatQuantity(metrics.pickedQuantity()) + " unit hasil picking"),
+                metricCard("Efisiensi loading", formatPercent(metrics.loadingEfficiencyPercent()),
+                        formatQuantity(metrics.loadedQuantity()) + " dari " + formatQuantity(metrics.packedForLoading()) + " unit hasil packing"),
+                pickerMetricCard(metrics.pickers()),
+                supplierMetricCard(metrics.suppliers()));
+    }
+
+    private VBox metricCard(String title, String value, String detail) {
+        VBox card = new VBox(7);
+        card.setStyle("-fx-background-color:#f8faff; -fx-background-radius:10; -fx-border-color:#e7ebf2; "
+                + "-fx-border-radius:10; -fx-padding:14; -fx-pref-width:210px; -fx-min-height:96px;");
+        Label heading = new Label(title);
+        heading.setStyle("-fx-font-size:11px; -fx-text-fill:#748198;");
+        Label number = new Label(value);
+        number.setStyle("-fx-font-size:21px; -fx-font-weight:bold; -fx-text-fill:#263247;");
+        Label subheading = new Label(detail);
+        subheading.setWrapText(true);
+        subheading.setStyle("-fx-font-size:10px; -fx-text-fill:#748198;");
+        card.getChildren().addAll(heading, number, subheading);
+        return card;
+    }
+
+    private VBox pickerMetricCard(List<WarehouseDashboardService.PickerMetric> pickers) {
+        VBox card = metricListCard("Produktivitas picker");
+        if (pickers.isEmpty()) addEmptyMetric(card);
+        for (WarehouseDashboardService.PickerMetric picker : pickers) {
+            addMetricRow(card, picker.pickerName(), formatQuantity(picker.pickedQuantity()) + " unit • "
+                    + formatQuantity(picker.scanCount()) + " scan");
+        }
+        return card;
+    }
+
+    private VBox supplierMetricCard(List<WarehouseDashboardService.SupplierMetric> suppliers) {
+        VBox card = metricListCard("Rata-rata waktu supplier");
+        if (suppliers.isEmpty()) addEmptyMetric(card);
+        for (WarehouseDashboardService.SupplierMetric supplier : suppliers) {
+            String qc = supplier.averageQcHours() == null ? "QC —" : "QC " + formatHours(supplier.averageQcHours());
+            String lead = supplier.averagePoToReceiptHours() == null ? "PO–terima —"
+                    : "PO–terima " + formatHours(supplier.averagePoToReceiptHours());
+            addMetricRow(card, supplier.supplierName(), qc + " • " + lead + "\nQC "
+                    + supplier.qcCompleted() + "/" + supplier.receiptCount() + " receipt • PO "
+                    + supplier.poToReceiptSamples() + " sampel");
+        }
+        return card;
+    }
+
+    private VBox metricListCard(String title) {
+        VBox card = new VBox(7);
+        card.setStyle("-fx-background-color:#f8faff; -fx-background-radius:10; -fx-border-color:#e7ebf2; "
+                + "-fx-border-radius:10; -fx-padding:14; -fx-pref-width:300px;");
+        Label heading = new Label(title);
+        heading.setStyle("-fx-font-size:12px; -fx-font-weight:bold; -fx-text-fill:#263247;");
+        card.getChildren().add(heading);
+        return card;
+    }
+
+    private void addMetricRow(VBox card, String title, String value) {
+        Label row = new Label(title + "\n" + value);
+        row.setWrapText(true);
+        row.setStyle("-fx-font-size:10px; -fx-text-fill:#475569; -fx-padding:5 0 0 0; "
+                + "-fx-border-color:#e7ebf2; -fx-border-width:1 0 0 0;");
+        card.getChildren().add(row);
+    }
+
+    private void addEmptyMetric(VBox card) {
+        Label empty = new Label("Belum ada data pada rentang ini.");
+        empty.setStyle("-fx-font-size:10px; -fx-text-fill:#748198;");
+        card.getChildren().add(empty);
+    }
+
+    private String formatQuantity(long quantity) { return String.format(Locale.forLanguageTag("id-ID"), "%,d", quantity); }
+    private String formatPercent(double percent) { return String.format(Locale.forLanguageTag("id-ID"), "%.1f%%", percent); }
+    private String formatHours(double hours) { return String.format(Locale.forLanguageTag("id-ID"), "%.1f jam", hours); }
 
     private void loadSectionsAsync() {
         Task<List<Section>> sectionTask = new Task<>() {

@@ -142,6 +142,19 @@
                 <content>
                     <VBox styleClass="content-area" spacing="16">
 
+                        <VBox styleClass="card" spacing="12">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <VBox spacing="2">
+                                    <Label text="Kinerja Operasional" styleClass="card-title"/>
+                                    <Label fx:id="warehouseMetricRange" text="Memuat ringkasan 30 hari terakhir..."
+                                           style="-fx-font-size:11px; -fx-text-fill:#748198;"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="Muat Ulang KPI" styleClass="btn-outline" onAction="#handleRefreshWarehouseMetrics"/>
+                            </HBox>
+                            <FlowPane fx:id="warehouseMetricsPane" hgap="12" vgap="12" alignment="TOP_LEFT"/>
+                        </VBox>
+
                         <!-- ROW 1: Dynamic Section Overview + Right Panel -->
                         <HBox spacing="16">
 

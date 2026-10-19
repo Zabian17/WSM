@@ -27,6 +27,7 @@ public class StockCountService {
     private final InventoryBalanceRepository balanceRepository;
     private final InventoryLotBalanceRepository lotBalanceRepository;
     private final TransaksiRepository transaksiRepository;
+    private final TransactionLotAllocationRepository transactionLotAllocationRepository;
     private final InventoryTransferRepository inventoryTransferRepository;
 
     public StockCountService(StockCountRepository stockCountRepository,
@@ -36,6 +37,7 @@ public class StockCountService {
                             InventoryBalanceRepository balanceRepository,
                             InventoryLotBalanceRepository lotBalanceRepository,
                             TransaksiRepository transaksiRepository,
+                            TransactionLotAllocationRepository transactionLotAllocationRepository,
                             InventoryTransferRepository inventoryTransferRepository) {
         this.stockCountRepository = stockCountRepository;
         this.stockCountLineRepository = stockCountLineRepository;
@@ -45,6 +47,7 @@ public class StockCountService {
         this.balanceRepository = balanceRepository;
         this.lotBalanceRepository = lotBalanceRepository;
         this.transaksiRepository = transaksiRepository;
+        this.transactionLotAllocationRepository = transactionLotAllocationRepository;
         this.inventoryTransferRepository = inventoryTransferRepository;
     }
 
@@ -513,14 +516,19 @@ public class StockCountService {
                         .orElseGet(() -> new InventoryLotBalance(item, rack, locationKey, batchCode,
                                 null, LocalDateTime.now(), 0));
                 lot.setQuantity(Math.addExact(lot.getQuantity(), variance));
-                lotBalanceRepository.save(lot);
+                lot = lotBalanceRepository.save(lot);
+                Transaksi transaction = saveCountAdjustment(count, line, item, rack, poster, variance);
+                transactionLotAllocationRepository.save(new TransactionLotAllocation(transaction, lot, variance));
             } else {
                 int remaining = -variance;
+                Transaksi transaction = saveCountAdjustment(count, line, item, rack, poster, variance);
                 for (InventoryLotBalance lot : locked.availableLots()) {
                     int deduction = Math.min(remaining, lot.getAvailableQuantity());
                     if (deduction <= 0) continue;
                     lot.setQuantity(lot.getQuantity() - deduction);
                     lotBalanceRepository.save(lot);
+                    transactionLotAllocationRepository.save(
+                            new TransactionLotAllocation(transaction, lot, deduction));
                     remaining -= deduction;
                     if (remaining == 0) break;
                 }
@@ -542,6 +550,24 @@ public class StockCountService {
         count.setPostedBy(poster);
         count.setPostedAt(LocalDateTime.now());
         stockCountRepository.save(count);
+    }
+
+    private Transaksi saveCountAdjustment(StockCount count, StockCountLine line, Barang item,
+                                          Rak rack, User poster, int variance) {
+        String code = "TRX-" + UUID.randomUUID().toString().replace("-", "")
+                .substring(0, 16).toUpperCase(Locale.ROOT);
+        String direction = variance > 0 ? "masuk" : "keluar";
+        return transaksiRepository.save(Transaksi.builder()
+                .kodeTransaksi(code)
+                .tipe(direction)
+                .barang(item)
+                .rak(rack)
+                .jumlah(Math.abs(variance))
+                .keterangan("Penyesuaian stock count " + count.getCountCode()
+                        + ": buku " + line.getExpectedQuantity() + ", fisik " + line.getCountedQuantity())
+                .user(poster)
+                .tanggal(LocalDateTime.now())
+                .build());
     }
 
     @Transactional

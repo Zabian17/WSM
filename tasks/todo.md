@@ -6,6 +6,7 @@
 - [x] Include posted stock-in/out transactions, SLOC transfer source/destination events, and STO activity (through its posted stock transactions) in the daily count signal.
 - [x] Add monthly count schedules using Monday–Friday operating days and start-time snapshots.
 - [x] Allocate periodic SKU count work across users and record each operator.
+- [x] Record each posted variance in the stock ledger with its lot allocation and posting user.
 - [x] Checkpoint: cycle-count modes, assignments, variance posting, and audit work together.
 
 ## Phase 2: Complete inbound and purchasing

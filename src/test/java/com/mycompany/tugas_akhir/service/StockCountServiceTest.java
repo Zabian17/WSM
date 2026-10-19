@@ -32,6 +32,7 @@ class StockCountServiceTest {
     @Mock private InventoryBalanceRepository balanceRepository;
     @Mock private InventoryLotBalanceRepository lotBalanceRepository;
     @Mock private TransaksiRepository transaksiRepository;
+    @Mock private TransactionLotAllocationRepository transactionLotAllocationRepository;
     @Mock private InventoryTransferRepository inventoryTransferRepository;
 
     private StockCountService service;
@@ -40,7 +41,7 @@ class StockCountServiceTest {
     void setUp() {
         service = new StockCountService(stockCountRepository, stockCountLineRepository, barangRepository, rakRepository,
                 userRepository, balanceRepository, lotBalanceRepository, transaksiRepository,
-                inventoryTransferRepository);
+                transactionLotAllocationRepository, inventoryTransferRepository);
     }
 
     @Test
@@ -348,6 +349,7 @@ class StockCountServiceTest {
                 .thenReturn(Optional.of(balance));
         when(lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(
                 eq(1), eq("RAK-4"), startsWith("COUNT-"))).thenReturn(Optional.empty());
+        when(transaksiRepository.save(any(Transaksi.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.postCount(11, 7);
 
@@ -357,6 +359,10 @@ class StockCountServiceTest {
         assertEquals(StockCountStatus.POSTED, count.getStatus());
         assertEquals(user, count.getPostedBy());
         verify(lotBalanceRepository).save(argThat(lot -> lot.getQuantity() == 2 && lot.getBatchCode().startsWith("COUNT-")));
+        verify(transaksiRepository).save(argThat(transaction -> "masuk".equals(transaction.getTipe())
+                && transaction.getJumlah() == 2 && transaction.getRak() == rack
+                && transaction.getUser() == user && transaction.getKeterangan().contains(count.getCountCode())));
+        verify(transactionLotAllocationRepository).save(argThat(allocation -> allocation.getQuantity() == 2));
     }
 
     @Test
@@ -375,6 +381,7 @@ class StockCountServiceTest {
         when(balanceRepository.findByBarangIdAndLocationKeyForUpdate(1, "RAK-4"))
                 .thenReturn(Optional.of(balance));
         when(lotBalanceRepository.findAllPositiveForUpdate(1, "RAK-4")).thenReturn(List.of(lot));
+        when(transaksiRepository.save(any(Transaksi.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.postCount(11, 7);
 
@@ -383,6 +390,9 @@ class StockCountServiceTest {
         assertEquals(3, lot.getReservedQuantity());
         assertEquals(4, item.getStok());
         assertEquals(4, rack.getTerisi());
+        verify(transaksiRepository).save(argThat(transaction -> "keluar".equals(transaction.getTipe())
+                && transaction.getJumlah() == 4 && transaction.getRak() == rack));
+        verify(transactionLotAllocationRepository).save(argThat(allocation -> allocation.getQuantity() == 4));
     }
 
     @Test

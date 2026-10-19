@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,10 +46,16 @@ public class OperationalReportService {
         if (from != null && to != null && from.isAfter(to)) {
             throw new IllegalArgumentException("Tanggal awal laporan tidak boleh melewati tanggal akhir.");
         }
+        boolean filtered = from != null || to != null;
+        LocalDateTime rangeStart = from == null ? null : from.atStartOfDay();
+        LocalDateTime rangeEnd = to == null ? null : to.atTime(LocalTime.MAX);
         List<OperationalReportRow> rows = new ArrayList<>();
         Map<String, SupplierSummary> supplierSummaries = new LinkedHashMap<>();
         Map<String, SupplierSummary> supplierDeliverySummaries = new LinkedHashMap<>();
-        for (InboundReceipt receipt : inboundReceiptRepository.findRecentWithPurchaseOrder(PageRequest.of(0, 200))) {
+        List<InboundReceipt> receipts = filtered
+                ? inboundReceiptRepository.findInRangeWithPurchaseOrder(rangeStart, rangeEnd)
+                : inboundReceiptRepository.findRecentWithPurchaseOrder(PageRequest.of(0, 200));
+        for (InboundReceipt receipt : receipts) {
             if (!inRange(receipt.getCreatedAt(), from, to)) continue;
             String supplier = receipt.getSupplier().getNamaSupplier();
             String qcMetric = "QC pending";
@@ -96,7 +103,10 @@ public class OperationalReportService {
                     "-", null));
         }
 
-        for (DeliveryOrder order : deliveryOrderRepository.findTop100ByOrderByCreatedAtDesc()) {
+        List<DeliveryOrder> deliveryOrders = filtered
+                ? deliveryOrderRepository.findInRangeWithLines(rangeStart, rangeEnd)
+                : deliveryOrderRepository.findTop100ByOrderByCreatedAtDesc();
+        for (DeliveryOrder order : deliveryOrders) {
             if (!inRange(order.getCreatedAt(), from, to)) continue;
             for (DeliveryOrderLine line : order.getLines()) {
                 int shipped = line.getShippedQuantity();
@@ -111,7 +121,10 @@ public class OperationalReportService {
             }
         }
 
-        for (StockTransferOrder order : stockTransferOrderRepository.findTop200ByOrderByCreatedAtDesc()) {
+        List<StockTransferOrder> transferOrders = filtered
+                ? stockTransferOrderRepository.findInRangeWithLines(rangeStart, rangeEnd)
+                : stockTransferOrderRepository.findTop200ByOrderByCreatedAtDesc();
+        for (StockTransferOrder order : transferOrders) {
             if (!inRange(order.getCreatedAt(), from, to)) continue;
             for (StockTransferOrderLine line : order.getLines()) {
                 rows.add(new OperationalReportRow("STO", order.getOrderCode(),
@@ -126,7 +139,10 @@ public class OperationalReportService {
         }
 
         Map<String, PickerSummary> pickerSummaries = new LinkedHashMap<>();
-        for (DeliveryOrderPickScan scan : pickScanRepository.findRecent(PageRequest.of(0, 500))) {
+        List<DeliveryOrderPickScan> scans = filtered
+                ? pickScanRepository.findInRange(rangeStart, rangeEnd)
+                : pickScanRepository.findRecent(PageRequest.of(0, 500));
+        for (DeliveryOrderPickScan scan : scans) {
             if (!inRange(scan.getScannedAt(), from, to)) continue;
             String picker = scan.getPicker().getFullName();
             pickerSummaries.computeIfAbsent(picker, ignored -> new PickerSummary())
@@ -142,8 +158,10 @@ public class OperationalReportService {
                     entry.getValue().quantity, "Unit ter-pick tercatat",
                     entry.getKey(), null));
         }
-        for (DeliveryOrderFulfillmentAudit audit
-                : fulfillmentAuditRepository.findRecent(PageRequest.of(0, 500))) {
+        List<DeliveryOrderFulfillmentAudit> audits = filtered
+                ? fulfillmentAuditRepository.findInRange(rangeStart, rangeEnd)
+                : fulfillmentAuditRepository.findRecent(PageRequest.of(0, 500));
+        for (DeliveryOrderFulfillmentAudit audit : audits) {
             if (!inRange(audit.getRecordedAt(), from, to)) continue;
             rows.add(new OperationalReportRow(audit.getStage(), audit.getDeliveryOrder().getOrderCode(),
                     "AUDITED", audit.getActor().getFullName(),

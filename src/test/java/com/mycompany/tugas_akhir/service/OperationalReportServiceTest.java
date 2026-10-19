@@ -14,6 +14,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -62,5 +64,34 @@ class OperationalReportServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.getRecentOperationalReport(LocalDate.now(), LocalDate.now().minusDays(1)));
+    }
+
+    @Test
+    void appliesHistoricalDateRangeInRepositoryQueriesBeforeRecentRowLimits() {
+        LocalDate from = LocalDate.of(2024, 2, 1);
+        LocalDate to = LocalDate.of(2024, 2, 29);
+        Customer customer = new Customer(2, "Customer", null, null, null, null, "Aktif");
+        User creator = User.builder().id(3).fullName("Operator").build();
+        Barang item = Barang.builder().id(1).kodeBarang("SKU-1").namaBarang("Item").build();
+        DeliveryOrder order = new DeliveryOrder("DO-HISTORY", customer, creator, null,
+                LocalDateTime.of(2024, 2, 15, 10, 0));
+        order.addLine(new DeliveryOrderLine(item, 4));
+        when(deliveryOrderRepository.findInRangeWithLines(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(order));
+        OperationalReportService service = new OperationalReportService(inboundReceiptRepository,
+                deliveryOrderRepository, stockTransferOrderRepository,
+                pickScanRepository, fulfillmentAuditRepository);
+
+        List<OperationalReportRow> rows = service.getRecentOperationalReport(from, to);
+
+        LocalDateTime start = from.atStartOfDay();
+        LocalDateTime end = to.atTime(23, 59, 59, 999_999_999);
+        verify(inboundReceiptRepository).findInRangeWithPurchaseOrder(eq(start), eq(end));
+        verify(deliveryOrderRepository).findInRangeWithLines(eq(start), eq(end));
+        verify(stockTransferOrderRepository).findInRangeWithLines(eq(start), eq(end));
+        verify(pickScanRepository).findInRange(eq(start), eq(end));
+        verify(fulfillmentAuditRepository).findInRange(eq(start), eq(end));
+        assertTrue(rows.stream()
+                .anyMatch(row -> row.documentCode().equals("DO-HISTORY")));
     }
 }

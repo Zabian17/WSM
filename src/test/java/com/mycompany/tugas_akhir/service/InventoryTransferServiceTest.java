@@ -6,7 +6,9 @@ import com.mycompany.tugas_akhir.model.InventoryLotBalance;
 import com.mycompany.tugas_akhir.model.InventoryTransfer;
 import com.mycompany.tugas_akhir.model.InventoryTransferLotAllocation;
 import com.mycompany.tugas_akhir.model.Rak;
+import com.mycompany.tugas_akhir.model.Section;
 import com.mycompany.tugas_akhir.model.User;
+import com.mycompany.tugas_akhir.model.WarehouseZoneRule;
 import com.mycompany.tugas_akhir.repository.BarangRepository;
 import com.mycompany.tugas_akhir.repository.InventoryBalanceRepository;
 import com.mycompany.tugas_akhir.repository.InventoryLotBalanceRepository;
@@ -26,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,13 +44,15 @@ class InventoryTransferServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private InventoryLotBalanceRepository lotBalanceRepository;
     @Mock private InventoryTransferLotAllocationRepository lotAllocationRepository;
+    @Mock private WarehouseZoneRuleService warehouseZoneRuleService;
 
     private InventoryTransferService service;
 
     @BeforeEach
     void setUp() {
         service = new InventoryTransferService(barangRepository, balanceRepository,
-            transferRepository, rakRepository, userRepository, lotBalanceRepository, lotAllocationRepository);
+            transferRepository, rakRepository, userRepository, lotBalanceRepository, lotAllocationRepository,
+            warehouseZoneRuleService);
     }
 
     @Test
@@ -102,6 +107,45 @@ class InventoryTransferServiceTest {
         assertEquals(5, movedLot.getQuantity());
         verify(lotAllocationRepository).save(any(InventoryTransferLotAllocation.class));
         verify(barangRepository, never()).save(any());
+    }
+
+    @Test
+    void excludesConfiguredZoneFromSLocTransferAvailability() {
+        Section section = new Section(6, "A", "Area", 12);
+        section.setZoneCode("BULK");
+        Rak source = new Rak(2, section, "A-01", 100, 8);
+        when(barangRepository.findByIdForUpdate(1)).thenReturn(Optional.of(Barang.builder().id(1).stok(8).build()));
+        when(rakRepository.findByIdForUpdate(2)).thenReturn(Optional.of(source));
+        when(rakRepository.findByIdForUpdate(3)).thenReturn(Optional.of(new Rak(3, null, "A-02", 100, 0)));
+        when(warehouseZoneRuleService.getExcludedZones(WarehouseZoneRule.Operation.SLOC_TRANSFER_EXCLUSION))
+                .thenReturn(Set.of("BULK"));
+
+        assertFalse(service.transferStock(1, 2, 3, 1, null, 4));
+
+        verifyNoInteractions(balanceRepository, transferRepository, lotBalanceRepository, lotAllocationRepository);
+    }
+
+    @Test
+    void excludesConfiguredZoneFromBarcodeTransferAvailability() {
+        Barang item = Barang.builder().id(1).kodeBarang("SKU-1").stok(8).build();
+        Section section = new Section(6, "A", "Area", 12);
+        section.setZoneCode("BULK");
+        Rak source = new Rak(2, section, "A-01", 100, 8);
+        Rak destination = new Rak(3, null, "A-02", 100, 0);
+        when(barangRepository.findByKodeBarang("SKU-1")).thenReturn(Optional.of(item));
+        when(rakRepository.findByKodeRak("A-01")).thenReturn(Optional.of(source));
+        when(rakRepository.findByKodeRak("A-02")).thenReturn(Optional.of(destination));
+        when(barangRepository.findByIdForUpdate(1)).thenReturn(Optional.of(item));
+        when(rakRepository.findByIdForUpdate(2)).thenReturn(Optional.of(source));
+        when(rakRepository.findByIdForUpdate(3)).thenReturn(Optional.of(destination));
+        when(warehouseZoneRuleService.getExcludedZones(WarehouseZoneRule.Operation.BARCODE_TRANSFER_EXCLUSION))
+                .thenReturn(Set.of("BULK"));
+
+        assertFalse(service.transferStockWithBarcodes(
+                "WMS1|" + encode("SKU-1") + "|" + encode("LOT-A") + "|-",
+                "SLOC1|" + encode("A-01"), "SLOC1|" + encode("A-02"), 1, null, 4));
+
+        verifyNoInteractions(balanceRepository, transferRepository, lotBalanceRepository, lotAllocationRepository);
     }
 
     @Test

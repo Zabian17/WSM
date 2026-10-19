@@ -15,7 +15,17 @@ import jakarta.persistence.UniqueConstraint;
         uniqueConstraints = @UniqueConstraint(name = "uk_warehouse_zone_rule", columnNames = {"operation", "zone_code"}))
 public class WarehouseZoneRule {
     public enum Operation {
-        DELIVERY_ORDER_EXCLUSION
+        DELIVERY_ORDER_EXCLUSION("Delivery Order"),
+        SLOC_TRANSFER_EXCLUSION("Transfer SLOC"),
+        BARCODE_TRANSFER_EXCLUSION("Transfer barcode");
+
+        private final String displayName;
+
+        Operation(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() { return displayName; }
     }
 
     @Id

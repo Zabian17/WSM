@@ -291,7 +291,8 @@ public class DeliveryOrderService {
 
         LinkedHashMap<DeliveryOrderLine, LinkedHashMap<InventoryLotBalance, Integer>> planned = new LinkedHashMap<>();
         boolean hasOutstandingQuantity = false;
-        Set<String> excludedZones = warehouseZoneRuleService.getDeliveryOrderExcludedZones();
+        Set<String> excludedZones = warehouseZoneRuleService.getExcludedZones(
+                com.mycompany.tugas_akhir.model.WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION);
         for (DeliveryOrderLine line : order.getLines()) {
             int remainingQuantity = line.getRemainingQuantity();
             if (remainingQuantity == 0) continue;
@@ -306,7 +307,7 @@ public class DeliveryOrderService {
                 if (lot.getRak() == null) continue;
                 String zoneCode = lot.getRak().getSection() == null
                         ? null : lot.getRak().getSection().getZoneCode();
-                if (!WarehouseZoneRuleService.isDeliveryOrderZoneAllowed(zoneCode, excludedZones)) continue;
+                if (!WarehouseZoneRuleService.isZoneAllowed(zoneCode, excludedZones)) continue;
                 int quantity = Math.min(remaining, lot.getAvailableQuantity());
                 if (quantity > 0) lineReservations.put(lot, quantity);
                 remaining -= quantity;

@@ -7,6 +7,7 @@ import com.mycompany.tugas_akhir.model.InventoryTransferLotAllocation;
 import com.mycompany.tugas_akhir.model.InventoryTransfer;
 import com.mycompany.tugas_akhir.model.Rak;
 import com.mycompany.tugas_akhir.model.User;
+import com.mycompany.tugas_akhir.model.WarehouseZoneRule;
 import com.mycompany.tugas_akhir.repository.BarangRepository;
 import com.mycompany.tugas_akhir.repository.InventoryBalanceRepository;
 import com.mycompany.tugas_akhir.repository.InventoryLotBalanceRepository;
@@ -36,6 +37,7 @@ public class InventoryTransferService {
     private final UserRepository userRepository;
     private final InventoryLotBalanceRepository lotBalanceRepository;
     private final InventoryTransferLotAllocationRepository lotAllocationRepository;
+    private final WarehouseZoneRuleService warehouseZoneRuleService;
 
     public InventoryTransferService(BarangRepository barangRepository,
                                     InventoryBalanceRepository balanceRepository,
@@ -43,7 +45,8 @@ public class InventoryTransferService {
                                     RakRepository rakRepository,
                                     UserRepository userRepository,
                                     InventoryLotBalanceRepository lotBalanceRepository,
-                                    InventoryTransferLotAllocationRepository lotAllocationRepository) {
+                                    InventoryTransferLotAllocationRepository lotAllocationRepository,
+                                    WarehouseZoneRuleService warehouseZoneRuleService) {
         this.barangRepository = barangRepository;
         this.balanceRepository = balanceRepository;
         this.transferRepository = transferRepository;
@@ -51,6 +54,7 @@ public class InventoryTransferService {
         this.userRepository = userRepository;
         this.lotBalanceRepository = lotBalanceRepository;
         this.lotAllocationRepository = lotAllocationRepository;
+        this.warehouseZoneRuleService = warehouseZoneRuleService;
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +65,8 @@ public class InventoryTransferService {
     @Transactional
     public boolean transferStock(Integer barangId, Integer sourceRakId, Integer destinationRakId,
                                  int quantity, String notes, Integer userId) {
-        return transferStock(barangId, sourceRakId, destinationRakId, quantity, notes, userId, null, null);
+        return transferStock(barangId, sourceRakId, destinationRakId, quantity, notes, userId,
+                null, null, WarehouseZoneRule.Operation.SLOC_TRANSFER_EXCLUSION);
     }
 
     @Transactional
@@ -78,12 +83,14 @@ public class InventoryTransferService {
         Rak destination = rakRepository.findByKodeRak(destinationCode).orElse(null);
         if (item == null || source == null || destination == null) return false;
         return transferStock(item.getId(), source.getId(), destination.getId(), quantity, notes, userId,
-                itemBarcode.batchCode(), itemBarcode.expiryDate());
+                itemBarcode.batchCode(), itemBarcode.expiryDate(),
+                WarehouseZoneRule.Operation.BARCODE_TRANSFER_EXCLUSION);
     }
 
     private boolean transferStock(Integer barangId, Integer sourceRakId, Integer destinationRakId,
                                   int quantity, String notes, Integer userId,
-                                  String scannedBatchCode, LocalDate scannedExpiryDate) {
+                                  String scannedBatchCode, LocalDate scannedExpiryDate,
+                                  WarehouseZoneRule.Operation zoneOperation) {
         if (barangId == null || destinationRakId == null || userId == null || quantity <= 0
                 || destinationRakId.equals(sourceRakId)) {
             return false;
@@ -102,6 +109,10 @@ public class InventoryTransferService {
             source = rakRepository.findByIdForUpdate(sourceRakId).orElse(null);
         }
         if (barang == null || destination == null || (sourceRakId != null && source == null)) {
+            return false;
+        }
+        if (source != null && !WarehouseZoneRuleService.isZoneAllowed(zoneCode(source),
+                warehouseZoneRuleService.getExcludedZones(zoneOperation))) {
             return false;
         }
 
@@ -210,5 +221,9 @@ public class InventoryTransferService {
         rakRepository.save(destination);
 
         return true;
+    }
+
+    private String zoneCode(Rak rack) {
+        return rack == null || rack.getSection() == null ? null : rack.getSection().getZoneCode();
     }
 }

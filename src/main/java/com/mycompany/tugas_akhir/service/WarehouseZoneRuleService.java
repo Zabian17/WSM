@@ -39,12 +39,12 @@ public class WarehouseZoneRuleService {
     }
 
     @Transactional
-    public boolean addDeliveryOrderExclusion(String zoneCode) {
+    public boolean addExclusion(WarehouseZoneRule.Operation operation, String zoneCode) {
+        if (operation == null) throw new IllegalArgumentException("Pilih operasi yang valid.");
         String normalized = validateZone(zoneCode);
         if (!getZoneCodes().contains(normalized)) {
             throw new IllegalArgumentException("Zona tidak ditemukan pada konfigurasi section.");
         }
-        var operation = WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION;
         if (ruleRepository.existsByOperationAndZoneCode(operation, normalized)) return false;
         ruleRepository.save(new WarehouseZoneRule(operation, normalized));
         return true;
@@ -58,14 +58,14 @@ public class WarehouseZoneRuleService {
     }
 
     @Transactional(readOnly = true)
-    public Set<String> getDeliveryOrderExcludedZones() {
+    public Set<String> getExcludedZones(WarehouseZoneRule.Operation operation) {
         Set<String> zones = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        ruleRepository.findByOperation(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION)
+        ruleRepository.findByOperation(operation)
                 .forEach(rule -> zones.add(normalize(rule.getZoneCode())));
         return Set.copyOf(zones);
     }
 
-    public static boolean isDeliveryOrderZoneAllowed(String zoneCode, Set<String> excludedZones) {
+    public static boolean isZoneAllowed(String zoneCode, Set<String> excludedZones) {
         return zoneCode == null || zoneCode.isBlank()
                 || !excludedZones.contains(normalize(zoneCode));
     }

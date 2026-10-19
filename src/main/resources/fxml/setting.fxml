@@ -166,14 +166,16 @@
         </HBox>
         <Separator/>
         <VBox spacing="8">
-            <Label text="Zona ketersediaan Delivery Order" styleClass="card-title"/>
-            <Label text="Zona yang dikecualikan tidak digunakan saat sistem menghitung stok tersedia untuk reservasi DO."
+            <Label text="Pengecualian Zona per Operasi" styleClass="card-title"/>
+            <Label text="Zona yang dikecualikan tidak dihitung sebagai sumber stok untuk operasi terpilih."
                    styleClass="form-hint" wrapText="true"/>
             <HBox spacing="8">
-                <ComboBox fx:id="cbExcludedDoZone" promptText="Pilih zona dari Section"
-                          accessibleText="Zona yang dikecualikan dari Delivery Order" HBox.hgrow="ALWAYS"/>
-                <Button text="Kecualikan Zona" styleClass="btn-primary"
-                        onAction="#handleAddDeliveryOrderExcludedZone"/>
+                <ComboBox fx:id="cbZoneOperation" promptText="Pilih operasi"
+                          accessibleText="Operasi yang dikecualikan dari zona" HBox.hgrow="ALWAYS"/>
+                <ComboBox fx:id="cbExcludedZone" promptText="Pilih zona dari Section"
+                          accessibleText="Zona yang dikecualikan" HBox.hgrow="ALWAYS"/>
+                <Button text="Tambah Aturan" styleClass="btn-primary"
+                        onAction="#handleAddExcludedZone"/>
             </HBox>
             <TableView fx:id="deliveryOrderZoneRuleTable" prefHeight="140">
                 <columns>
@@ -181,9 +183,9 @@
                     <TableColumn fx:id="colZoneRuleCode" text="Kode Zona" prefWidth="180"/>
                 </columns>
             </TableView>
-            <Button text="Hapus Pengecualian Terpilih" styleClass="btn-outline"
-                    onAction="#handleRemoveDeliveryOrderExcludedZone"/>
-            <Label fx:id="lblZoneRuleStatus" text="Pilih zona untuk mengatur stok yang tersedia bagi DO."
+            <Button text="Hapus Aturan Terpilih" styleClass="btn-outline"
+                    onAction="#handleRemoveExcludedZone"/>
+            <Label fx:id="lblZoneRuleStatus" text="Pilih operasi dan zona untuk mengatur sumber stok yang tersedia."
                    styleClass="form-hint" wrapText="true"/>
         </VBox>
         <Label fx:id="lblApprovalAdminStatus" text="Tetapkan departemen sebelum membuat routing."

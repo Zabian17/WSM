@@ -48,6 +48,6 @@
 - [ ] Define ERP contracts/adapters for SAP, Oracle, and Accurate.
 - [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
 - [x] Add admin-configurable Delivery Order zone exclusions to available-stock reservation.
-- [ ] Apply zone exclusions to SLOC transfers and STO barcode source selection.
+- [x] Apply configurable zone exclusions to manual/SLOC and barcode-based stock transfers.
 - [ ] Add allowed picklist zones for stock transfer and purchase returns.
 - [ ] Validate live synchronization when vendor docs, credentials, and mappings are provided.

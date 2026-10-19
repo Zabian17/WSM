@@ -126,7 +126,8 @@ class DeliveryOrderServiceTest {
         when(barangRepository.findByIdForUpdate(1)).thenReturn(Optional.of(order.getLines().get(0).getBarang()));
         when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
                 .thenReturn(List.of(lot));
-        when(warehouseZoneRuleService.getDeliveryOrderExcludedZones()).thenReturn(Set.of("PICK"));
+        when(warehouseZoneRuleService.getExcludedZones(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION))
+                .thenReturn(Set.of("PICK"));
 
         assertFalse(service.releaseToPicking(7));
 

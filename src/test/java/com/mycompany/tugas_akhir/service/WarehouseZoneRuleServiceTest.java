@@ -37,11 +37,12 @@ class WarehouseZoneRuleServiceTest {
         when(ruleRepository.existsByOperationAndZoneCode(
                 WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION, "PICK")).thenReturn(false);
 
-        assertTrue(service.addDeliveryOrderExclusion("pick"));
+        assertTrue(service.addExclusion(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION, "pick"));
 
         verify(ruleRepository).save(argThat(rule -> rule.getOperation()
                 == WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION && rule.getZoneCode().equals("PICK")));
-        assertThrows(IllegalArgumentException.class, () -> service.addDeliveryOrderExclusion("UNKNOWN"));
+        assertThrows(IllegalArgumentException.class, () -> service.addExclusion(
+                WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION, "UNKNOWN"));
         verify(ruleRepository, times(1)).save(any(WarehouseZoneRule.class));
     }
 
@@ -53,8 +54,27 @@ class WarehouseZoneRuleServiceTest {
         when(ruleRepository.existsByOperationAndZoneCode(
                 WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION, "PICK")).thenReturn(true);
 
-        assertFalse(service.addDeliveryOrderExclusion("PICK"));
+        assertFalse(service.addExclusion(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION, "PICK"));
         verify(ruleRepository, never()).save(any());
+    }
+
+    @Test
+    void storesSLocAndBarcodeTransferExclusionsIndependently() {
+        Section section = new Section(1, "A", "Section A", 12);
+        section.setZoneCode("PICK");
+        when(sectionRepository.findAllByOrderByIdAsc()).thenReturn(List.of(section));
+        when(ruleRepository.existsByOperationAndZoneCode(
+                WarehouseZoneRule.Operation.SLOC_TRANSFER_EXCLUSION, "PICK")).thenReturn(false);
+        when(ruleRepository.existsByOperationAndZoneCode(
+                WarehouseZoneRule.Operation.BARCODE_TRANSFER_EXCLUSION, "PICK")).thenReturn(false);
+
+        assertTrue(service.addExclusion(WarehouseZoneRule.Operation.SLOC_TRANSFER_EXCLUSION, "PICK"));
+        assertTrue(service.addExclusion(WarehouseZoneRule.Operation.BARCODE_TRANSFER_EXCLUSION, "PICK"));
+
+        verify(ruleRepository).save(argThat(rule -> rule.getOperation()
+                == WarehouseZoneRule.Operation.SLOC_TRANSFER_EXCLUSION));
+        verify(ruleRepository).save(argThat(rule -> rule.getOperation()
+                == WarehouseZoneRule.Operation.BARCODE_TRANSFER_EXCLUSION));
     }
 
     @Test
@@ -64,10 +84,10 @@ class WarehouseZoneRuleServiceTest {
         when(ruleRepository.findByOperation(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION))
                 .thenReturn(Set.of(rule));
 
-        Set<String> excluded = service.getDeliveryOrderExcludedZones();
+        Set<String> excluded = service.getExcludedZones(WarehouseZoneRule.Operation.DELIVERY_ORDER_EXCLUSION);
 
-        assertFalse(WarehouseZoneRuleService.isDeliveryOrderZoneAllowed("pick", excluded));
-        assertTrue(WarehouseZoneRuleService.isDeliveryOrderZoneAllowed("BULK", excluded));
-        assertTrue(WarehouseZoneRuleService.isDeliveryOrderZoneAllowed(null, excluded));
+        assertFalse(WarehouseZoneRuleService.isZoneAllowed("pick", excluded));
+        assertTrue(WarehouseZoneRuleService.isZoneAllowed("BULK", excluded));
+        assertTrue(WarehouseZoneRuleService.isZoneAllowed(null, excluded));
     }
 }

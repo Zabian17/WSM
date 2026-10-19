@@ -17,6 +17,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
+import javafx.util.StringConverter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,8 @@ public class SettingController implements Initializable {
     @FXML private TextField tfRequesterDepartment;
     @FXML private TextField tfApproverDepartment;
     @FXML private Label lblApprovalAdminStatus;
-    @FXML private ComboBox<String> cbExcludedDoZone;
+    @FXML private ComboBox<WarehouseZoneRule.Operation> cbZoneOperation;
+    @FXML private ComboBox<String> cbExcludedZone;
     @FXML private TableView<WarehouseZoneRule> deliveryOrderZoneRuleTable;
     @FXML private TableColumn<WarehouseZoneRule, String> colZoneRuleOperation;
     @FXML private TableColumn<WarehouseZoneRule, String> colZoneRuleCode;
@@ -143,8 +145,21 @@ public class SettingController implements Initializable {
 
     private void setupZoneRuleTable() {
         if (deliveryOrderZoneRuleTable == null) return;
+        cbZoneOperation.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(WarehouseZoneRule.Operation operation) {
+                return operation == null ? "" : operation.getDisplayName();
+            }
+
+            @Override
+            public WarehouseZoneRule.Operation fromString(String value) {
+                return null;
+            }
+        });
+        cbZoneOperation.setCellFactory(list -> operationCell());
+        cbZoneOperation.setButtonCell(operationCell());
         colZoneRuleOperation.setCellValueFactory(cell ->
-                new SimpleStringProperty("Delivery Order: dikecualikan"));
+                new SimpleStringProperty(cell.getValue().getOperation().getDisplayName() + ": dikecualikan"));
         colZoneRuleCode.setCellValueFactory(cell ->
                 new SimpleStringProperty(cell.getValue().getZoneCode()));
         deliveryOrderZoneRuleTable.setPlaceholder(new Label("Belum ada zona yang dikecualikan."));
@@ -162,10 +177,11 @@ public class SettingController implements Initializable {
         task.setOnRunning(event -> lblZoneRuleStatus.setText("Memuat aturan zona…"));
         task.setOnSucceeded(event -> {
             deliveryOrderZoneRuleTable.setItems(FXCollections.observableArrayList(task.getValue().rules()));
-            cbExcludedDoZone.setItems(FXCollections.observableArrayList(task.getValue().zones()));
+            cbZoneOperation.setItems(FXCollections.observableArrayList(WarehouseZoneRule.Operation.values()));
+            cbExcludedZone.setItems(FXCollections.observableArrayList(task.getValue().zones()));
             lblZoneRuleStatus.setText(task.getValue().zones().isEmpty()
                     ? "Atur kode zona pada Section sebelum mengecualikan zona."
-                    : "Zona berlaku pada reservasi stok Delivery Order.");
+                    : "Zona terpilih dikecualikan hanya pada operasi yang dipilih.");
         });
         task.setOnFailed(event -> {
             log.error("Gagal memuat aturan zona Delivery Order", task.getException());
@@ -176,37 +192,48 @@ public class SettingController implements Initializable {
         thread.start();
     }
 
+    private ListCell<WarehouseZoneRule.Operation> operationCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(WarehouseZoneRule.Operation operation, boolean empty) {
+                super.updateItem(operation, empty);
+                setText(empty || operation == null ? null : operation.getDisplayName());
+            }
+        };
+    }
+
     @FXML
-    private void handleAddDeliveryOrderExcludedZone() {
+    private void handleAddExcludedZone() {
         if (!isCurrentUserAdmin()) return;
-        String zoneCode = cbExcludedDoZone.getValue();
-        if (zoneCode == null || zoneCode.isBlank()) {
-            lblZoneRuleStatus.setText("Pilih zona yang akan dikecualikan.");
+        WarehouseZoneRule.Operation operation = cbZoneOperation.getValue();
+        String zoneCode = cbExcludedZone.getValue();
+        if (operation == null || zoneCode == null || zoneCode.isBlank()) {
+            lblZoneRuleStatus.setText("Pilih operasi dan zona yang akan dikecualikan.");
             return;
         }
         Task<Boolean> task = new Task<>() {
             @Override
             protected Boolean call() {
-                return warehouseZoneRuleService.addDeliveryOrderExclusion(zoneCode);
+                return warehouseZoneRuleService.addExclusion(operation, zoneCode);
             }
         };
         task.setOnSucceeded(event -> {
             lblZoneRuleStatus.setText(task.getValue()
-                    ? "Zona dikecualikan dari reservasi Delivery Order."
-                    : "Zona tersebut sudah dikecualikan.");
+                    ? "Pengecualian zona berhasil disimpan."
+                    : "Zona tersebut sudah dikecualikan untuk operasi ini.");
             loadZoneRules();
         });
         task.setOnFailed(event -> {
-            log.error("Gagal mengecualikan zona Delivery Order", task.getException());
+            log.error("Gagal menyimpan pengecualian zona", task.getException());
             lblZoneRuleStatus.setText("Zona gagal disimpan. Periksa konfigurasi Section.");
         });
-        Thread thread = new Thread(task, "delivery-order-zone-add");
+        Thread thread = new Thread(task, "warehouse-zone-rule-add");
         thread.setDaemon(true);
         thread.start();
     }
 
     @FXML
-    private void handleRemoveDeliveryOrderExcludedZone() {
+    private void handleRemoveExcludedZone() {
         if (!isCurrentUserAdmin()) return;
         WarehouseZoneRule selected = deliveryOrderZoneRuleTable.getSelectionModel().getSelectedItem();
         if (selected == null) {
@@ -221,15 +248,15 @@ public class SettingController implements Initializable {
         };
         task.setOnSucceeded(event -> {
             lblZoneRuleStatus.setText(task.getValue()
-                    ? "Pengecualian zona dihapus; stok kembali tersedia untuk Delivery Order."
+                    ? "Pengecualian zona dihapus."
                     : "Aturan zona sudah tidak tersedia.");
             loadZoneRules();
         });
         task.setOnFailed(event -> {
-            log.error("Gagal menghapus pengecualian zona Delivery Order", task.getException());
+            log.error("Gagal menghapus pengecualian zona", task.getException());
             lblZoneRuleStatus.setText("Aturan zona gagal dihapus.");
         });
-        Thread thread = new Thread(task, "delivery-order-zone-remove");
+        Thread thread = new Thread(task, "warehouse-zone-rule-remove");
         thread.setDaemon(true);
         thread.start();
     }

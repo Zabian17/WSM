@@ -51,10 +51,10 @@ class MobileStockCountRepositoryTest {
 
         var firstPickerCounts = stockCountRepository.findMobileActiveCounts(firstPicker.getId(),
                 List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING),
-                StockCountStatus.SCHEDULED, PageRequest.of(0, 25));
+                StockCountStatus.SCHEDULED, StockCountStatus.COUNTED, PageRequest.of(0, 25));
         var secondPickerCounts = stockCountRepository.findMobileActiveCounts(secondPicker.getId(),
                 List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING),
-                StockCountStatus.SCHEDULED, PageRequest.of(0, 25));
+                StockCountStatus.SCHEDULED, StockCountStatus.COUNTED, PageRequest.of(0, 25));
         var firstPickerLines = stockCountLineRepository.findOpenLinesForUser(
                 count.getId(), firstPicker.getId(), PageRequest.of(0, 100));
         var secondPickerLines = stockCountLineRepository.findOpenLinesForUser(
@@ -66,6 +66,34 @@ class MobileStockCountRepositoryTest {
         assertEquals("SKU-API-1", firstPickerLines.getContent().getFirst().itemCode());
         assertEquals(List.of("SKU-API-3"), secondPickerLines.getContent().stream()
                 .map(StockCountLineProjection::itemCode).toList());
+    }
+
+    @Test
+    void countedSessionsRemainVisibleToWarehouseUsersForReviewAndPosting() {
+        User creator = saveUser("creator@example.com", "Creator");
+        User otherUser = saveUser("other@example.com", "Other User");
+        Section section = sectionRepository.save(new Section(null, "SEC-REVIEW", "Review", 12));
+        Rak rack = rakRepository.save(new Rak(null, section, "R-REVIEW", 100, 0));
+        StockCount count = new StockCount("SC-REVIEW", rack, creator, LocalDateTime.now());
+        count.setCycle("DC-20261019", StockCountCycleType.DAILY);
+        StockCountLine line = assignedLine(saveItem("SKU-REVIEW"), creator);
+        line.setCountedQuantity(10);
+        count.addLine(line);
+        count.setStatus(StockCountStatus.COUNTED);
+        stockCountRepository.saveAndFlush(count);
+
+        List<StockCountStatus> visibleStatuses = List.of(StockCountStatus.SCHEDULED,
+                StockCountStatus.COUNTING, StockCountStatus.COUNTED);
+        var creatorCounts = stockCountRepository.findMobileActiveCounts(creator.getId(), visibleStatuses,
+                StockCountStatus.SCHEDULED, StockCountStatus.COUNTED, PageRequest.of(0, 25));
+        var otherUserCounts = stockCountRepository.findMobileActiveCounts(otherUser.getId(), visibleStatuses,
+                StockCountStatus.SCHEDULED, StockCountStatus.COUNTED, PageRequest.of(0, 25));
+        var reviewLines = stockCountLineRepository.findReviewLines(count.getId(), PageRequest.of(0, 25));
+
+        assertEquals(1, creatorCounts.getTotalElements());
+        assertEquals(1, otherUserCounts.getTotalElements());
+        assertEquals(12, reviewLines.getContent().getFirst().expectedQuantity());
+        assertEquals(10, reviewLines.getContent().getFirst().countedQuantity());
     }
 
     private User saveUser(String email, String name) {

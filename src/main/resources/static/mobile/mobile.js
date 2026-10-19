@@ -137,15 +137,19 @@ async function loadPages(path, size = 100) {
 }
 
 async function loadCounts() {
+  document.querySelector("#taskTitle").textContent = "Hitung stok";
+  document.querySelector("#taskHint").textContent = "Pilih sesi opname, selesaikan hitungan, lalu tinjau selisih.";
   const counts = await loadPages("/stock-counts", 100);
   if (!counts.length) return showEmpty("Tidak ada sesi opname aktif.");
   counts.forEach(count => {
     const card = taskCard(count.countCode, `${count.rackCode} · ${count.cycleType || "Opname"}`,
       `${count.status}${count.dueDate ? ` · jatuh tempo ${count.dueDate}` : ""}`);
-    const action = button(count.status === "SCHEDULED" ? "Mulai opname" : "Buka hitungan", async () => {
+    const action = button(count.status === "SCHEDULED" ? "Mulai opname"
+      : count.status === "COUNTED" ? "Tinjau dan posting" : "Buka hitungan", async () => {
       try {
         if (count.status === "SCHEDULED") await request(`/stock-counts/${count.id}/start`, { method: "POST" });
-        await openCount(count.id, count.countCode, count.rackCode);
+        if (count.status === "COUNTED") await openCountReview(count.id, count.countCode, count.rackCode);
+        else await openCount(count.id, count.countCode, count.rackCode);
       } catch (error) { message(appMessage, error.message, "error"); }
     });
     card.append(action);
@@ -196,6 +200,31 @@ async function openCount(id, code, rack) {
       const result = await request(`/stock-counts/${id}/lines`, { method: "PUT", body: JSON.stringify({ counts }) });
       message(appMessage, result.status === "COUNTED" ? "Opname selesai dikirim." : "Hitungan tersimpan.", "success");
       await openCount(id, code, rack);
+    } catch (error) { message(appMessage, error.message, "error"); }
+  }));
+  card.append(button("Kembali ke daftar", loadCounts, "outline"));
+  taskList.append(card);
+}
+
+async function openCountReview(id, code, rack) {
+  taskList.replaceChildren();
+  document.querySelector("#taskTitle").textContent = `Tinjau ${code}`;
+  document.querySelector("#taskHint").textContent = `${rack} · saldo buku dan hasil fisik. Posting akan menyesuaikan stok.`;
+  const lines = await loadPages(`/stock-counts/${id}/review`, 100);
+  const card = workflowCard();
+  lines.forEach(line => {
+    const row = element("div", "line-row");
+    const variance = line.variance > 0 ? `+${line.variance}` : String(line.variance);
+    row.append(text("div", `${line.itemCode} · ${line.itemName}`, "line-title"),
+      text("div", `Buku ${line.expectedQuantity} · Fisik ${line.countedQuantity} · Selisih ${variance}`));
+    card.append(row);
+  });
+  card.append(button("Konfirmasi dan posting penyesuaian", async () => {
+    if (!window.confirm(`Posting seluruh selisih opname ${code} pada ${rack}? Saldo stok dan lot akan diperbarui.`)) return;
+    try {
+      await request(`/stock-counts/${id}/post`, { method: "POST" });
+      message(appMessage, "Penyesuaian opname berhasil diposting.", "success");
+      await loadCounts();
     } catch (error) { message(appMessage, error.message, "error"); }
   }));
   card.append(button("Kembali ke daftar", loadCounts, "outline"));

@@ -51,7 +51,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
   /stock-counts:
     get:
-      summary: List scheduled or open counts available to the signed-in user
+      summary: List scheduled, assigned, or completed counts available for execution or review
       parameters:
         - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
         - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
@@ -132,6 +132,42 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /stock-counts/{countId}/review:
+    get:
+      summary: Review book quantities, completed physical counts, and variances
+      description: Available only after all session lines have been counted.
+      parameters:
+        - { $ref: '#/components/parameters/countId' }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 100 } }
+      responses:
+        '200':
+          description: Paginated count review lines
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StockCountReviewPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /stock-counts/{countId}/post:
+    post:
+      summary: Post reviewed stock count variances to inventory balances and lots
+      parameters:
+        - { $ref: '#/components/parameters/countId' }
+      responses:
+        '200':
+          description: Variances posted through the stock ledger
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: POSTED }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /putaway/receipts:
     get:
       summary: List inbound receipts waiting for putaway
@@ -418,7 +454,7 @@ components:
         cycleCode: { type: [string, 'null'] }
         cycleType: { type: string, enum: [AD_HOC, DAILY, MONTHLY, PERIODIC] }
         rackCode: { type: string }
-        status: { type: string, enum: [SCHEDULED, COUNTING] }
+        status: { type: string, enum: [SCHEDULED, COUNTING, COUNTED] }
         dueDate: { type: [string, 'null'], format: date }
         createdAt: { type: string, format: date-time }
     CountLine:
@@ -445,6 +481,21 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/CountLine' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    StockCountReviewLine:
+      type: object
+      properties:
+        id: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        unit: { type: [string, 'null'] }
+        expectedQuantity: { type: integer }
+        countedQuantity: { type: integer }
+        variance: { type: integer }
+    StockCountReviewPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/StockCountReviewLine' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     PutawayTask:
       type: object

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -245,6 +246,15 @@ class StockCountServiceTest {
                 11, 21, 7, "WMS1|U0tVLTI|QkFUQ0gtMQ|-"));
         assertThrows(IllegalArgumentException.class, () -> service.validateMobileCountBarcode(
                 11, 21, 7, "SLOC1|U0xPQy0x"));
+    }
+
+    @Test
+    void mobileVarianceReviewIsUnavailableUntilCountIsComplete() {
+        when(stockCountRepository.findStatusById(9)).thenReturn(Optional.of(StockCountStatus.COUNTING));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.getMobileCountReviewLines(9, PageRequest.of(0, 100)));
+        verify(stockCountLineRepository, never()).findReviewLines(any(), any());
     }
 
     @Test

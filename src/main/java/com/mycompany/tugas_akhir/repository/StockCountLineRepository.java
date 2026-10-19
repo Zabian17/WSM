@@ -21,6 +21,13 @@ public interface StockCountLineRepository extends JpaRepository<StockCountLine, 
     Page<StockCountLineProjection> findOpenLinesForUser(@Param("countId") Integer countId,
                                                        @Param("userId") Integer userId, Pageable pageable);
 
+    @Query(value = "SELECT new com.mycompany.tugas_akhir.repository.StockCountReviewLineProjection("
+            + "l.id, l.barang.kodeBarang, l.barang.namaBarang, l.barang.satuan, "
+            + "l.expectedQuantity, l.countedQuantity) FROM StockCountLine l "
+            + "WHERE l.stockCount.id = :countId ORDER BY l.barang.kodeBarang",
+            countQuery = "SELECT COUNT(l) FROM StockCountLine l WHERE l.stockCount.id = :countId")
+    Page<StockCountReviewLineProjection> findReviewLines(@Param("countId") Integer countId, Pageable pageable);
+
     @Query("SELECT l.barang.kodeBarang FROM StockCountLine l WHERE l.id = :lineId "
             + "AND l.stockCount.id = :countId AND l.countedQuantity IS NULL "
             + "AND (l.assignedUser IS NULL OR l.assignedUser.id = :userId)")

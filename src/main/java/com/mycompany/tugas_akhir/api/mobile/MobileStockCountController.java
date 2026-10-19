@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.api.mobile;
 import com.mycompany.tugas_akhir.model.StockCount;
 import com.mycompany.tugas_akhir.model.StockCountStatus;
 import com.mycompany.tugas_akhir.repository.StockCountLineProjection;
+import com.mycompany.tugas_akhir.repository.StockCountReviewLineProjection;
 import com.mycompany.tugas_akhir.repository.StockCountSummaryProjection;
 import com.mycompany.tugas_akhir.service.StockCountService;
 import org.springframework.data.domain.Page;
@@ -67,6 +68,31 @@ public class MobileStockCountController {
         return new MobilePage<>(result.getContent().stream().map(this::toLine).toList(),
                 new MobilePage.Pagination(result.getNumber(), result.getSize(),
                         result.getTotalElements(), result.getTotalPages()));
+    }
+
+    @GetMapping("/{countId}/review")
+    public MobilePage<MobileStockCountReviewLine> review(@PathVariable Integer countId,
+                                                          @RequestParam(defaultValue = "0") int page,
+                                                          @RequestParam(defaultValue = "100") int size) {
+        if (requireCountStatus(countId) != StockCountStatus.COUNTED) {
+            throw new IllegalStateException("Hasil opname baru dapat ditinjau setelah seluruh SKU dihitung.");
+        }
+        validatePage(page, size);
+        Page<StockCountReviewLineProjection> result = stockCountService.getMobileCountReviewLines(
+                countId, PageRequest.of(page, size));
+        return new MobilePage<>(result.getContent().stream().map(this::toReviewLine).toList(),
+                new MobilePage.Pagination(result.getNumber(), result.getSize(),
+                        result.getTotalElements(), result.getTotalPages()));
+    }
+
+    @PostMapping("/{countId}/post")
+    public CountPostResult post(@PathVariable Integer countId,
+                                @AuthenticationPrincipal OAuth2AuthenticatedPrincipal user) {
+        if (requireCountStatus(countId) != StockCountStatus.COUNTED) {
+            throw new IllegalStateException("Hanya sesi opname yang sudah ditinjau lengkap dapat diposting.");
+        }
+        stockCountService.postCount(countId, userId(user));
+        return new CountPostResult(StockCountStatus.POSTED);
     }
 
     @PutMapping("/{countId}/lines")
@@ -136,7 +162,15 @@ public class MobileStockCountController {
         return new MobileStockCountLine(line.id(), line.itemCode(), line.itemName(), line.unit(), line.assignedTo());
     }
 
+    private MobileStockCountReviewLine toReviewLine(StockCountReviewLineProjection line) {
+        return new MobileStockCountReviewLine(line.id(), line.itemCode(), line.itemName(), line.unit(),
+                line.expectedQuantity(), line.countedQuantity(), line.countedQuantity() - line.expectedQuantity());
+    }
+
     public record CountSubmission(List<CountEntry> counts) {}
     public record CountEntry(Integer lineId, Integer quantity, String barcodePayload) {}
     public record SubmissionResult(StockCountStatus status) {}
+    public record MobileStockCountReviewLine(Integer id, String itemCode, String itemName, String unit,
+                                             Integer expectedQuantity, Integer countedQuantity, Integer variance) {}
+    public record CountPostResult(StockCountStatus status) {}
 }

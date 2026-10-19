@@ -266,14 +266,22 @@ public class StockCountService {
     @Transactional(readOnly = true)
     public Page<StockCountSummaryProjection> getMobileActiveCounts(Integer userId, Pageable pageable) {
         return stockCountRepository.findMobileActiveCounts(userId,
-                List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING),
-                StockCountStatus.SCHEDULED, pageable);
+                List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING, StockCountStatus.COUNTED),
+                StockCountStatus.SCHEDULED, StockCountStatus.COUNTED, pageable);
     }
 
     @Transactional(readOnly = true)
     public Page<StockCountLineProjection> getMobileCountLines(Integer countId, Integer userId,
                                                               Pageable pageable) {
         return stockCountLineRepository.findOpenLinesForUser(countId, userId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<StockCountReviewLineProjection> getMobileCountReviewLines(Integer countId, Pageable pageable) {
+        if (getCountStatus(countId) != StockCountStatus.COUNTED) {
+            throw new IllegalStateException("Hasil opname baru dapat ditinjau setelah seluruh SKU dihitung.");
+        }
+        return stockCountLineRepository.findReviewLines(countId, pageable);
     }
 
     @Transactional(readOnly = true)

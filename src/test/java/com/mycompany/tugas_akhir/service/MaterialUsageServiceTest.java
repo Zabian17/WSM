@@ -6,6 +6,7 @@ import com.mycompany.tugas_akhir.repository.InventoryLotBalanceRepository;
 import com.mycompany.tugas_akhir.repository.MaterialUsageRepository;
 import com.mycompany.tugas_akhir.repository.MaterialUsageScanRepository;
 import com.mycompany.tugas_akhir.repository.PickTaskRepository;
+import com.mycompany.tugas_akhir.repository.MaterialUsageReservationRepository;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,7 @@ class MaterialUsageServiceTest {
     @Mock private OutboundStockPoster stockPoster;
     @Mock private MaterialUsageScanRepository scanRepository;
     @Mock private PickTaskRepository pickTaskRepository;
+    @Mock private MaterialUsageReservationRepository reservationRepository;
     @Mock private ApprovalRouter approvalRoutingService;
     private MaterialUsageService service;
 
@@ -43,7 +45,7 @@ class MaterialUsageServiceTest {
     void setUp() {
         service = new MaterialUsageService(requestRepository, barangRepository, rakRepository, userRepository,
                 lotBalanceRepository, stockPoster, new InventoryPickingPolicy(lotBalanceRepository, "FEFO"),
-                scanRepository, pickTaskRepository, approvalRoutingService);
+                scanRepository, pickTaskRepository, reservationRepository, approvalRoutingService);
         lenient().when(approvalRoutingService.canReview(any(), any())).thenReturn(true);
     }
 
@@ -79,14 +81,50 @@ class MaterialUsageServiceTest {
     @Test
     void approvalCreatesPickTaskAndIssueRequiresAssignment() {
         MaterialUsage request = request(5);
+        InventoryLotBalance lot = lot(new Rak(2, null, "A-01", 50, 10), "LOT-A", 10);
         when(requestRepository.findByIdWithLinesForUpdate(5)).thenReturn(Optional.of(request));
         when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
+        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
+                .thenReturn(List.of(lot));
 
         assertTrue(service.reviewRequest(5, 4, true, null));
         assertEquals(MaterialUsageStatus.APPROVED, request.getStatus());
         verify(pickTaskRepository).save(argThat(task -> task.getMaterialUsage() == request
                 && task.getStatus() == PickTaskStatus.OPEN));
         assertFalse(service.issueApprovedRequest(5, 4));
+    }
+
+    @Test
+    void approvalReservesStockBeforeCreatingMroPickTask() {
+        MaterialUsage request = request(5);
+        InventoryLotBalance lot = lot(new Rak(2, null, "A-01", 50, 10), "LOT-A", 10);
+        when(requestRepository.findByIdWithLinesForUpdate(5)).thenReturn(Optional.of(request));
+        when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
+        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
+                .thenReturn(List.of(lot));
+
+        assertTrue(service.reviewRequest(5, 4, true, null));
+
+        assertEquals(4, lot.getReservedQuantity());
+        verify(reservationRepository).save(argThat(reservation -> reservation.getReservedQuantity() == 4
+                && reservation.getMaterialUsageLine() == request.getLines().get(0)));
+        verify(pickTaskRepository).save(any(PickTask.class));
+    }
+
+    @Test
+    void approvalRejectsRequestWhenFullStockCannotBeReserved() {
+        MaterialUsage request = request(5);
+        InventoryLotBalance lot = lot(new Rak(2, null, "A-01", 50, 2), "LOT-A", 2);
+        when(requestRepository.findByIdWithLinesForUpdate(5)).thenReturn(Optional.of(request));
+        when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
+        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
+                .thenReturn(List.of(lot));
+
+        assertFalse(service.reviewRequest(5, 4, true, null));
+
+        assertEquals(MaterialUsageStatus.PENDING_APPROVAL, request.getStatus());
+        assertEquals(0, lot.getReservedQuantity());
+        verifyNoInteractions(reservationRepository, pickTaskRepository);
     }
 
     @Test
@@ -97,12 +135,22 @@ class MaterialUsageServiceTest {
         Rak rack2 = new Rak(3, null, "A-02", 50, 5);
         InventoryLotBalance lot1 = lot(rack1, "LOT-A", 2);
         InventoryLotBalance lot2 = lot(rack2, "LOT-B", 3);
+        org.springframework.test.util.ReflectionTestUtils.setField(lot1, "id", 101);
+        org.springframework.test.util.ReflectionTestUtils.setField(lot2, "id", 102);
         PickTask task = assignedTask(request, user(4));
         when(pickTaskRepository.findActiveByMaterialUsageId(5)).thenReturn(List.of(task));
         when(requestRepository.findByIdWithLinesForUpdate(5)).thenReturn(Optional.of(request));
         when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
-        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(
-                1, java.time.LocalDate.now())).thenReturn(List.of(lot1, lot2));
+        MaterialUsageReservation firstReservation = new MaterialUsageReservation(request.getLines().get(0), lot1, 2);
+        MaterialUsageReservation secondReservation = new MaterialUsageReservation(request.getLines().get(0), lot2, 2);
+        lot1.setReservedQuantity(2);
+        lot2.setReservedQuantity(2);
+        when(reservationRepository.findByRequestIdForUpdate(5))
+                .thenReturn(List.of(firstReservation, secondReservation));
+        when(lotBalanceRepository.findByIdForUpdate(any())).thenAnswer(call -> {
+            Integer id = call.getArgument(0);
+            return Optional.of(id.equals(101) ? lot1 : lot2);
+        });
         when(stockPoster.postOutbound(1, 2, "LOT-A", 2,
                 "Material Usage " + request.getRequestCode() + ": Maintenance", 4)).thenReturn(true);
         when(stockPoster.postOutbound(1, 3, "LOT-B", 2,
@@ -113,6 +161,8 @@ class MaterialUsageServiceTest {
         assertEquals(MaterialUsageStatus.ISSUED, request.getStatus());
         assertEquals(PickTaskStatus.COMPLETED, task.getStatus());
         assertNotNull(request.getIssuedAt());
+        assertEquals(0, lot1.getReservedQuantity());
+        assertEquals(0, lot2.getReservedQuantity());
         verify(stockPoster).postOutbound(1, 2, "LOT-A", 2,
                 "Material Usage " + request.getRequestCode() + ": Maintenance", 4);
         verify(stockPoster).postOutbound(1, 3, "LOT-B", 2,
@@ -141,10 +191,14 @@ class MaterialUsageServiceTest {
         when(rakRepository.findByKodeRak("A-01")).thenReturn(Optional.of(rack));
         when(lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(1, "RAK-2", "LOT-A"))
                 .thenReturn(Optional.of(lot));
-        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
-                .thenReturn(List.of(lot));
-        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(2, LocalDate.now()))
-                .thenReturn(List.of(lot2));
+        MaterialUsageReservation line1Reservation = new MaterialUsageReservation(
+                request.getLines().get(0), lot, 2);
+        MaterialUsageReservation line2Reservation = new MaterialUsageReservation(
+                request.getLines().get(1), lot2, 3);
+        lot.setReservedQuantity(2);
+        lot2.setReservedQuantity(3);
+        when(reservationRepository.findByLineIdForUpdate(51)).thenReturn(List.of(line1Reservation));
+        when(reservationRepository.findByLineIdForUpdate(52)).thenReturn(List.of(line2Reservation));
         when(stockPoster.postOutbound(1, 2, "LOT-A", 2,
                 "Material Usage " + request.getRequestCode() + ": Maintenance", 4)).thenReturn(true);
         String itemQr = "WMS1|" + encode("SKU-1") + "|" + encode("LOT-A") + "|-";
@@ -153,6 +207,8 @@ class MaterialUsageServiceTest {
         assertTrue(service.issueApprovedRequestWithBarcodes(
                 5, 4, itemQr, "SLOC1|" + encode("A-01"), 2));
         assertEquals(MaterialUsageStatus.PARTIALLY_ISSUED, request.getStatus());
+        assertEquals(0, lot.getReservedQuantity());
+        assertEquals(2, line1Reservation.getIssuedQuantity());
         verify(stockPoster).postOutbound(1, 2, "LOT-A", 2,
                 "Material Usage " + request.getRequestCode() + ": Maintenance", 4);
 
@@ -174,6 +230,8 @@ class MaterialUsageServiceTest {
                 "SLOC1|" + encode("A-01"), 3));
         assertEquals(MaterialUsageStatus.ISSUED, request.getStatus());
         assertEquals(PickTaskStatus.COMPLETED, task.getStatus());
+        assertEquals(0, lot2.getReservedQuantity());
+        assertEquals(3, line2Reservation.getIssuedQuantity());
         verify(stockPoster).postOutbound(2, 2, "LOT-B", 3,
                 "Material Usage " + request.getRequestCode() + ": Maintenance", 4);
     }

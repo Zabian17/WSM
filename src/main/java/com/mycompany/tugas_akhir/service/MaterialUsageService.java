@@ -5,6 +5,7 @@ import com.mycompany.tugas_akhir.repository.BarangRepository;
 import com.mycompany.tugas_akhir.repository.InventoryLotBalanceRepository;
 import com.mycompany.tugas_akhir.repository.MaterialUsageRepository;
 import com.mycompany.tugas_akhir.repository.MaterialUsageScanRepository;
+import com.mycompany.tugas_akhir.repository.MaterialUsageReservationRepository;
 import com.mycompany.tugas_akhir.repository.PickTaskRepository;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
@@ -29,6 +30,7 @@ public class MaterialUsageService {
     private final InventoryPickingPolicy pickingPolicy;
     private final MaterialUsageScanRepository scanRepository;
     private final PickTaskRepository pickTaskRepository;
+    private final MaterialUsageReservationRepository reservationRepository;
     private final ApprovalRouter approvalRoutingService;
 
     public MaterialUsageService(MaterialUsageRepository materialUsageRepository,
@@ -40,6 +42,7 @@ public class MaterialUsageService {
                                 InventoryPickingPolicy pickingPolicy,
                                 MaterialUsageScanRepository scanRepository,
                                 PickTaskRepository pickTaskRepository,
+                                MaterialUsageReservationRepository reservationRepository,
                                 ApprovalRouter approvalRoutingService) {
         this.materialUsageRepository = materialUsageRepository;
         this.barangRepository = barangRepository;
@@ -50,6 +53,7 @@ public class MaterialUsageService {
         this.pickingPolicy = pickingPolicy;
         this.scanRepository = scanRepository;
         this.pickTaskRepository = pickTaskRepository;
+        this.reservationRepository = reservationRepository;
         this.approvalRoutingService = approvalRoutingService;
     }
 
@@ -91,14 +95,40 @@ public class MaterialUsageService {
         if (request == null || reviewer == null || request.getStatus() != MaterialUsageStatus.PENDING_APPROVAL
                 || request.getCreatedBy().getId().equals(reviewerId)
                 || !approvalRoutingService.canReview(request.getCreatedBy(), reviewer)) return false;
+        List<MaterialUsageReservation> allocations = approved ? reserveRequest(request) : List.of();
+        if (allocations == null) return false;
         request.review(reviewer, approved, approved ? null : notes.trim(), LocalDateTime.now());
         materialUsageRepository.save(request);
         if (approved) {
+            for (MaterialUsageReservation allocation : allocations) {
+                InventoryLotBalance lot = allocation.getLotBalance();
+                lot.setReservedQuantity(lot.getReservedQuantity() + allocation.getReservedQuantity());
+                lotBalanceRepository.save(lot);
+                reservationRepository.save(allocation);
+            }
             String taskCode = "MTP-" + UUID.randomUUID().toString()
                     .replace("-", "").substring(0, 16).toUpperCase(java.util.Locale.ROOT);
             pickTaskRepository.save(new PickTask(taskCode, request, LocalDateTime.now()));
         }
         return true;
+    }
+
+    private List<MaterialUsageReservation> reserveRequest(MaterialUsage request) {
+        List<MaterialUsageReservation> allocations = new java.util.ArrayList<>();
+        for (MaterialUsageLine line : request.getLines()) {
+            int remaining = line.getRequestedQuantity();
+            for (InventoryLotBalance lot : pickingPolicy.availableAcrossLocations(
+                    line.getBarang().getId(), LocalDate.now())) {
+                if (lot.getRak() == null) continue;
+                int quantity = Math.min(remaining, lot.getAvailableQuantity());
+                if (quantity <= 0) continue;
+                allocations.add(new MaterialUsageReservation(line, lot, quantity));
+                remaining -= quantity;
+                if (remaining == 0) break;
+            }
+            if (remaining > 0) return null;
+        }
+        return allocations;
     }
 
     @Transactional
@@ -126,30 +156,29 @@ public class MaterialUsageService {
         User issuer = userRepository.findById(userId).orElse(null);
         if (request == null || issuer == null || request.getStatus() != MaterialUsageStatus.APPROVED
                 || request.getLines().isEmpty() || !isAssignedPicker(requestId, userId)) return false;
-
+        List<MaterialUsageReservation> reservations = reservationRepository.findByRequestIdForUpdate(requestId);
         for (MaterialUsageLine line : request.getLines()) {
-            List<InventoryLotBalance> lots =
-                    pickingPolicy.availableAcrossLocations(line.getBarang().getId(), LocalDate.now());
-            long available = lots.stream().mapToLong(InventoryLotBalance::getAvailableQuantity).sum();
-            if (available < line.getRequestedQuantity()) return false;
+            int reserved = reservations.stream()
+                    .filter(value -> java.util.Objects.equals(
+                            value.getMaterialUsageLine().getId(), line.getId()))
+                    .mapToInt(MaterialUsageReservation::getRemainingQuantity).sum();
+            if (reserved != line.getRequestedQuantity()) return false;
         }
-        for (MaterialUsageLine line : request.getLines()) {
-            int remaining = line.getRequestedQuantity();
-            List<InventoryLotBalance> lots =
-                    pickingPolicy.availableAcrossLocations(line.getBarang().getId(), LocalDate.now());
-            for (InventoryLotBalance lot : lots) {
-                if (lot.getRak() == null) continue;
-                int quantity = Math.min(remaining, lot.getAvailableQuantity());
-                if (quantity <= 0) continue;
-                if (!stockPoster.postOutbound(line.getBarang().getId(), lot.getRak().getId(),
-                        lot.getBatchCode(), quantity, "Material Usage " + request.getRequestCode()
-                                + ": " + request.getReason(), userId)) {
-                    throw new IllegalStateException("Goods Issue MRO gagal; seluruh pengeluaran dibatalkan.");
-                }
-                remaining -= quantity;
-                if (remaining == 0) break;
+        for (MaterialUsageReservation reservation : reservations) {
+            int quantity = reservation.getRemainingQuantity();
+            InventoryLotBalance lot = lotBalanceRepository.findByIdForUpdate(
+                    reservation.getLotBalance().getId()).orElse(null);
+            if (quantity <= 0 || lot == null || lot.getRak() == null
+                    || lot.getReservedQuantity() < quantity) return false;
+            lot.setReservedQuantity(lot.getReservedQuantity() - quantity);
+            lotBalanceRepository.save(lot);
+            if (!stockPoster.postOutbound(lot.getBarang().getId(), lot.getRak().getId(),
+                    lot.getBatchCode(), quantity, "Material Usage " + request.getRequestCode()
+                            + ": " + request.getReason(), userId)) {
+                throw new IllegalStateException("Goods Issue MRO gagal; seluruh pengeluaran dibatalkan.");
             }
-            if (remaining > 0) throw new IllegalStateException("Stok lot berubah saat issue MRO; transaksi dibatalkan.");
+            reservation.setIssuedQuantity(reservation.getReservedQuantity());
+            reservationRepository.save(reservation);
         }
         request.markIssued(LocalDateTime.now());
         materialUsageRepository.save(request);
@@ -186,19 +215,23 @@ public class MaterialUsageService {
                 line.getBarang().getId(), "RAK-" + rack.getId(), scannedItem.batchCode()).orElse(null);
         if (lot == null || lot.getRak() == null || !java.util.Objects.equals(lot.getRak().getId(), rack.getId())
                 || !java.util.Objects.equals(lot.getExpiryDate(), scannedItem.expiryDate())
-                || lot.getAvailableQuantity() < quantity
                 || lot.getExpiryDate() != null && lot.getExpiryDate().isBefore(LocalDate.now())) {
             return false;
         }
-        List<InventoryLotBalance> recommendedLots = pickingPolicy.availableAcrossLocations(
-                line.getBarang().getId(), LocalDate.now());
-        if (recommendedLots.isEmpty()
-                || !java.util.Objects.equals(recommendedLots.get(0).getId(), lot.getId())) return false;
+        MaterialUsageReservation reservation = reservationRepository.findByLineIdForUpdate(line.getId()).stream()
+                .filter(value -> java.util.Objects.equals(value.getLotBalance().getId(), lot.getId()))
+                .findFirst().orElse(null);
+        if (reservation == null || reservation.getRemainingQuantity() < quantity
+                || lot.getReservedQuantity() < quantity) return false;
+        lot.setReservedQuantity(lot.getReservedQuantity() - quantity);
+        lotBalanceRepository.save(lot);
         if (!stockPoster.postOutbound(line.getBarang().getId(), rack.getId(), lot.getBatchCode(),
                 quantity, "Material Usage " + request.getRequestCode()
                         + ": " + request.getReason(), userId)) {
-            return false;
+            throw new IllegalStateException("Goods Issue MRO gagal; seluruh scan dibatalkan.");
         }
+        reservation.setIssuedQuantity(reservation.getIssuedQuantity() + quantity);
+        reservationRepository.save(reservation);
         LocalDateTime scannedAt = LocalDateTime.now();
         scanRepository.save(new MaterialUsageScan(request, line, issuer, lot, scannedItem.sku(),
                 rackCode, scannedItem.batchCode(), scannedItem.expiryDate(), quantity, scannedAt));

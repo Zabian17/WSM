@@ -374,6 +374,19 @@ CREATE TABLE IF NOT EXISTS material_usage_line (
     FOREIGN KEY (barang_id) REFERENCES barang(id)
 );
 
+CREATE TABLE IF NOT EXISTS material_usage_reservation (
+    id                    INT AUTO_INCREMENT PRIMARY KEY,
+    material_usage_line_id INT NOT NULL,
+    lot_balance_id        INT NOT NULL,
+    reserved_quantity     INT NOT NULL,
+    issued_quantity       INT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_mtu_line_lot UNIQUE (material_usage_line_id, lot_balance_id),
+    CONSTRAINT chk_mtu_reserved_quantity CHECK (reserved_quantity > 0),
+    CONSTRAINT chk_mtu_issued_quantity CHECK (issued_quantity >= 0 AND issued_quantity <= reserved_quantity),
+    FOREIGN KEY (material_usage_line_id) REFERENCES material_usage_line(id) ON DELETE CASCADE,
+    FOREIGN KEY (lot_balance_id) REFERENCES inventory_lot_balance(id)
+);
+
 CREATE TABLE IF NOT EXISTS material_usage_scan (
     id                    INT AUTO_INCREMENT PRIMARY KEY,
     material_usage_id     INT NOT NULL,

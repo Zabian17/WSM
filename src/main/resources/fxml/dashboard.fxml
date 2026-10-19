@@ -150,7 +150,16 @@
                                            style="-fx-font-size:11px; -fx-text-fill:#748198;"/>
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS"/>
-                                <Button text="Muat Ulang KPI" styleClass="btn-outline" onAction="#handleRefreshWarehouseMetrics"/>
+                                <HBox alignment="CENTER_RIGHT" spacing="6">
+                                    <ComboBox fx:id="warehouseMetricPeriod" prefWidth="130"
+                                              onAction="#handleWarehousePeriodChanged"/>
+                                    <DatePicker fx:id="warehouseMetricFrom" prefWidth="125"
+                                                promptText="Dari" visible="false" managed="false"/>
+                                    <DatePicker fx:id="warehouseMetricTo" prefWidth="125"
+                                                promptText="Sampai" visible="false" managed="false"/>
+                                    <Button text="Terapkan" styleClass="btn-outline"
+                                            onAction="#handleRefreshWarehouseMetrics"/>
+                                </HBox>
                             </HBox>
                             <FlowPane fx:id="warehouseMetricsPane" hgap="12" vgap="12" alignment="TOP_LEFT"/>
                         </VBox>

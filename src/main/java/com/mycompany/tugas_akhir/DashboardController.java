@@ -7,6 +7,7 @@ import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
 import com.mycompany.tugas_akhir.service.WarehouseDashboardService;
+import com.mycompany.tugas_akhir.service.DashboardPeriod;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -51,6 +52,9 @@ public class DashboardController implements Initializable {
     @FXML private FlowPane sectionsFlowPane;
     @FXML private FlowPane warehouseMetricsPane;
     @FXML private Label warehouseMetricRange;
+    @FXML private ComboBox<String> warehouseMetricPeriod;
+    @FXML private DatePicker warehouseMetricFrom;
+    @FXML private DatePicker warehouseMetricTo;
 
     @FXML private HBox navDashboard;
     @FXML private HBox navStorage;
@@ -84,6 +88,14 @@ public class DashboardController implements Initializable {
 
         if (mainScrollPane != null) {
             defaultDashboardView = mainScrollPane.getContent();
+        }
+
+        if (warehouseMetricPeriod != null) {
+            warehouseMetricPeriod.setItems(FXCollections.observableArrayList(
+                    "7 hari", "30 hari", "90 hari", "Bulan ini", "Rentang khusus"));
+            warehouseMetricPeriod.setValue("30 hari");
+            warehouseMetricFrom.setValue(LocalDate.now().minusDays(29));
+            warehouseMetricTo.setValue(LocalDate.now());
         }
 
         loadStatsAsync();
@@ -132,16 +144,39 @@ public class DashboardController implements Initializable {
         loadWarehouseMetricsAsync();
     }
 
+    @FXML
+    private void handleWarehousePeriodChanged() {
+        boolean custom = "Rentang khusus".equals(warehouseMetricPeriod.getValue());
+        warehouseMetricFrom.setVisible(custom);
+        warehouseMetricFrom.setManaged(custom);
+        warehouseMetricTo.setVisible(custom);
+        warehouseMetricTo.setManaged(custom);
+    }
+
     private void loadWarehouseMetricsAsync() {
-        LocalDate to = LocalDate.now();
-        LocalDate from = to.minusDays(29);
+        LocalDate today = LocalDate.now();
+        String selectedPeriod = warehouseMetricPeriod == null || warehouseMetricPeriod.getValue() == null
+                ? "30 hari" : warehouseMetricPeriod.getValue();
+        DashboardPeriod period;
+        try {
+            period = switch (selectedPeriod) {
+                case "7 hari" -> DashboardPeriod.lastDays(7, today);
+                case "90 hari" -> DashboardPeriod.lastDays(90, today);
+                case "Bulan ini" -> DashboardPeriod.currentMonth(today);
+                case "Rentang khusus" -> new DashboardPeriod(warehouseMetricFrom.getValue(), warehouseMetricTo.getValue());
+                default -> DashboardPeriod.lastDays(30, today);
+            };
+        } catch (IllegalArgumentException exception) {
+            warehouseMetricRange.setText("Pilih rentang tanggal yang valid.");
+            return;
+        }
         Task<WarehouseDashboardService.DashboardMetrics> task = new Task<>() {
             @Override
             protected WarehouseDashboardService.DashboardMetrics call() {
-                return warehouseDashboardService.getMetrics(from, to);
+                return warehouseDashboardService.getMetrics(period.from(), period.to());
             }
         };
-        task.setOnSucceeded(event -> renderWarehouseMetrics(task.getValue()));
+        task.setOnSucceeded(event -> renderWarehouseMetrics(task.getValue(), selectedPeriod));
         task.setOnFailed(event -> {
             log.error("Gagal load KPI dashboard", task.getException());
             if (warehouseMetricRange != null) warehouseMetricRange.setText("KPI tidak dapat dimuat. Coba muat ulang.");
@@ -151,9 +186,9 @@ public class DashboardController implements Initializable {
         thread.start();
     }
 
-    private void renderWarehouseMetrics(WarehouseDashboardService.DashboardMetrics metrics) {
+    private void renderWarehouseMetrics(WarehouseDashboardService.DashboardMetrics metrics, String selectedPeriod) {
         if (warehouseMetricsPane == null) return;
-        warehouseMetricRange.setText("30 hari terakhir • " + metrics.from().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID")))
+        warehouseMetricRange.setText(selectedPeriod + " • " + metrics.from().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID")))
                 + " – " + metrics.to().format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("id-ID"))));
         warehouseMetricsPane.getChildren().setAll(
                 metricCard("Pemenuhan pesanan", formatPercent(metrics.fulfillmentRatePercent()),

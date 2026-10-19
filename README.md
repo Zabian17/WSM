@@ -54,6 +54,8 @@ implemented.
   transfers, or barcode-based transfers; physical inventory remains unchanged.
 - Admins can restrict Stock Transfer and Purchase Return picking to configured
   section zones; all zones remain available until a picklist is configured.
+- ERP adapters share a provider-neutral contract for SAP, Oracle, and Accurate;
+  vendor connectors remain disabled until API versions and mappings are agreed.
 - Desktop picking scan validation for item QR, SLOC, batch, expiry, assigned
   picker, and section.
 - Packing and loading quantity checks with operator/time audit.

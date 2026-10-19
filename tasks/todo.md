@@ -45,7 +45,7 @@
 
 ## Phase 7: ERP and advanced configuration
 
-- [ ] Define ERP contracts/adapters for SAP, Oracle, and Accurate.
+- [~] Define the provider-neutral ERP SPI and SAP/Oracle/Accurate provider keys; concrete connectors need product/API versions and field mappings.
 - [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
 - [x] Add admin-configurable Delivery Order zone exclusions to available-stock reservation.
 - [x] Apply configurable zone exclusions to manual/SLOC and barcode-based stock transfers.

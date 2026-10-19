@@ -68,20 +68,23 @@ public class AccurateSessionClient {
 
     private URI validDatabaseHost(String value) {
         try {
-            URI host = URI.create(value);
-            String hostname = host.getHost();
-            if (!"https".equalsIgnoreCase(host.getScheme()) || hostname == null
-                    || host.getUserInfo() != null || host.getPort() != -1
-                    || host.getQuery() != null || host.getFragment() != null
-                    || !(hostname.equalsIgnoreCase("accurate.id")
-                    || hostname.toLowerCase(Locale.ROOT).endsWith(".accurate.id"))
-                    || host.getPath() != null && !host.getPath().isEmpty() && !host.getPath().equals("/")) {
-                return null;
-            }
-            return URI.create("https://" + hostname.toLowerCase(Locale.ROOT));
+            return validDatabaseHost(URI.create(value));
         } catch (IllegalArgumentException exception) {
             return null;
         }
+    }
+
+    private static URI validDatabaseHost(URI host) {
+        String hostname = host.getHost();
+        if (!"https".equalsIgnoreCase(host.getScheme()) || hostname == null
+                || host.getUserInfo() != null || host.getPort() != -1
+                || host.getQuery() != null || host.getFragment() != null
+                || !(hostname.equalsIgnoreCase("accurate.id")
+                || hostname.toLowerCase(Locale.ROOT).endsWith(".accurate.id"))
+                || host.getPath() != null && !host.getPath().isEmpty() && !host.getPath().equals("/")) {
+            return null;
+        }
+        return URI.create("https://" + hostname.toLowerCase(Locale.ROOT));
     }
 
     private static boolean isAccountApiUrl(URI uri) {
@@ -101,8 +104,11 @@ public class AccurateSessionClient {
 
     public record DatabaseSession(URI host, String session) {
         public DatabaseSession {
-            Objects.requireNonNull(host, "Database host is required.");
-            if (session == null || session.isBlank()) throw new IllegalArgumentException("Database session is required.");
+            host = validDatabaseHost(Objects.requireNonNull(host, "Database host is required."));
+            if (host == null) throw new IllegalArgumentException("Database host must be HTTPS on an Accurate domain.");
+            if (session == null || session.isBlank() || session.length() > 512) {
+                throw new IllegalArgumentException("A valid database session is required.");
+            }
         }
     }
 }

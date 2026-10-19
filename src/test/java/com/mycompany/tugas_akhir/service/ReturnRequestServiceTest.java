@@ -31,13 +31,15 @@ class ReturnRequestServiceTest {
     @Mock private InboundStockPoster inboundStockPoster;
     @Mock private OutboundStockPoster outboundStockPoster;
     @Mock private ApprovalRouter approvalRoutingService;
+    @Mock private WarehouseZoneRuleService warehouseZoneRuleService;
     private ReturnRequestService service;
 
     @BeforeEach
     void setUp() {
         service = new ReturnRequestService(returnRepository, purchaseOrderRepository,
                 deliveryOrderLineRepository, lotBalanceRepository,
-                rakRepository, userRepository, inboundStockPoster, outboundStockPoster, approvalRoutingService);
+                rakRepository, userRepository, inboundStockPoster, outboundStockPoster, approvalRoutingService,
+                warehouseZoneRuleService);
         lenient().when(approvalRoutingService.canReview(any(), any())).thenReturn(true);
     }
 
@@ -50,6 +52,23 @@ class ReturnRequestServiceTest {
         when(returnRepository.sumPurchaseReturnQuantity(eq(8), any())).thenReturn(3L);
 
         assertNull(service.createPurchaseReturn(8, 2, "LOT-1", 3, "Damaged on arrival", 3));
+        verify(returnRepository, never()).save(any());
+    }
+
+    @Test
+    void purchaseReturnRequiresSourceZoneFromConfiguredPicklist() {
+        PurchaseOrderLine source = purchaseLine();
+        Rak sourceRack = rack();
+        Section section = new Section(4, "SEC-4", "Section 4", 10);
+        section.setZoneCode("BULK");
+        sourceRack.setSection(section);
+        when(purchaseOrderRepository.findLineByIdForUpdate(8)).thenReturn(Optional.of(source));
+        when(rakRepository.findById(2)).thenReturn(Optional.of(sourceRack));
+        when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
+        when(warehouseZoneRuleService.getAllowedZones(WarehouseZoneRule.Operation.PURCHASE_RETURN_PICKLIST_ZONE))
+                .thenReturn(java.util.Set.of("PICK"));
+
+        assertNull(service.createPurchaseReturn(8, 2, "LOT-1", 1, "Damaged", 3));
         verify(returnRepository, never()).save(any());
     }
 

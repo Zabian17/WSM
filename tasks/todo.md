@@ -49,5 +49,5 @@
 - [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
 - [x] Add admin-configurable Delivery Order zone exclusions to available-stock reservation.
 - [x] Apply configurable zone exclusions to manual/SLOC and barcode-based stock transfers.
-- [ ] Add allowed picklist zones for stock transfer and purchase returns.
+- [x] Add configurable allowed picklist zones for Stock Transfer and Purchase Return.
 - [ ] Validate live synchronization when vendor docs, credentials, and mappings are provided.

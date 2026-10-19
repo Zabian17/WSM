@@ -159,7 +159,8 @@ public class SettingController implements Initializable {
         cbZoneOperation.setCellFactory(list -> operationCell());
         cbZoneOperation.setButtonCell(operationCell());
         colZoneRuleOperation.setCellValueFactory(cell ->
-                new SimpleStringProperty(cell.getValue().getOperation().getDisplayName() + ": dikecualikan"));
+                new SimpleStringProperty(cell.getValue().getOperation().getDisplayName() + ": "
+                        + (cell.getValue().getOperation().isPicklist() ? "diizinkan" : "dikecualikan")));
         colZoneRuleCode.setCellValueFactory(cell ->
                 new SimpleStringProperty(cell.getValue().getZoneCode()));
         deliveryOrderZoneRuleTable.setPlaceholder(new Label("Belum ada zona yang dikecualikan."));
@@ -214,13 +215,13 @@ public class SettingController implements Initializable {
         Task<Boolean> task = new Task<>() {
             @Override
             protected Boolean call() {
-                return warehouseZoneRuleService.addExclusion(operation, zoneCode);
+                return warehouseZoneRuleService.addRule(operation, zoneCode);
             }
         };
         task.setOnSucceeded(event -> {
             lblZoneRuleStatus.setText(task.getValue()
-                    ? "Pengecualian zona berhasil disimpan."
-                    : "Zona tersebut sudah dikecualikan untuk operasi ini.");
+                    ? "Aturan zona berhasil disimpan."
+                    : "Aturan zona tersebut sudah tersedia untuk operasi ini.");
             loadZoneRules();
         });
         task.setOnFailed(event -> {

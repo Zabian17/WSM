@@ -40,6 +40,12 @@ public class WarehouseZoneRuleService {
 
     @Transactional
     public boolean addExclusion(WarehouseZoneRule.Operation operation, String zoneCode) {
+        if (operation == null || operation.isPicklist()) throw new IllegalArgumentException("Pilih operasi pengecualian yang valid.");
+        return addRule(operation, zoneCode);
+    }
+
+    @Transactional
+    public boolean addRule(WarehouseZoneRule.Operation operation, String zoneCode) {
         if (operation == null) throw new IllegalArgumentException("Pilih operasi yang valid.");
         String normalized = validateZone(zoneCode);
         if (!getZoneCodes().contains(normalized)) {
@@ -59,6 +65,17 @@ public class WarehouseZoneRuleService {
 
     @Transactional(readOnly = true)
     public Set<String> getExcludedZones(WarehouseZoneRule.Operation operation) {
+        if (operation == null || operation.isPicklist()) return Set.of();
+        return getZones(operation);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<String> getAllowedZones(WarehouseZoneRule.Operation operation) {
+        if (operation == null || !operation.isPicklist()) return Set.of();
+        return getZones(operation);
+    }
+
+    private Set<String> getZones(WarehouseZoneRule.Operation operation) {
         Set<String> zones = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         ruleRepository.findByOperation(operation)
                 .forEach(rule -> zones.add(normalize(rule.getZoneCode())));
@@ -68,6 +85,11 @@ public class WarehouseZoneRuleService {
     public static boolean isZoneAllowed(String zoneCode, Set<String> excludedZones) {
         return zoneCode == null || zoneCode.isBlank()
                 || !excludedZones.contains(normalize(zoneCode));
+    }
+
+    public static boolean isPicklistZoneAllowed(String zoneCode, Set<String> allowedZones) {
+        return allowedZones.isEmpty() || zoneCode != null && !zoneCode.isBlank()
+                && allowedZones.contains(normalize(zoneCode));
     }
 
     private String validateZone(String zoneCode) {

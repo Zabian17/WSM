@@ -41,6 +41,7 @@ public class StockTransferOrderService {
     private final InventoryPickingPolicy pickingPolicy;
     private final StockTransferOrderScanRepository scanRepository;
     private final ApprovalRouter approvalRoutingService;
+    private final WarehouseZoneRuleService warehouseZoneRuleService;
 
     public StockTransferOrderService(StockTransferOrderRepository orderRepository,
                                     WarehouseRepository warehouseRepository,
@@ -52,7 +53,8 @@ public class StockTransferOrderService {
                                     InboundStockPoster inboundStockPoster,
                                     InventoryPickingPolicy pickingPolicy,
                                     StockTransferOrderScanRepository scanRepository,
-                                    ApprovalRouter approvalRoutingService) {
+                                    ApprovalRouter approvalRoutingService,
+                                    WarehouseZoneRuleService warehouseZoneRuleService) {
         this.orderRepository = orderRepository;
         this.warehouseRepository = warehouseRepository;
         this.rakRepository = rakRepository;
@@ -64,6 +66,7 @@ public class StockTransferOrderService {
         this.pickingPolicy = pickingPolicy;
         this.scanRepository = scanRepository;
         this.approvalRoutingService = approvalRoutingService;
+        this.warehouseZoneRuleService = warehouseZoneRuleService;
     }
 
     @Transactional(readOnly = true)
@@ -119,6 +122,7 @@ public class StockTransferOrderService {
                 || destinationRack == null || item == null || creator == null
                 || !belongsTo(sourceRack, sourceWarehouseId)
                 || !belongsTo(destinationRack, destinationWarehouseId)
+                || !isStoPicklistZoneAllowed(sourceRack)
                 || destinationRack.getTerisi() + (long) quantity > destinationRack.getKapasitas()) return null;
         StockTransferOrder order = new StockTransferOrder("STO-" + UUID.randomUUID().toString()
                 .replace("-", "").substring(0, 16).toUpperCase(java.util.Locale.ROOT),
@@ -179,6 +183,7 @@ public class StockTransferOrderService {
         int remaining = line.getQuantity() - dispatchedQuantity(line, scans);
         if (quantity > remaining) return false;
         Rak sourceRack = line.getSourceRak();
+        if (!isStoPicklistZoneAllowed(sourceRack)) return false;
         List<InventoryLotBalance> recommendedLots = pickingPolicy.availableAt(
                 line.getBarang().getId(), "RAK-" + sourceRack.getId(), LocalDate.now());
         if (recommendedLots.isEmpty()
@@ -357,6 +362,12 @@ public class StockTransferOrderService {
     private boolean belongsTo(Rak rack, Integer warehouseId) {
         return rack.getSection() != null && rack.getSection().getWarehouse() != null
                 && warehouseId.equals(rack.getSection().getWarehouse().getId());
+    }
+
+    private boolean isStoPicklistZoneAllowed(Rak rack) {
+        String zoneCode = rack == null || rack.getSection() == null ? null : rack.getSection().getZoneCode();
+        return WarehouseZoneRuleService.isPicklistZoneAllowed(zoneCode,
+                warehouseZoneRuleService.getAllowedZones(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE));
     }
 
     private record LotAllocation(String batchCode, java.time.LocalDate expiryDate, int quantity) {}

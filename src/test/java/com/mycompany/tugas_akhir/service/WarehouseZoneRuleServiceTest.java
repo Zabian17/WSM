@@ -90,4 +90,17 @@ class WarehouseZoneRuleServiceTest {
         assertTrue(WarehouseZoneRuleService.isZoneAllowed("BULK", excluded));
         assertTrue(WarehouseZoneRuleService.isZoneAllowed(null, excluded));
     }
+
+    @Test
+    void picklistZonesAllowAllWhenUnconfiguredAndRestrictWhenConfigured() {
+        WarehouseZoneRule rule = new WarehouseZoneRule(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE, "PICK");
+        when(ruleRepository.findByOperation(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE)).thenReturn(Set.of(rule));
+
+        Set<String> allowed = service.getAllowedZones(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE);
+
+        assertTrue(WarehouseZoneRuleService.isPicklistZoneAllowed("pick", allowed));
+        assertFalse(WarehouseZoneRuleService.isPicklistZoneAllowed("BULK", allowed));
+        assertFalse(WarehouseZoneRuleService.isPicklistZoneAllowed(null, allowed));
+        assertTrue(WarehouseZoneRuleService.isPicklistZoneAllowed("BULK", Set.of()));
+    }
 }

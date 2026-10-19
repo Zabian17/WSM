@@ -27,6 +27,7 @@ public class ReturnRequestService {
     private final InboundStockPoster inboundStockPoster;
     private final OutboundStockPoster outboundStockPoster;
     private final ApprovalRouter approvalRoutingService;
+    private final WarehouseZoneRuleService warehouseZoneRuleService;
 
     public ReturnRequestService(ReturnRequestRepository returnRepository,
                                 PurchaseOrderRepository purchaseOrderRepository,
@@ -36,7 +37,8 @@ public class ReturnRequestService {
                                 UserRepository userRepository,
                                 InboundStockPoster inboundStockPoster,
                                 OutboundStockPoster outboundStockPoster,
-                                ApprovalRouter approvalRoutingService) {
+                                ApprovalRouter approvalRoutingService,
+                                WarehouseZoneRuleService warehouseZoneRuleService) {
         this.returnRepository = returnRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.deliveryOrderLineRepository = deliveryOrderLineRepository;
@@ -46,6 +48,7 @@ public class ReturnRequestService {
         this.inboundStockPoster = inboundStockPoster;
         this.outboundStockPoster = outboundStockPoster;
         this.approvalRoutingService = approvalRoutingService;
+        this.warehouseZoneRuleService = warehouseZoneRuleService;
     }
 
     @Transactional(readOnly = true)
@@ -90,6 +93,7 @@ public class ReturnRequestService {
                     || !line.getRak().getKodeRak().equalsIgnoreCase(rackCode)
                     || !line.getBatchCode().equals(item.batchCode())) return false;
             if (request.getReturnType() == ReturnType.PURCHASE) {
+                if (!isPurchaseReturnPicklistZoneAllowed(line.getRak())) return false;
                 InventoryLotBalance lot = lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(
                         line.getBarang().getId(), "RAK-" + line.getRak().getId(), line.getBatchCode()).orElse(null);
                 if (lot == null || !java.util.Objects.equals(lot.getExpiryDate(), item.expiryDate())
@@ -109,7 +113,7 @@ public class ReturnRequestService {
         PurchaseOrderLine source = purchaseOrderRepository.findLineByIdForUpdate(sourceLineId).orElse(null);
         Rak rack = rakRepository.findById(rackId).orElse(null);
         User creator = userRepository.findById(creatorId).orElse(null);
-        if (source == null || rack == null || creator == null
+        if (source == null || rack == null || creator == null || !isPurchaseReturnPicklistZoneAllowed(rack)
                 || source.getPurchaseOrder().getStatus() != PurchaseOrderStatus.RECEIVED
                 && source.getPurchaseOrder().getStatus() != PurchaseOrderStatus.PARTIALLY_RECEIVED) return null;
         long alreadyReturned = returnRepository.sumPurchaseReturnQuantity(sourceLineId, COUNTED_RETURN_STATUSES);
@@ -133,7 +137,8 @@ public class ReturnRequestService {
                 || !source.getBarang().getKodeBarang().equalsIgnoreCase(scannedItem.sku())) return null;
         InventoryLotBalance lot = lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(
                 source.getBarang().getId(), "RAK-" + rack.getId(), scannedItem.batchCode()).orElse(null);
-        if (lot == null || !java.util.Objects.equals(lot.getExpiryDate(), scannedItem.expiryDate())
+        if (lot == null || !isPurchaseReturnPicklistZoneAllowed(rack)
+                || !java.util.Objects.equals(lot.getExpiryDate(), scannedItem.expiryDate())
                 || lot.getAvailableQuantity() < quantity
                 || lot.getExpiryDate() != null && lot.getExpiryDate().isBefore(LocalDate.now())) return null;
         return createPurchaseReturn(sourceLineId, rack.getId(), scannedItem.batchCode(),
@@ -200,6 +205,7 @@ public class ReturnRequestService {
         List<DeliveryOrderLine> salesSources = new java.util.ArrayList<>();
         for (ReturnRequestLine line : request.getLines()) {
             if (request.getReturnType() == ReturnType.PURCHASE) {
+                if (!isPurchaseReturnPicklistZoneAllowed(line.getRak())) return false;
                 PurchaseOrderLine source = purchaseOrderRepository
                         .findLineByIdForUpdate(line.getPurchaseOrderLine().getId()).orElse(null);
                 if (source == null || source.getPurchaseOrder().getStatus() != PurchaseOrderStatus.RECEIVED
@@ -247,6 +253,12 @@ public class ReturnRequestService {
 
     private boolean invalidReason(String reason) {
         return reason == null || reason.isBlank() || reason.trim().length() > 2000;
+    }
+
+    private boolean isPurchaseReturnPicklistZoneAllowed(Rak rack) {
+        String zoneCode = rack == null || rack.getSection() == null ? null : rack.getSection().getZoneCode();
+        return WarehouseZoneRuleService.isPicklistZoneAllowed(zoneCode,
+                warehouseZoneRuleService.getAllowedZones(WarehouseZoneRule.Operation.PURCHASE_RETURN_PICKLIST_ZONE));
     }
 
     public record MobileReturnScan(Integer lineId, String itemBarcode, String locationBarcode) {}

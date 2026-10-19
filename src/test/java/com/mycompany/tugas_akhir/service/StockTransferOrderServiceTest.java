@@ -35,6 +35,7 @@ class StockTransferOrderServiceTest {
     @Mock private InboundStockPoster inboundStockPoster;
     @Mock private StockTransferOrderScanRepository scanRepository;
     @Mock private ApprovalRouter approvalRoutingService;
+    @Mock private WarehouseZoneRuleService warehouseZoneRuleService;
     private StockTransferOrderService service;
 
     @BeforeEach
@@ -42,7 +43,8 @@ class StockTransferOrderServiceTest {
         service = new StockTransferOrderService(orderRepository, warehouseRepository, rakRepository,
                 barangRepository, userRepository, lotBalanceRepository,
                 outboundStockPoster, inboundStockPoster,
-                new InventoryPickingPolicy(lotBalanceRepository, "FEFO"), scanRepository, approvalRoutingService);
+                new InventoryPickingPolicy(lotBalanceRepository, "FEFO"), scanRepository, approvalRoutingService,
+                warehouseZoneRuleService);
         lenient().when(approvalRoutingService.canReview(any(), any())).thenReturn(true);
     }
 
@@ -60,6 +62,26 @@ class StockTransferOrderServiceTest {
         when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
 
         assertNull(service.createPlan(1, 2, 11, 21, 5, 4, "Replenish", 3));
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void planRequiresSourceZoneFromConfiguredPicklist() {
+        Warehouse sourceWarehouse = warehouse(1, "WH-A");
+        Warehouse destinationWarehouse = warehouse(2, "WH-B");
+        Rak sourceRack = rack(11, "A-01", sourceWarehouse, 2);
+        sourceRack.getSection().setZoneCode("BULK");
+        Rak destinationRack = rack(21, "B-01", destinationWarehouse, 0);
+        when(warehouseRepository.findById(1)).thenReturn(Optional.of(sourceWarehouse));
+        when(warehouseRepository.findById(2)).thenReturn(Optional.of(destinationWarehouse));
+        when(rakRepository.findById(11)).thenReturn(Optional.of(sourceRack));
+        when(rakRepository.findById(21)).thenReturn(Optional.of(destinationRack));
+        when(barangRepository.findById(5)).thenReturn(Optional.of(item()));
+        when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
+        when(warehouseZoneRuleService.getAllowedZones(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE))
+                .thenReturn(java.util.Set.of("PICK"));
+
+        assertNull(service.createPlan(1, 2, 11, 21, 5, 1, "Replenish", 3));
         verify(orderRepository, never()).save(any());
     }
 
@@ -194,6 +216,23 @@ class StockTransferOrderServiceTest {
         assertEquals(StockTransferOrderStatus.DISPATCHED, order.getStatus());
         verify(outboundStockPoster, times(2)).postOutbound(5, 11, "BATCH-1", 2,
                 "STO Dispatch " + order.getOrderCode(), 4);
+    }
+
+    @Test
+    void scannedDispatchRejectsSourceOutsideConfiguredPicklist() {
+        StockTransferOrder order = order(warehouse(1, "WH-A"), warehouse(2, "WH-B"));
+        order.review(user(4), true, null, LocalDateTime.now());
+        order.assignPicker(user(4), LocalDateTime.now());
+        ReflectionTestUtils.setField(order, "id", 8);
+        order.getLines().get(0).getSourceRak().getSection().setZoneCode("BULK");
+        when(orderRepository.findByIdWithLinesForUpdate(8)).thenReturn(Optional.of(order));
+        when(userRepository.findById(4)).thenReturn(Optional.of(user(4)));
+        when(warehouseZoneRuleService.getAllowedZones(WarehouseZoneRule.Operation.STO_PICKLIST_ZONE))
+                .thenReturn(java.util.Set.of("PICK"));
+
+        assertFalse(service.recordDispatchScan(8, 4, itemQr("SKU-5", "BATCH-1", "2027-04-01"),
+                locationBarcode("A-01"), 1));
+        verifyNoInteractions(outboundStockPoster, lotBalanceRepository);
     }
 
     @Test

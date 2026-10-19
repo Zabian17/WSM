@@ -166,8 +166,8 @@
         </HBox>
         <Separator/>
         <VBox spacing="8">
-            <Label text="Pengecualian Zona per Operasi" styleClass="card-title"/>
-            <Label text="Zona yang dikecualikan tidak dihitung sebagai sumber stok untuk operasi terpilih."
+            <Label text="Aturan Zona per Operasi" styleClass="card-title"/>
+            <Label text="Pilih zona yang dikecualikan atau yang diizinkan sebagai sumber picking. Tanpa picklist, semua zona diizinkan."
                    styleClass="form-hint" wrapText="true"/>
             <HBox spacing="8">
                 <ComboBox fx:id="cbZoneOperation" promptText="Pilih operasi"

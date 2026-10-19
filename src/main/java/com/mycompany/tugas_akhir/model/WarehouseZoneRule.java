@@ -17,7 +17,9 @@ public class WarehouseZoneRule {
     public enum Operation {
         DELIVERY_ORDER_EXCLUSION("Delivery Order"),
         SLOC_TRANSFER_EXCLUSION("Transfer SLOC"),
-        BARCODE_TRANSFER_EXCLUSION("Transfer barcode");
+        BARCODE_TRANSFER_EXCLUSION("Transfer barcode"),
+        STO_PICKLIST_ZONE("Stock Transfer picklist"),
+        PURCHASE_RETURN_PICKLIST_ZONE("Purchase Return picklist");
 
         private final String displayName;
 
@@ -26,6 +28,10 @@ public class WarehouseZoneRule {
         }
 
         public String getDisplayName() { return displayName; }
+
+        public boolean isPicklist() {
+            return this == STO_PICKLIST_ZONE || this == PURCHASE_RETURN_PICKLIST_ZONE;
+        }
     }
 
     @Id

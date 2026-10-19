@@ -2,6 +2,8 @@ package com.mycompany.tugas_akhir.service;
 
 import com.mycompany.tugas_akhir.model.*;
 import com.mycompany.tugas_akhir.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,10 +12,23 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class StockTransferOrderService {
+
+    private static final List<StockTransferOrderStatus> MOBILE_PICK_STATUSES = List.of(
+            StockTransferOrderStatus.APPROVED, StockTransferOrderStatus.PARTIALLY_DISPATCHED,
+            StockTransferOrderStatus.PARTIALLY_DISPATCHED_AND_RECEIVED);
+
+    public record MobilePickingSummary(Integer id, String orderCode, String sourceWarehouse,
+                                       String destinationWarehouse, StockTransferOrderStatus status,
+                                       LocalDateTime createdAt) {}
+    public record MobilePickingLine(Integer lineId, String itemCode, String itemName,
+                                    String sourceRackCode, Integer requestedQuantity,
+                                    Integer dispatchedQuantity, Integer remainingQuantity) {}
+    public record MobilePickingDetail(MobilePickingSummary order, List<MobilePickingLine> lines) {}
 
     private final StockTransferOrderRepository orderRepository;
     private final WarehouseRepository warehouseRepository;
@@ -54,6 +69,36 @@ public class StockTransferOrderService {
     @Transactional(readOnly = true)
     public List<StockTransferOrder> getRecentOrders() {
         return orderRepository.findTop200ByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<StockTransferOrder> getMobilePickingOrders(Integer pickerId, Pageable pageable) {
+        return pickerId == null ? Page.empty(pageable)
+                : orderRepository.findByAssignedPicker_IdAndStatusInOrderByCreatedAtAsc(
+                        pickerId, MOBILE_PICK_STATUSES, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<MobilePickingDetail> getMobilePickingDetail(Integer orderId, Integer pickerId) {
+        if (orderId == null || pickerId == null) return Optional.empty();
+        StockTransferOrder order = orderRepository.findByIdWithLines(orderId).orElse(null);
+        if (order == null || order.getAssignedPicker() == null
+                || !pickerId.equals(order.getAssignedPicker().getId())
+                || !MOBILE_PICK_STATUSES.contains(order.getStatus())) return Optional.empty();
+        List<StockTransferOrderScan> scans = scanRepository.findByOrderId(orderId);
+        List<MobilePickingLine> lines = order.getLines().stream().map(line -> {
+            int dispatched = dispatchedQuantity(line, scans);
+            return new MobilePickingLine(line.getId(), line.getBarang().getKodeBarang(),
+                    line.getBarang().getNamaBarang(), line.getSourceRak().getKodeRak(), line.getQuantity(),
+                    dispatched, line.getQuantity() - dispatched);
+        }).toList();
+        return Optional.of(new MobilePickingDetail(mobileSummary(order), lines));
+    }
+
+    public MobilePickingSummary mobileSummary(StockTransferOrder order) {
+        return new MobilePickingSummary(order.getId(), order.getOrderCode(),
+                order.getSourceWarehouse().getWarehouseCode(), order.getDestinationWarehouse().getWarehouseCode(),
+                order.getStatus(), order.getCreatedAt());
     }
 
     @Transactional

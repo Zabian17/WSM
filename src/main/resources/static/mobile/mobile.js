@@ -108,7 +108,8 @@ async function loadCurrentTab() {
     picking: ["Ambil pesanan", "Tugas yang diberikan kepada akun ini."],
     mro: ["Pengeluaran MRO", "Ambil barang perawatan sesuai QR dan lokasi lot."],
     returns: ["Posting retur", "Pindai setiap baris return yang telah disetujui."],
-    fulfillment: ["Packing dan loading", "Verifikasi barcode DO dan QR item sebelum Goods Issue."]
+    fulfillment: ["Packing dan loading", "Verifikasi barcode DO dan QR item sebelum Goods Issue."],
+    sto: ["Picking STO", "Ambil barang transfer sesuai item, lot, dan lokasi sumber."]
   };
   document.querySelector("#taskTitle").textContent = names[currentTab][0];
   document.querySelector("#taskHint").textContent = names[currentTab][1];
@@ -120,7 +121,8 @@ async function loadCurrentTab() {
     else if (currentTab === "picking") await loadPicking();
     else if (currentTab === "mro") await loadMro();
     else if (currentTab === "returns") await loadReturns();
-    else await loadFulfillment();
+    else if (currentTab === "fulfillment") await loadFulfillment();
+    else await loadStoPicking();
     message(appMessage, "");
   } catch (error) {
     message(appMessage, error.message, "error");
@@ -489,6 +491,56 @@ async function openFulfillmentOrder(id) {
     await loadFulfillment();
   }));
   card.append(button("Kembali ke daftar", loadFulfillment, "outline"));
+  taskList.append(card);
+}
+
+async function loadStoPicking() {
+  const orders = await loadPages("/stock-transfers/picking", 100);
+  if (!orders.length) return showEmpty("Tidak ada STO yang ditugaskan kepada akun ini.");
+  orders.forEach(order => {
+    const card = taskCard(order.orderCode, `${order.sourceWarehouse} → ${order.destinationWarehouse}`,
+      `${order.status} · ${new Date(order.createdAt).toLocaleDateString("id-ID")}`);
+    card.append(button("Buka STO", () => openStoPickingOrder(order.id)));
+    taskList.append(card);
+  });
+}
+
+async function openStoPickingOrder(id) {
+  const detail = await request(`/stock-transfers/picking/${id}`);
+  taskList.replaceChildren();
+  document.querySelector("#taskTitle").textContent = detail.order.orderCode;
+  document.querySelector("#taskHint").textContent =
+    "Scan QR item dan barcode lokasi sumber. Setiap scan memposting Goods Issue.";
+  const card = workflowCard();
+  detail.lines.forEach(line => {
+    const row = element("div", "line-row");
+    row.append(text("div", `${line.itemCode} · ${line.itemName}`, "line-title"),
+      text("div", `Lokasi ${line.sourceRackCode} · diminta ${line.requestedQuantity} · terkirim ${line.dispatchedQuantity}`),
+      text("div", `Sisa: ${line.remainingQuantity}`));
+    if (line.remainingQuantity > 0) {
+      const itemBarcode = input("QR item / lot", "text", { autocomplete: "off", maxlength: "512" });
+      const locationBarcode = input("Barcode lokasi sumber", "text", { autocomplete: "off", maxlength: "512" });
+      const quantity = input("Jumlah scan", "number", { min: "1", max: String(line.remainingQuantity),
+        step: "1", inputmode: "numeric", value: "1" });
+      row.append(fieldWithButton(itemBarcode, button("Pindai item", () => openScanner(itemBarcode), "outline")),
+        fieldWithButton(locationBarcode, button("Pindai lokasi", () => openScanner(locationBarcode), "outline")),
+        quantity, button("Catat scan dan Goods Issue", async () => {
+          const amount = Number(quantity.value);
+          if (!itemBarcode.value.trim() || !locationBarcode.value.trim()
+              || !Number.isSafeInteger(amount) || amount < 1 || amount > line.remainingQuantity) {
+            return message(appMessage, "QR item, lokasi sumber, dan jumlah dalam batas sisa wajib diisi.", "error");
+          }
+          if (!window.confirm(`Posting Goods Issue ${amount} unit untuk ${line.itemCode} dari ${line.sourceRackCode}?`)) return;
+          await request(`/stock-transfers/picking/${id}/scans`, { method: "POST", body: JSON.stringify({
+            itemBarcode: itemBarcode.value.trim(), locationBarcode: locationBarcode.value.trim(), quantity: amount
+          }) });
+          message(appMessage, "Scan STO dan Goods Issue tercatat.", "success");
+          await loadStoPicking();
+        }, "outline"));
+    }
+    card.append(row);
+  });
+  card.append(button("Kembali ke daftar", loadStoPicking, "outline"));
   taskList.append(card);
 }
 

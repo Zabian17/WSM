@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: GudangKu Mobile API
   version: 1.0.0
-  description: Authenticated mobile execution API for stock counts, inbound putaway, DO picking and fulfillment, MRO, and returns.
+  description: Authenticated mobile execution API for stock counts, inbound putaway, DO picking and fulfillment, STO picking, MRO, and returns.
 servers:
   - url: http://127.0.0.1:8765/api/mobile/v1
     description: Local-only default. Use HTTPS when binding to a warehouse network address.
@@ -314,6 +314,59 @@ paths:
               schema: { $ref: '#/components/schemas/FulfillmentOrderPage' }
         '400': { $ref: '#/components/responses/InvalidRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /stock-transfers/picking:
+    get:
+      summary: List STO picking tasks assigned to the signed-in picker
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Approved or partially dispatched STOs still assigned to this picker
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StockTransferPickingPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /stock-transfers/picking/{orderId}:
+    get:
+      summary: Read remaining quantities and source locations for an assigned STO
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      responses:
+        '200':
+          description: STO picking lines available to the signed-in picker
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StockTransferPickingDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /stock-transfers/picking/{orderId}/scans:
+    post:
+      summary: Validate item and source-location barcodes and post STO Goods Issue
+      description: Each accepted scan posts outbound quantity immediately through the stock ledger using the configured lot-picking strategy.
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemBarcode, locationBarcode, quantity]
+              properties:
+                itemBarcode: { type: string, maxLength: 512, description: WMS1 item and lot QR payload }
+                locationBarcode: { type: string, maxLength: 512, description: SLOC1 source rack QR payload }
+                quantity: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Scan accepted and Goods Issue posted
+          content:
+            application/json:
+              schema: { type: object, properties: { recorded: { type: boolean, const: true } } }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /fulfillment/orders/{orderId}:
     get:
       summary: Read per-line picked, packed, loaded, and available quantities
@@ -643,6 +696,35 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/PickTask' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    StockTransferPickingOrder:
+      type: object
+      properties:
+        id: { type: integer }
+        orderCode: { type: string }
+        sourceWarehouse: { type: string }
+        destinationWarehouse: { type: string }
+        status: { type: string, enum: [APPROVED, PARTIALLY_DISPATCHED, PARTIALLY_DISPATCHED_AND_RECEIVED] }
+        createdAt: { type: string, format: date-time }
+    StockTransferPickingLine:
+      type: object
+      properties:
+        lineId: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        sourceRackCode: { type: string }
+        requestedQuantity: { type: integer }
+        dispatchedQuantity: { type: integer }
+        remainingQuantity: { type: integer }
+    StockTransferPickingDetail:
+      type: object
+      properties:
+        order: { $ref: '#/components/schemas/StockTransferPickingOrder' }
+        lines: { type: array, items: { $ref: '#/components/schemas/StockTransferPickingLine' } }
+    StockTransferPickingPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/StockTransferPickingOrder' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     FulfillmentOrder:
       type: object

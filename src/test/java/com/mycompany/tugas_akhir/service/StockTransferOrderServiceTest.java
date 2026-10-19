@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -105,6 +107,47 @@ class StockTransferOrderServiceTest {
         assertTrue(service.assignPicker(8, 4));
         assertEquals(4, order.getAssignedPicker().getId());
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void mobilePickingDetailIsHiddenFromUsersOtherThanAssignedPicker() {
+        StockTransferOrder order = order(warehouse(1, "WH-A"), warehouse(2, "WH-B"));
+        order.review(user(3), true, null, LocalDateTime.now());
+        order.assignPicker(user(4), LocalDateTime.now());
+        when(orderRepository.findByIdWithLines(8)).thenReturn(Optional.of(order));
+
+        assertTrue(service.getMobilePickingDetail(8, 7).isEmpty());
+        verifyNoInteractions(scanRepository);
+    }
+
+    @Test
+    void mobilePickingDetailShowsScannedAndRemainingQuantities() {
+        StockTransferOrder order = order(warehouse(1, "WH-A"), warehouse(2, "WH-B"));
+        order.review(user(3), true, null, LocalDateTime.now());
+        order.assignPicker(user(4), LocalDateTime.now());
+        ReflectionTestUtils.setField(order, "id", 8);
+        ReflectionTestUtils.setField(order.getLines().get(0), "id", 18);
+        when(orderRepository.findByIdWithLines(8)).thenReturn(Optional.of(order));
+        when(scanRepository.findByOrderId(8)).thenReturn(List.of());
+
+        var detail = service.getMobilePickingDetail(8, 4).orElseThrow();
+
+        assertEquals("STO-TEST", detail.order().orderCode());
+        assertEquals(18, detail.lines().get(0).lineId());
+        assertEquals("A-01", detail.lines().get(0).sourceRackCode());
+        assertEquals(0, detail.lines().get(0).dispatchedQuantity());
+        assertEquals(4, detail.lines().get(0).remainingQuantity());
+    }
+
+    @Test
+    void mobilePickingQueueIsScopedToPickerAndPaginated() {
+        PageRequest page = PageRequest.of(1, 10);
+        when(orderRepository.findByAssignedPicker_IdAndStatusInOrderByCreatedAtAsc(
+                eq(7), anyList(), eq(page))).thenReturn(Page.empty(page));
+
+        assertTrue(service.getMobilePickingOrders(7, page).isEmpty());
+        verify(orderRepository).findByAssignedPicker_IdAndStatusInOrderByCreatedAtAsc(
+                eq(7), anyList(), eq(page));
     }
 
     @Test

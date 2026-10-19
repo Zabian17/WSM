@@ -1,0 +1,47 @@
+# WMS Proposal Tasks
+
+## Phase 1: Complete stock cycle counting
+
+- [x] Include today's posted stock-in/out transactions and SLOC transfer source/destination events in rack priority recommendations.
+- [x] Include posted stock-in/out transactions, SLOC transfer source/destination events, and STO activity (through its posted stock transactions) in the daily count signal.
+- [x] Add monthly count schedules using Monday–Friday operating days and start-time snapshots.
+- [x] Allocate periodic SKU count work across users and record each operator.
+- [x] Checkpoint: cycle-count modes, assignments, variance posting, and audit work together.
+
+## Phase 2: Complete inbound and purchasing
+
+- [x] Add purchase-order currency, line pricing, tender reference, payment terms, and expected delivery date.
+- [x] Add configurable oldest-first FIFO ordering for pending inbound QC receipts.
+- [x] Complete configurable inbound QC FIFO; existing lot selection supports configured FIFO/FEFO/LEFO for outbound allocation.
+- [x] Add item/rack CBM data and capacity-aware putaway ranking.
+- [x] Configure section zones, storage types, category rules, putaway priority, and item storage requirements.
+
+## Phase 3: Complete outbound execution
+
+- [x] Add multi-picker, per-section tasks, and shift-aware assignment.
+- [x] Add task reservations and item-level checking against delivery orders.
+- [ ] Add printable packing labels and packing lists.
+- [x] Add barcode-based packing, loading, and dispatch confirmation to mobile DO fulfillment.
+- [x] Complete MRO stock reservation and picker task lifecycle.
+
+## Phase 4: Forecasting and stock suggestions
+
+- [ ] Calculate monthly average demand from outbound history.
+- [ ] Add per-item buffer/max inventory inputs and configurable suggestions.
+
+## Phase 5: Dashboard and reporting
+
+- [ ] Add fulfillment, productivity, supplier SLA, packing, and loading KPIs with configurable targets/periods.
+
+## Phase 6: Mobile execution
+
+- [x] Select a responsive web mobile client and build its authenticated, paginated API boundary.
+- [x] Implement mobile putaway, DO picking/fulfillment, and cycle-count flows with barcode scanning and stock posting.
+- [x] Implement mobile MRO picking and approved-return verification/posting.
+- [x] Implement assigned-picker STO picking with item/source-location scans and Goods Issue posting.
+
+## Phase 7: ERP and advanced configuration
+
+- [ ] Define ERP contracts/adapters for SAP, Oracle, and Accurate.
+- [ ] Add custom barcode formats and remaining availability/zone configuration.
+- [ ] Validate live synchronization when vendor docs, credentials, and mappings are provided.

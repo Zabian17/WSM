@@ -87,8 +87,9 @@ public class LoginController implements Initializable {
             return;
         }
 
-        if (password.length() < 6) {
-            showAlert(Alert.AlertType.WARNING, "Peringatan", "Password minimal 6 karakter!");
+        if (!PasswordHelper.isValidNewPassword(password)) {
+            showAlert(Alert.AlertType.WARNING, "Peringatan",
+                    "Password minimal 12 karakter dan maksimal 72 byte UTF-8.");
             return;
         }
 
@@ -159,7 +160,8 @@ public class LoginController implements Initializable {
 
     @FXML
     private void handleForgotPassword() {
-        showAlert(Alert.AlertType.INFORMATION, "Lupa Password", "Fitur reset password akan segera tersedia.");
+        showAlert(Alert.AlertType.INFORMATION, "Lupa Password",
+                "Hubungi admin gudang untuk mengatur password baru melalui Pengaturan.");
     }
 
     private void showAlert(Alert.AlertType type, String title, String message) {

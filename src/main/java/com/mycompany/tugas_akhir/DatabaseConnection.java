@@ -11,8 +11,9 @@ public class DatabaseConnection {
     private static final String DATABASE = System.getenv().getOrDefault("DB_NAME", "gudang_akhir");
     private static final String USER = System.getenv().getOrDefault("DB_USER", "root");
     private static final String PASSWORD = System.getenv().getOrDefault("DB_PASSWORD", "");
+    private static final String SSL_MODE = System.getenv().getOrDefault("DB_SSL_MODE", "REQUIRED");
     private static final String URL = "jdbc:mysql://" + HOST + ":" + PORT + "/" + DATABASE
-            + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Jakarta";
+            + "?sslMode=" + SSL_MODE + "&serverTimezone=Asia/Jakarta";
 
     private static final DatabaseConnection INSTANCE = new DatabaseConnection();
 

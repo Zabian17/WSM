@@ -6,6 +6,7 @@ import com.mycompany.tugas_akhir.service.BarangService;
 import com.mycompany.tugas_akhir.service.TransaksiService;
 import com.mycompany.tugas_akhir.service.OperationalReportRow;
 import com.mycompany.tugas_akhir.service.OperationalReportService;
+import com.mycompany.tugas_akhir.service.ReportPdfService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -69,6 +70,7 @@ public class ReportController implements Initializable {
     private final TransaksiService transaksiService;
     private final BarangService barangService;
     private final OperationalReportService operationalReportService;
+    private final ReportPdfService reportPdfService;
 
     private final ObservableList<Transaksi> reportList = FXCollections.observableArrayList();
     private List<Transaksi> rawReportList;
@@ -91,10 +93,12 @@ public class ReportController implements Initializable {
     @FXML private TableColumn<Transaksi, String> colKeterangan;
 
     public ReportController(TransaksiService transaksiService, BarangService barangService,
-                            OperationalReportService operationalReportService) {
+                            OperationalReportService operationalReportService,
+                            ReportPdfService reportPdfService) {
         this.transaksiService = transaksiService;
         this.barangService = barangService;
         this.operationalReportService = operationalReportService;
+        this.reportPdfService = reportPdfService;
     }
 
     @Override
@@ -245,8 +249,19 @@ public class ReportController implements Initializable {
 
     @FXML
     private void handleExportPDF() {
-        showAlert(Alert.AlertType.INFORMATION, "Ekspor PDF",
-                "Ekspor PDF belum tersedia. Gunakan ekspor CSV untuk menyimpan data laporan.");
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Simpan Laporan Transaksi PDF");
+        chooser.setInitialFileName("laporan-transaksi.pdf");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        java.io.File file = chooser.showSaveDialog(tableReport.getScene().getWindow());
+        if (file == null) return;
+        try {
+            reportPdfService.exportTransactions(List.copyOf(reportList), file.toPath());
+            showAlert(Alert.AlertType.INFORMATION, "PDF Tersimpan", "Laporan berhasil disimpan.");
+        } catch (Exception exception) {
+            log.error("Gagal menulis laporan transaksi PDF ke {}", file.getAbsolutePath(), exception);
+            showAlert(Alert.AlertType.ERROR, "Ekspor Gagal", "File PDF tidak dapat disimpan.");
+        }
     }
 
     @FXML
@@ -412,9 +427,27 @@ public class ReportController implements Initializable {
     private String value(String value) { return value == null ? "-" : value; }
 
     private void writeCsvRow(java.io.BufferedWriter writer, List<String> values) throws IOException {
-        writer.write(values.stream().map(value -> "\"" + value.replace("\"", "\"\"") + "\"")
+        writer.write(values.stream().map(this::csvCell)
                 .collect(Collectors.joining(",")));
         writer.newLine();
+    }
+
+    private String csvCell(String value) {
+        String cell = value == null ? "-" : value;
+        int first = 0;
+        while (first < cell.length()) {
+            char character = cell.charAt(first);
+            if (!Character.isWhitespace(character) && !Character.isSpaceChar(character)
+                    && !Character.isISOControl(character) && character != '\uFEFF') break;
+            first++;
+        }
+        if (first < cell.length()) {
+            char prefix = cell.charAt(first);
+            boolean formula = prefix == '=' || prefix == '+' || prefix == '@'
+                    || (prefix == '-' && !cell.substring(first).matches("-\\d+(\\.\\d+)?"));
+            if (formula) cell = "'" + cell;
+        }
+        return "\"" + cell.replace("\"", "\"\"") + "\"";
     }
 
     private void showAlert(Alert.AlertType type, String title, String msg) {

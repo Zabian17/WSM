@@ -37,7 +37,8 @@ public class UserService {
     @Transactional
     public boolean register(String fullName, String email, String plainPassword) {
         email = normalizeEmail(email);
-        if (fullName == null || fullName.isBlank() || email == null || plainPassword == null || plainPassword.length() < 6) {
+        if (fullName == null || fullName.isBlank() || fullName.trim().length() > 100
+                || email == null || email.length() > 150 || !PasswordHelper.isValidNewPassword(plainPassword)) {
             return false;
         }
         if (userRepository.existsByEmail(email)) {
@@ -76,7 +77,7 @@ public class UserService {
 
     @Transactional
     public boolean changePassword(Integer userId, String oldPassword, String newPassword) {
-        if (userId == null || oldPassword == null || newPassword == null || newPassword.length() < 6) {
+        if (userId == null || oldPassword == null || !PasswordHelper.isValidNewPassword(newPassword)) {
             return false;
         }
         User user = userRepository.findById(userId).orElse(null);
@@ -85,6 +86,19 @@ public class UserService {
         }
         user.setPasswordHash(PasswordHelper.hashPassword(newPassword));
         userRepository.save(user);
+        return true;
+    }
+
+    @Transactional
+    public boolean resetPasswordByAdmin(Integer adminId, Integer targetUserId, String newPassword) {
+        if (adminId == null || targetUserId == null || adminId.equals(targetUserId)
+                || !PasswordHelper.isValidNewPassword(newPassword)) return false;
+        User admin = userRepository.findById(adminId).orElse(null);
+        if (admin == null || !"admin".equalsIgnoreCase(admin.getRole())) return false;
+        User target = userRepository.findById(targetUserId).orElse(null);
+        if (target == null) return false;
+        target.setPasswordHash(PasswordHelper.hashPassword(newPassword));
+        userRepository.save(target);
         return true;
     }
 

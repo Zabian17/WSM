@@ -193,6 +193,55 @@ public class SettingController implements Initializable {
     }
 
     @FXML
+    private void handleAdminResetPassword() {
+        User selected = userDepartmentTable.getSelectionModel().getSelectedItem();
+        if (currentUser == null || selected == null || currentUser.getId().equals(selected.getId())) {
+            lblApprovalAdminStatus.setText("Pilih pengguna lain untuk mengatur ulang password.");
+            return;
+        }
+
+        PasswordField password = new PasswordField();
+        PasswordField confirmation = new PasswordField();
+        password.setPromptText("Password baru (minimal 12 karakter)");
+        confirmation.setPromptText("Konfirmasi password baru");
+        Dialog<ButtonType> dialog = new Dialog<>();
+        ButtonType reset = new ButtonType("Atur ulang", ButtonBar.ButtonData.OK_DONE);
+        dialog.setTitle("Atur Ulang Password");
+        dialog.setHeaderText("Pengguna: " + selected.getFullName());
+        dialog.getDialogPane().setContent(new VBox(8, password, confirmation));
+        dialog.getDialogPane().getButtonTypes().addAll(reset, ButtonType.CANCEL);
+        if (dialog.showAndWait().orElse(ButtonType.CANCEL) != reset) return;
+
+        String newPassword = password.getText();
+        if (!PasswordHelper.isValidNewPassword(newPassword)) {
+            lblApprovalAdminStatus.setText("Password minimal 12 karakter dan maksimal 72 byte UTF-8.");
+            return;
+        }
+        if (!newPassword.equals(confirmation.getText())) {
+            lblApprovalAdminStatus.setText("Konfirmasi password baru tidak cocok.");
+            return;
+        }
+
+        Integer adminId = currentUser.getId();
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return userService.resetPasswordByAdmin(adminId, selected.getId(), newPassword);
+            }
+        };
+        task.setOnSucceeded(event -> lblApprovalAdminStatus.setText(task.getValue()
+                ? "Password pengguna berhasil diatur ulang. Sampaikan password baru dengan aman."
+                : "Password gagal diatur ulang. Pastikan sesi admin masih berlaku."));
+        task.setOnFailed(event -> {
+            log.error("Gagal mengatur ulang password pengguna", task.getException());
+            lblApprovalAdminStatus.setText("Password gagal diatur ulang.");
+        });
+        Thread thread = new Thread(task, "admin-password-reset");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
     private void handleSaveApprovalRule() {
         if (currentUser == null) return;
         String requester = tfRequesterDepartment.getText();
@@ -488,8 +537,9 @@ public class SettingController implements Initializable {
             return;
         }
 
-        if (newPass.length() < 6) {
-            showAlert(Alert.AlertType.WARNING, "Peringatan", "Password baru minimal 6 karakter!");
+        if (!PasswordHelper.isValidNewPassword(newPass)) {
+            showAlert(Alert.AlertType.WARNING, "Peringatan",
+                    "Password baru minimal 12 karakter dan maksimal 72 byte UTF-8.");
             return;
         }
 

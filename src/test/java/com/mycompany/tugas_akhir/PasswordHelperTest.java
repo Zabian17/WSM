@@ -21,14 +21,15 @@ class PasswordHelperTest {
     }
 
     @Test
-    void legacyPlaintextAndSha256HashesCanBeVerifiedForMigration() throws Exception {
+    void plaintextIsRejectedAndLegacySha256CanBeVerifiedForMigration() throws Exception {
         byte[] salt = "0123456789abcdef".getBytes(StandardCharsets.UTF_8);
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         digest.update(salt);
         String legacyHash = Base64.getEncoder().encodeToString(salt) + "$"
                 + Base64.getEncoder().encodeToString(digest.digest("legacy-password".getBytes(StandardCharsets.UTF_8)));
 
-        assertTrue(PasswordHelper.verifyPassword("legacy-password", "legacy-password"));
+        assertFalse(PasswordHelper.verifyPassword("legacy-password", "legacy-password"));
+        assertTrue(PasswordHelper.isLegacyPlaintextHash("legacy-password"));
         assertTrue(PasswordHelper.needsUpgrade("legacy-password"));
         assertTrue(PasswordHelper.verifyPassword("legacy-password", legacyHash));
         assertTrue(PasswordHelper.needsUpgrade(legacyHash));

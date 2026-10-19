@@ -139,6 +139,8 @@
                     <Button text="Tetapkan Departemen" styleClass="btn-primary"
                             onAction="#handleSaveUserDepartment"/>
                 </HBox>
+                <Button text="Atur Ulang Password Pengguna" styleClass="btn-outline"
+                        onAction="#handleAdminResetPassword"/>
             </VBox>
             <VBox spacing="8" HBox.hgrow="ALWAYS">
                 <Label text="Routing: Departemen Pemohon ke Departemen Approver" styleClass="form-label"/>

@@ -13,8 +13,10 @@ mobile application, REST/HTTP API, or live ERP integration.
 
 ### Foundation and inventory
 
-- User registration and login with BCrypt password hashing and legacy password
-  hash upgrade on successful login.
+- User registration and login with BCrypt password hashing, startup migration
+  of legacy plaintext passwords, and login-time migration of salted SHA-256 hashes.
+- Admins can reset another user's password from Settings; new and reset passwords
+  require at least 12 characters and no more than 72 UTF-8 bytes.
 - Item, customer, supplier, warehouse-section, and rack management.
 - Inventory balances by storage location (SLOC), batch, and expiry.
 - Stock-in and stock-out movements recorded in the inventory ledger.
@@ -75,18 +77,19 @@ mobile application, REST/HTTP API, or live ERP integration.
   turnaround, PO-to-receipt delivery lead time, and packing/loading audit.
 - Operational report filters by inclusive date range and category. Results
   remain bounded to the most recent repository windows documented below.
-- CSV export for transaction and operational reports.
+- CSV export for transaction and operational reports; PDF export for filtered
+  transaction reports.
 
 Operational reports support user-selected inclusive date ranges, but searches
-remain bounded to recent repository windows. PDF export is not implemented.
+remain bounded to recent repository windows.
 
 ## Technology
 
 | Component | Technology |
 | --- | --- |
-| Language and runtime | Java 17 |
-| Desktop UI | JavaFX 21, FXML, AtlantaFX Primer Light |
-| Application framework | Spring Boot 3.2.4 |
+| Language and runtime | Java 25 |
+| Desktop UI | JavaFX 25, FXML, AtlantaFX Primer Light |
+| Application framework | Spring Boot 3.5.16 |
 | Persistence | Spring Data JPA, Hibernate |
 | Database | MySQL 8-compatible server and MySQL Connector/J |
 | Build | Maven Wrapper |
@@ -98,14 +101,14 @@ remain bounded to recent repository windows. PDF export is not implemented.
 
 ## Requirements
 
-- JDK 17 or newer. The project compiles with Java 17 language/API settings.
+- JDK 25 or newer. The project compiles with Java 25 language/API settings.
 - MySQL server accessible from the development machine.
 - Network access on the first build so Maven can download dependencies.
 - Git, if cloning the repository.
 
 ## Database configuration
 
-The default connection is:
+The default development connection is:
 
 - Host: `localhost`
 - Port: `3306`
@@ -117,15 +120,22 @@ exist. The application uses Hibernate schema update for local development.
 For a new database, the canonical schema is also available in
 [`src/main/resources/sql/schema.sql`](./src/main/resources/sql/schema.sql).
 
-Connection values can be overridden with Spring Boot environment variables:
+Local runs use the `dev` profile by default. It enables Hibernate schema update
+and defaults to Laragon's local `root` account without a password. For a
+production-like run, activate a profile other than `dev`; the base configuration
+requires `DB_USER` and `DB_PASSWORD`, requires encrypted database connections,
+and validates rather than modifies the schema.
+
+Connection values can be overridden with environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `DB_HOST` | `localhost` | MySQL host |
 | `DB_PORT` | `3306` | MySQL port |
 | `DB_NAME` | `gudang_akhir` | Database name |
-| `DB_USER` | `root` | Database username |
-| `DB_PASSWORD` | Empty in the local development configuration | Database password |
+| `DB_USER` | `root` in `dev`; required otherwise | Database username |
+| `DB_PASSWORD` | Empty in `dev`; required otherwise | Database password |
+| `DB_SSL_MODE` | `DISABLED` in `dev`; `REQUIRED` otherwise | MySQL TLS mode (`REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`, or `DISABLED` for local development only) |
 
 For example, in PowerShell:
 
@@ -135,7 +145,13 @@ $env:DB_PORT = "3306"
 $env:DB_NAME = "gudang_akhir"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = "your-local-password"
+$env:DB_SSL_MODE = "VERIFY_IDENTITY"
+$env:SPRING_PROFILES_ACTIVE = "prod"
 ```
+
+Use `VERIFY_IDENTITY` for remote databases with a trusted server certificate.
+Use `REQUIRED` when encryption is needed but certificate verification is not
+configured. Set `DISABLED` only for a local development server without TLS.
 
 Do not commit credentials or production data. The bundled
 [`database/gudang_akhir.sql`](./database/gudang_akhir.sql) is a local
@@ -143,13 +159,18 @@ development export, not a production backup.
 
 ### SQL migrations
 
-Incremental SQL scripts are in
-[`src/main/resources/sql/`](./src/main/resources/sql/), currently through
-`migration_v15.sql`. They are not an automated migration runner. Back up the
-database and apply the migrations in ascending order appropriate to the
-database's current schema before relying on the corresponding features.
-Migration compatibility has not yet been verified against a live MySQL
-installation.
+Flyway manages schema changes from version 15 onward. On startup it adopts an
+existing non-empty database at baseline 15, without replaying the historical
+manual scripts. A new empty database receives the v15 table schema without
+development seed records. Add new
+changes as `V16__description.sql` and later versions in
+`src/main/resources/db/migration`. If an existing database is incomplete,
+Hibernate validation will fail after adoption; repair it from a verified backup
+before raising its baseline.
+
+The scripts in `src/main/resources/sql/` document historical manual changes
+through `migration_v15.sql`; Flyway does not replay them. Back up databases
+before schema updates.
 
 The helper
 [`scripts/windows/import_db.bat`](./scripts/windows/import_db.bat) resets and

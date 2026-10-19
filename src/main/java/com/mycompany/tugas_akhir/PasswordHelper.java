@@ -11,7 +11,15 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
  */
 public class PasswordHelper {
 
+    private static final int MIN_PASSWORD_CODE_POINTS = 12;
+    private static final int MAX_BCRYPT_PASSWORD_BYTES = 72;
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
+
+    public static boolean isValidNewPassword(String password) {
+        return password != null
+                && password.codePointCount(0, password.length()) >= MIN_PASSWORD_CODE_POINTS
+                && password.getBytes(StandardCharsets.UTF_8).length <= MAX_BCRYPT_PASSWORD_BYTES;
+    }
 
     /**
     * Hash password using BCrypt.
@@ -26,8 +34,8 @@ public class PasswordHelper {
     }
 
     /**
-    * Verify BCrypt hashes and support existing salted SHA-256 or plaintext values
-    * until a successful login upgrades them.
+    * Verify BCrypt and salted SHA-256 hashes while old salted hashes are upgraded
+    * after successful login. Plaintext values are migrated at application startup.
      * 
      * @param plainPassword password yang dimasukkan user saat login
      * @param storedHash    hash/string password yang tersimpan di database
@@ -42,11 +50,7 @@ public class PasswordHelper {
             return BCRYPT.matches(plainPassword, storedHash);
         }
 
-        if (!storedHash.contains("$")) {
-            return MessageDigest.isEqual(
-                    storedHash.getBytes(StandardCharsets.UTF_8),
-                    plainPassword.getBytes(StandardCharsets.UTF_8));
-        }
+        if (!storedHash.contains("$")) return false;
 
         try {
             String[] parts = storedHash.split("\\$");
@@ -68,6 +72,10 @@ public class PasswordHelper {
 
     public static boolean needsUpgrade(String storedHash) {
         return !isBcryptHash(storedHash);
+    }
+
+    public static boolean isLegacyPlaintextHash(String storedHash) {
+        return storedHash != null && !isBcryptHash(storedHash) && !storedHash.contains("$");
     }
 
     private static boolean isBcryptHash(String storedHash) {

@@ -20,18 +20,19 @@
 
 - [x] Add multi-picker, per-section tasks, and shift-aware assignment.
 - [x] Add task reservations and item-level checking against delivery orders.
-- [ ] Add printable packing labels and packing lists.
+- [x] Export a printable DO packing list with DO Code128 and packed-lot QR labels.
 - [x] Add barcode-based packing, loading, and dispatch confirmation to mobile DO fulfillment.
 - [x] Complete MRO stock reservation and picker task lifecycle.
 
 ## Phase 4: Forecasting and stock suggestions
 
-- [ ] Calculate monthly average demand from outbound history.
-- [ ] Add per-item buffer/max inventory inputs and configurable suggestions.
+- [x] Calculate monthly average demand from outbound history across configurable completed calendar months.
+- [x] Add per-item buffer/max inventory inputs and suggestions that account for reserved stock.
 
 ## Phase 5: Dashboard and reporting
 
-- [ ] Add fulfillment, productivity, supplier SLA, packing, and loading KPIs with configurable targets/periods.
+- [x] Add fulfillment, picker productivity, supplier turnaround, packing, and loading metrics to the dashboard.
+- [ ] Add configurable dashboard metric targets and selectable dashboard periods.
 
 ## Phase 6: Mobile execution
 

@@ -2,8 +2,10 @@ package com.mycompany.tugas_akhir;
 
 import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.model.ApprovalRoutingRule;
+import com.mycompany.tugas_akhir.model.WarehouseZoneRule;
 import com.mycompany.tugas_akhir.service.ApprovalRoutingService;
 import com.mycompany.tugas_akhir.service.UserService;
+import com.mycompany.tugas_akhir.service.WarehouseZoneRuleService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -34,6 +36,7 @@ public class SettingController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(SettingController.class);
     private final UserService userService;
     private final ApprovalRoutingService approvalRoutingService;
+    private final WarehouseZoneRuleService warehouseZoneRuleService;
 
     private User currentUser;
     private Path selectedPhoto;
@@ -59,14 +62,21 @@ public class SettingController implements Initializable {
     @FXML private TextField tfRequesterDepartment;
     @FXML private TextField tfApproverDepartment;
     @FXML private Label lblApprovalAdminStatus;
+    @FXML private ComboBox<String> cbExcludedDoZone;
+    @FXML private TableView<WarehouseZoneRule> deliveryOrderZoneRuleTable;
+    @FXML private TableColumn<WarehouseZoneRule, String> colZoneRuleOperation;
+    @FXML private TableColumn<WarehouseZoneRule, String> colZoneRuleCode;
+    @FXML private Label lblZoneRuleStatus;
 
     @FXML private PasswordField pfOldPassword;
     @FXML private PasswordField pfNewPassword;
     @FXML private PasswordField pfConfirmPassword;
 
-    public SettingController(UserService userService, ApprovalRoutingService approvalRoutingService) {
+    public SettingController(UserService userService, ApprovalRoutingService approvalRoutingService,
+                             WarehouseZoneRuleService warehouseZoneRuleService) {
         this.userService = userService;
         this.approvalRoutingService = approvalRoutingService;
+        this.warehouseZoneRuleService = warehouseZoneRuleService;
     }
 
     @Override
@@ -75,6 +85,7 @@ public class SettingController implements Initializable {
             profileImageView.setClip(new Circle(48, 48, 48));
         }
         setupApprovalTables();
+        setupZoneRuleTable();
         refreshPhotoView();
     }
 
@@ -92,7 +103,10 @@ public class SettingController implements Initializable {
             if (tfFullName != null) tfFullName.setText(user.getFullName() != null ? user.getFullName() : "");
             if (tfEmail != null) tfEmail.setText(user.getEmail() != null ? user.getEmail() : "");
             if (lblRole != null) lblRole.setText(user.getRole() != null ? user.getRole().toUpperCase() : "USER");
-            if ("admin".equalsIgnoreCase(user.getRole())) loadApprovalAdminTables();
+            if ("admin".equalsIgnoreCase(user.getRole())) {
+                loadApprovalAdminTables();
+                loadZoneRules();
+            }
             refreshPhotoView();
         }
     }
@@ -126,6 +140,105 @@ public class SettingController implements Initializable {
                     });
         }
     }
+
+    private void setupZoneRuleTable() {
+        if (deliveryOrderZoneRuleTable == null) return;
+        colZoneRuleOperation.setCellValueFactory(cell ->
+                new SimpleStringProperty("Delivery Order: dikecualikan"));
+        colZoneRuleCode.setCellValueFactory(cell ->
+                new SimpleStringProperty(cell.getValue().getZoneCode()));
+        deliveryOrderZoneRuleTable.setPlaceholder(new Label("Belum ada zona yang dikecualikan."));
+    }
+
+    private void loadZoneRules() {
+        if (!isCurrentUserAdmin()) return;
+        Task<ZoneRuleViewData> task = new Task<>() {
+            @Override
+            protected ZoneRuleViewData call() {
+                return new ZoneRuleViewData(warehouseZoneRuleService.getRules(),
+                        warehouseZoneRuleService.getZoneCodes());
+            }
+        };
+        task.setOnRunning(event -> lblZoneRuleStatus.setText("Memuat aturan zona…"));
+        task.setOnSucceeded(event -> {
+            deliveryOrderZoneRuleTable.setItems(FXCollections.observableArrayList(task.getValue().rules()));
+            cbExcludedDoZone.setItems(FXCollections.observableArrayList(task.getValue().zones()));
+            lblZoneRuleStatus.setText(task.getValue().zones().isEmpty()
+                    ? "Atur kode zona pada Section sebelum mengecualikan zona."
+                    : "Zona berlaku pada reservasi stok Delivery Order.");
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal memuat aturan zona Delivery Order", task.getException());
+            lblZoneRuleStatus.setText("Aturan zona gagal dimuat. Coba buka ulang Settings.");
+        });
+        Thread thread = new Thread(task, "delivery-order-zone-rules");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    private void handleAddDeliveryOrderExcludedZone() {
+        if (!isCurrentUserAdmin()) return;
+        String zoneCode = cbExcludedDoZone.getValue();
+        if (zoneCode == null || zoneCode.isBlank()) {
+            lblZoneRuleStatus.setText("Pilih zona yang akan dikecualikan.");
+            return;
+        }
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return warehouseZoneRuleService.addDeliveryOrderExclusion(zoneCode);
+            }
+        };
+        task.setOnSucceeded(event -> {
+            lblZoneRuleStatus.setText(task.getValue()
+                    ? "Zona dikecualikan dari reservasi Delivery Order."
+                    : "Zona tersebut sudah dikecualikan.");
+            loadZoneRules();
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal mengecualikan zona Delivery Order", task.getException());
+            lblZoneRuleStatus.setText("Zona gagal disimpan. Periksa konfigurasi Section.");
+        });
+        Thread thread = new Thread(task, "delivery-order-zone-add");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    private void handleRemoveDeliveryOrderExcludedZone() {
+        if (!isCurrentUserAdmin()) return;
+        WarehouseZoneRule selected = deliveryOrderZoneRuleTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            lblZoneRuleStatus.setText("Pilih aturan zona yang akan dihapus.");
+            return;
+        }
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return warehouseZoneRuleService.removeRule(selected.getId());
+            }
+        };
+        task.setOnSucceeded(event -> {
+            lblZoneRuleStatus.setText(task.getValue()
+                    ? "Pengecualian zona dihapus; stok kembali tersedia untuk Delivery Order."
+                    : "Aturan zona sudah tidak tersedia.");
+            loadZoneRules();
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal menghapus pengecualian zona Delivery Order", task.getException());
+            lblZoneRuleStatus.setText("Aturan zona gagal dihapus.");
+        });
+        Thread thread = new Thread(task, "delivery-order-zone-remove");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private boolean isCurrentUserAdmin() {
+        return currentUser != null && "admin".equalsIgnoreCase(currentUser.getRole());
+    }
+
+    private record ZoneRuleViewData(List<WarehouseZoneRule> rules, List<String> zones) {}
 
     private void loadApprovalAdminTables() {
         Task<List<User>> usersTask = new Task<>() {

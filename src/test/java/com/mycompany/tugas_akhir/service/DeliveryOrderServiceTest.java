@@ -12,6 +12,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.time.LocalDate;
@@ -36,6 +37,7 @@ class DeliveryOrderServiceTest {
     @Mock private DeliveryOrderFulfillmentAuditRepository fulfillmentAuditRepository;
     @Mock private PickTaskRepository pickTaskRepository;
     @Mock private SectionRepository sectionRepository;
+    @Mock private WarehouseZoneRuleService warehouseZoneRuleService;
 
     private DeliveryOrderService service;
 
@@ -44,7 +46,7 @@ class DeliveryOrderServiceTest {
         service = new DeliveryOrderService(orderRepository, customerRepository, barangRepository,
             userRepository, stockPoster, lotBalanceRepository, reservationRepository, pickScanRepository,
             fulfillmentAuditRepository, pickTaskRepository, sectionRepository,
-            new InventoryPickingPolicy(lotBalanceRepository, "FEFO"));
+            new InventoryPickingPolicy(lotBalanceRepository, "FEFO"), warehouseZoneRuleService);
     }
 
     @Test
@@ -111,6 +113,26 @@ class DeliveryOrderServiceTest {
         assertEquals(1, second.getReservedQuantity());
         verify(reservationRepository, times(2)).save(any(DeliveryOrderLotReservation.class));
         verify(pickTaskRepository).save(any(PickTask.class));
+    }
+
+    @Test
+    void releaseDoesNotUseLotsFromDeliveryOrderExcludedZones() {
+        DeliveryOrder order = order(DeliveryOrderStatus.DRAFT, 4);
+        Section excludedSection = pickingSection();
+        excludedSection.setZoneCode("PICK");
+        Rak rack = new Rak(2, excludedSection, "A-01", 100, 4);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(), rack, "LOT-A", 4);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(barangRepository.findByIdForUpdate(1)).thenReturn(Optional.of(order.getLines().get(0).getBarang()));
+        when(lotBalanceRepository.findAvailableFefoAcrossLocationsForUpdate(1, LocalDate.now()))
+                .thenReturn(List.of(lot));
+        when(warehouseZoneRuleService.getDeliveryOrderExcludedZones()).thenReturn(Set.of("PICK"));
+
+        assertFalse(service.releaseToPicking(7));
+
+        assertEquals(0, lot.getReservedQuantity());
+        verifyNoInteractions(reservationRepository);
+        verify(orderRepository, never()).save(order);
     }
 
     @Test

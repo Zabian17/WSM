@@ -50,6 +50,8 @@ implemented.
   document references and remaining quantities.
 - DO release, strategy-based lot reservation, pick task creation, selectable
   picker assignment, and section assignment.
+- Admins can exclude configured section zones from DO reservations; physical
+  inventory in those zones remains unchanged.
 - Desktop picking scan validation for item QR, SLOC, batch, expiry, assigned
   picker, and section.
 - Packing and loading quantity checks with operator/time audit.

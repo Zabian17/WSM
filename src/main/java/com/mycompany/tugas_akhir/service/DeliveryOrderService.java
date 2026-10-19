@@ -76,6 +76,7 @@ public class DeliveryOrderService {
     private final PickTaskRepository pickTaskRepository;
     private final SectionRepository sectionRepository;
     private final InventoryPickingPolicy pickingPolicy;
+    private final WarehouseZoneRuleService warehouseZoneRuleService;
 
     public DeliveryOrderService(DeliveryOrderRepository deliveryOrderRepository,
                                 CustomerRepository customerRepository,
@@ -88,7 +89,8 @@ public class DeliveryOrderService {
                                 DeliveryOrderFulfillmentAuditRepository fulfillmentAuditRepository,
                                 PickTaskRepository pickTaskRepository,
                                 SectionRepository sectionRepository,
-                                InventoryPickingPolicy pickingPolicy) {
+                                InventoryPickingPolicy pickingPolicy,
+                                WarehouseZoneRuleService warehouseZoneRuleService) {
         this.deliveryOrderRepository = deliveryOrderRepository;
         this.customerRepository = customerRepository;
         this.barangRepository = barangRepository;
@@ -101,6 +103,7 @@ public class DeliveryOrderService {
         this.pickTaskRepository = pickTaskRepository;
         this.sectionRepository = sectionRepository;
         this.pickingPolicy = pickingPolicy;
+        this.warehouseZoneRuleService = warehouseZoneRuleService;
     }
 
     @Transactional(readOnly = true)
@@ -288,6 +291,7 @@ public class DeliveryOrderService {
 
         LinkedHashMap<DeliveryOrderLine, LinkedHashMap<InventoryLotBalance, Integer>> planned = new LinkedHashMap<>();
         boolean hasOutstandingQuantity = false;
+        Set<String> excludedZones = warehouseZoneRuleService.getDeliveryOrderExcludedZones();
         for (DeliveryOrderLine line : order.getLines()) {
             int remainingQuantity = line.getRemainingQuantity();
             if (remainingQuantity == 0) continue;
@@ -300,6 +304,9 @@ public class DeliveryOrderService {
             LinkedHashMap<InventoryLotBalance, Integer> lineReservations = new LinkedHashMap<>();
             for (InventoryLotBalance lot : lots) {
                 if (lot.getRak() == null) continue;
+                String zoneCode = lot.getRak().getSection() == null
+                        ? null : lot.getRak().getSection().getZoneCode();
+                if (!WarehouseZoneRuleService.isDeliveryOrderZoneAllowed(zoneCode, excludedZones)) continue;
                 int quantity = Math.min(remaining, lot.getAvailableQuantity());
                 if (quantity > 0) lineReservations.put(lot, quantity);
                 remaining -= quantity;

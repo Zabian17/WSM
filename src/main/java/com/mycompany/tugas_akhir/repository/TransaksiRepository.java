@@ -21,4 +21,10 @@ public interface TransaksiRepository extends JpaRepository<Transaksi, Integer> {
             + "WHERE t.rak IS NOT NULL AND t.tanggal >= :since GROUP BY t.rak.id")
     List<RackMutationCount> countMutationsByRackSince(@Param("since") LocalDateTime since);
 
+    @Query("SELECT t.barang.id, COALESCE(SUM(t.jumlah), 0) FROM Transaksi t "
+            + "WHERE LOWER(t.tipe) = 'keluar' AND t.tanggal >= :start AND t.tanggal < :end "
+            + "GROUP BY t.barang.id")
+    List<Object[]> sumOutboundQuantityByItemBetween(@Param("start") LocalDateTime start,
+                                                    @Param("end") LocalDateTime end);
+
 }

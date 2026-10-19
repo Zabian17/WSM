@@ -13,6 +13,10 @@ import java.util.Optional;
 
 public interface InventoryLotBalanceRepository extends JpaRepository<InventoryLotBalance, Integer> {
 
+    @Query("SELECT l.barang.id, COALESCE(SUM(l.reservedQuantity), 0) FROM InventoryLotBalance l "
+            + "GROUP BY l.barang.id")
+    List<Object[]> sumReservedQuantityByItem();
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT l FROM InventoryLotBalance l WHERE l.id = :id")
     Optional<InventoryLotBalance> findByIdForUpdate(@Param("id") Integer id);

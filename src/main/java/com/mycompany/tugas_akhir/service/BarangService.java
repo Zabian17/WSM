@@ -117,6 +117,19 @@ public class BarangService {
         }).orElse(false);
     }
 
+    @Transactional
+    public boolean updateStockTargets(Integer itemId, Integer bufferStock, Integer maximumStock) {
+        if (itemId == null || bufferStock == null || maximumStock == null
+                || bufferStock < 0 || maximumStock < 0
+                || maximumStock > 0 && maximumStock < bufferStock) return false;
+        Barang item = barangRepository.findByIdForUpdate(itemId).orElse(null);
+        if (item == null) return false;
+        item.setStokMin(bufferStock);
+        item.setStokMax(maximumStock);
+        barangRepository.save(item);
+        return true;
+    }
+
     private void validateVolumeCbm(BigDecimal volumeCbm) {
         if (volumeCbm != null && (volumeCbm.signum() <= 0 || volumeCbm.precision() > 12
                 || Math.max(0, volumeCbm.stripTrailingZeros().scale()) > 6)) {

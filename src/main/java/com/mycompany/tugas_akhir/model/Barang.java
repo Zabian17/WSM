@@ -29,6 +29,9 @@ public class Barang {
     @Column(name = "stok_min", nullable = false)
     private Integer stokMin;
 
+    @Column(name = "stok_max", nullable = false)
+    private Integer stokMax = 0;
+
     @Column(name = "volume_cbm", precision = 12, scale = 6)
     private BigDecimal volumeCbm;
 
@@ -67,6 +70,8 @@ public class Barang {
 
     public Integer getStokMin() { return stokMin; }
     public void setStokMin(Integer stokMin) { this.stokMin = stokMin; }
+    public Integer getStokMax() { return stokMax == null ? 0 : stokMax; }
+    public void setStokMax(Integer stokMax) { this.stokMax = stokMax; }
     public BigDecimal getVolumeCbm() { return volumeCbm; }
     public void setVolumeCbm(BigDecimal volumeCbm) { this.volumeCbm = volumeCbm; }
     public String getStorageType() { return storageType; }
@@ -89,6 +94,7 @@ public class Barang {
         private String satuan;
         private Integer stok;
         private Integer stokMin;
+        private Integer stokMax;
 
         public BarangBuilder id(Integer id) { this.id = id; return this; }
         public BarangBuilder kodeBarang(String kodeBarang) { this.kodeBarang = kodeBarang; return this; }
@@ -97,9 +103,12 @@ public class Barang {
         public BarangBuilder satuan(String satuan) { this.satuan = satuan; return this; }
         public BarangBuilder stok(Integer stok) { this.stok = stok; return this; }
         public BarangBuilder stokMin(Integer stokMin) { this.stokMin = stokMin; return this; }
+        public BarangBuilder stokMax(Integer stokMax) { this.stokMax = stokMax; return this; }
 
         public Barang build() {
-            return new Barang(id, kodeBarang, namaBarang, kategori, satuan, stok, stokMin);
+            Barang barang = new Barang(id, kodeBarang, namaBarang, kategori, satuan, stok, stokMin);
+            barang.setStokMax(stokMax == null ? 0 : stokMax);
+            return barang;
         }
     }
 }

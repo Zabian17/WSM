@@ -7,6 +7,8 @@ import com.mycompany.tugas_akhir.service.TransaksiService;
 import com.mycompany.tugas_akhir.service.OperationalReportRow;
 import com.mycompany.tugas_akhir.service.OperationalReportService;
 import com.mycompany.tugas_akhir.service.ReportPdfService;
+import com.mycompany.tugas_akhir.service.StockSuggestionService;
+import com.mycompany.tugas_akhir.service.StockSuggestionService.StockSuggestion;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,6 +17,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.GridPane;
 import javafx.stage.FileChooser;
 
 import org.slf4j.Logger;
@@ -25,6 +28,7 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 import java.nio.charset.StandardCharsets;
@@ -71,6 +75,7 @@ public class ReportController implements Initializable {
     private final BarangService barangService;
     private final OperationalReportService operationalReportService;
     private final ReportPdfService reportPdfService;
+    private final StockSuggestionService stockSuggestionService;
 
     private final ObservableList<Transaksi> reportList = FXCollections.observableArrayList();
     private List<Transaksi> rawReportList;
@@ -94,11 +99,117 @@ public class ReportController implements Initializable {
 
     public ReportController(TransaksiService transaksiService, BarangService barangService,
                             OperationalReportService operationalReportService,
-                            ReportPdfService reportPdfService) {
+                            ReportPdfService reportPdfService,
+                            StockSuggestionService stockSuggestionService) {
         this.transaksiService = transaksiService;
         this.barangService = barangService;
         this.operationalReportService = operationalReportService;
         this.reportPdfService = reportPdfService;
+        this.stockSuggestionService = stockSuggestionService;
+    }
+
+    @FXML
+    private void handleOpenStockSuggestions() {
+        TableView<StockSuggestion> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        table.getColumns().add(stockSuggestionColumn("SKU", StockSuggestion::sku));
+        table.getColumns().add(stockSuggestionColumn("Barang", StockSuggestion::itemName));
+        table.getColumns().add(stockSuggestionColumn("Stok", value -> String.valueOf(value.stock())));
+        table.getColumns().add(stockSuggestionColumn("Reservasi", value -> String.valueOf(value.reservedQuantity())));
+        table.getColumns().add(stockSuggestionColumn("Tersedia", value -> String.valueOf(value.availableQuantity())));
+        table.getColumns().add(stockSuggestionColumn("Rata-rata/bln", value -> String.format("%.1f", value.monthlyAverageDemand())));
+        table.getColumns().add(stockSuggestionColumn("Buffer", value -> String.valueOf(value.bufferStock())));
+        table.getColumns().add(stockSuggestionColumn("Maksimum", value -> String.valueOf(value.maximumStock())));
+        table.getColumns().add(stockSuggestionColumn("Saran beli", value -> String.valueOf(value.suggestedPurchaseQuantity())));
+        table.setPlaceholder(new Label("Belum ada barang."));
+        Button configure = new Button("Atur buffer / maksimum");
+        Button refresh = new Button("Muat ulang");
+        configure.setDisable(true);
+        table.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) ->
+                configure.setDisable(selected == null));
+        configure.setOnAction(event -> editStockTargets(table));
+        refresh.setOnAction(event -> loadStockSuggestions(table));
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Forecast dan Saran Stok");
+        dialog.setHeaderText("Rata-rata dari " + stockSuggestionService.getHistoryMonths()
+                + " bulan kalender selesai; saran beli muncul saat stok tersedia di bawah buffer.");
+        dialog.getDialogPane().setContent(new VBox(10, new javafx.scene.layout.HBox(8, configure, refresh), table));
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefSize(1050, 560);
+        loadStockSuggestions(table);
+        dialog.showAndWait();
+    }
+
+    private TableColumn<StockSuggestion, String> stockSuggestionColumn(
+            String title, java.util.function.Function<StockSuggestion, String> value) {
+        TableColumn<StockSuggestion, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cell -> new SimpleStringProperty(value.apply(cell.getValue())));
+        return column;
+    }
+
+    private void loadStockSuggestions(TableView<StockSuggestion> table) {
+        Task<List<StockSuggestion>> task = new Task<>() {
+            @Override
+            protected List<StockSuggestion> call() {
+                return stockSuggestionService.getSuggestions();
+            }
+        };
+        task.setOnSucceeded(event -> table.setItems(FXCollections.observableArrayList(task.getValue())));
+        task.setOnFailed(event -> {
+            log.error("Gagal memuat saran stok", task.getException());
+            showAlert(Alert.AlertType.ERROR, "Gagal", "Saran stok tidak dapat dimuat.");
+        });
+        Thread thread = new Thread(task, "stock-suggestions-load");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void editStockTargets(TableView<StockSuggestion> table) {
+        StockSuggestion selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) return;
+        TextField bufferField = new TextField(String.valueOf(selected.bufferStock()));
+        TextField maximumField = new TextField(String.valueOf(selected.maximumStock()));
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Atur Target Stok");
+        dialog.setHeaderText(selected.sku() + " — " + selected.itemName()
+                + ". Maksimum 0 menonaktifkan saran pembelian.");
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(8);
+        grid.addRow(0, new Label("Buffer / stok minimum"), bufferField);
+        grid.addRow(1, new Label("Maksimum"), maximumField);
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+        int buffer;
+        int maximum;
+        try {
+            buffer = Integer.parseInt(bufferField.getText().trim());
+            maximum = Integer.parseInt(maximumField.getText().trim());
+            if (buffer < 0 || maximum < 0 || maximum > 0 && maximum < buffer) throw new NumberFormatException();
+        } catch (NumberFormatException exception) {
+            showAlert(Alert.AlertType.WARNING, "Target Tidak Valid",
+                    "Isi bilangan bulat nonnegatif; maksimum harus sama atau lebih besar dari buffer.");
+            return;
+        }
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return barangService.updateStockTargets(selected.itemId(), buffer, maximum);
+            }
+        };
+        task.setOnSucceeded(event -> {
+            if (task.getValue()) loadStockSuggestions(table);
+            else showAlert(Alert.AlertType.ERROR, "Target Tidak Tersimpan", "Barang tidak ditemukan.");
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal menyimpan target stok {}", selected.sku(), task.getException());
+            showAlert(Alert.AlertType.ERROR, "Gagal", "Target stok tidak dapat disimpan.");
+        });
+        Thread thread = new Thread(task, "stock-target-update");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     @Override

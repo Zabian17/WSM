@@ -17,6 +17,7 @@
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="Laporan Operasional WMS" styleClass="btn-outline" onAction="#handleOpenOperationalReports"/>
+        <Button text="Forecast / Saran Stok" styleClass="btn-outline" onAction="#handleOpenStockSuggestions"/>
         <Button text="Ekspor PDF" styleClass="btn-outline" onAction="#handleExportPDF"/>
         <Button text="Ekspor CSV" styleClass="btn-primary" onAction="#handleExportCSV"/>
     </HBox>

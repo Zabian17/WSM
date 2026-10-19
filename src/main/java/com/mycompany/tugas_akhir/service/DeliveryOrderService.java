@@ -21,6 +21,7 @@ import com.mycompany.tugas_akhir.repository.InventoryLotBalanceRepository;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderLotReservationRepository;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderPickScanRepository;
 import com.mycompany.tugas_akhir.repository.DeliveryOrderFulfillmentAuditRepository;
+import com.mycompany.tugas_akhir.repository.MobileFulfillmentOrderProjection;
 import com.mycompany.tugas_akhir.repository.PickTaskRepository;
 import com.mycompany.tugas_akhir.repository.SectionRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
@@ -48,10 +49,19 @@ import java.util.Optional;
 @Service
 public class DeliveryOrderService {
 
+    private static final List<DeliveryOrderStatus> MOBILE_FULFILLMENT_STATUSES = List.of(
+            DeliveryOrderStatus.PICKED, DeliveryOrderStatus.PACKED, DeliveryOrderStatus.LOADED);
+
     public record MobilePickInstruction(Integer lineId, String itemCode, String itemName, String unit,
                                         String rackCode, String batchCode, LocalDate expiryDate,
                                         Integer reservedQuantity, Integer pickedQuantity,
                                         Integer remainingQuantity) {}
+    public record MobileFulfillmentSummary(Integer id, String orderCode, String customerName,
+                                           DeliveryOrderStatus status, LocalDateTime createdAt) {}
+    public record MobileFulfillmentLine(Integer lineId, String itemCode, String itemName,
+                                        Integer pickedQuantity, Integer packedQuantity,
+                                        Integer loadedQuantity, Integer availableQuantity) {}
+    public record MobileFulfillmentDetail(MobileFulfillmentSummary order, List<MobileFulfillmentLine> lines) {}
 
     private static final Logger log = LoggerFactory.getLogger(DeliveryOrderService.class);
     private final DeliveryOrderRepository deliveryOrderRepository;
@@ -162,6 +172,78 @@ public class DeliveryOrderService {
         if (tasks.isEmpty() || tasks.stream().anyMatch(task -> task.getStatus() != PickTaskStatus.IN_PROGRESS))
             return false;
         return completePicking(orderId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MobileFulfillmentSummary> getMobileFulfillmentOrders(Pageable pageable) {
+        return deliveryOrderRepository.findMobileFulfillmentOrders(MOBILE_FULFILLMENT_STATUSES, pageable)
+                .map(order -> new MobileFulfillmentSummary(order.id(), order.orderCode(), order.customerName(),
+                        order.status(), order.createdAt()));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<MobileFulfillmentDetail> getMobileFulfillmentOrder(Integer orderId) {
+        if (orderId == null) return Optional.empty();
+        DeliveryOrder order = deliveryOrderRepository.findByIdWithLines(orderId).orElse(null);
+        if (order == null || !MOBILE_FULFILLMENT_STATUSES.contains(order.getStatus())) return Optional.empty();
+        List<DeliveryOrderLotReservation> reservations = reservationRepository.findByOrderId(orderId);
+        List<MobileFulfillmentLine> lines = order.getLines().stream().map(line -> {
+            List<DeliveryOrderLotReservation> lineReservations = reservations.stream()
+                    .filter(reservation -> Objects.equals(reservation.getDeliveryOrderLine().getId(), line.getId()))
+                    .toList();
+            int picked = lineReservations.stream().mapToInt(DeliveryOrderLotReservation::getPickedQuantity).sum();
+            int packed = lineReservations.stream().mapToInt(DeliveryOrderLotReservation::getPackedQuantity).sum();
+            int loaded = lineReservations.stream().mapToInt(DeliveryOrderLotReservation::getLoadedQuantity).sum();
+            int available = order.getStatus() == DeliveryOrderStatus.PICKED ? picked - packed
+                    : order.getStatus() == DeliveryOrderStatus.PACKED ? packed - loaded : 0;
+            return new MobileFulfillmentLine(line.getId(), line.getBarang().getKodeBarang(),
+                    line.getBarang().getNamaBarang(), picked, packed, loaded, available);
+        }).toList();
+        return Optional.of(new MobileFulfillmentDetail(new MobileFulfillmentSummary(order.getId(),
+                order.getOrderCode(), order.getCustomer().getNamaCustomer(), order.getStatus(),
+                order.getCreatedAt()), lines));
+    }
+
+    @Transactional
+    public boolean recordMobileFulfillmentScan(Integer orderId, Integer lineId, String deliveryOrderBarcode,
+                                               String itemQrPayload, int quantity, Integer actorId) {
+        if (orderId == null || deliveryOrderBarcode == null || deliveryOrderBarcode.isBlank()
+                || deliveryOrderBarcode.length() > 128) return false;
+        DeliveryOrder order = deliveryOrderRepository.findByIdWithLines(orderId).orElse(null);
+        if (order == null || order.getStatus() != DeliveryOrderStatus.PICKED
+                && order.getStatus() != DeliveryOrderStatus.PACKED
+                || !order.getOrderCode().equalsIgnoreCase(deliveryOrderBarcode.trim())) return false;
+        return recordFulfillmentScan(orderId, lineId, deliveryOrderBarcode, itemQrPayload, quantity, actorId);
+    }
+
+    @Transactional
+    public DeliveryOrderStatus completeMobileFulfillment(Integer orderId, Integer actorId) {
+        if (orderId == null || actorId == null) return null;
+        DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
+        if (order == null) return null;
+        boolean packing = order.getStatus() == DeliveryOrderStatus.PICKED;
+        if (!packing && order.getStatus() != DeliveryOrderStatus.PACKED) return null;
+        Map<Integer, Integer> scannedTotals = new HashMap<>();
+        for (DeliveryOrderLotReservation reservation : reservationRepository.findByOrderIdForUpdate(orderId)) {
+            int scannedQuantity = packing ? reservation.getPackedQuantity() : reservation.getLoadedQuantity();
+            if (scannedQuantity > 0) {
+                scannedTotals.merge(reservation.getDeliveryOrderLine().getId(), scannedQuantity, Math::addExact);
+            }
+        }
+        if (scannedTotals.isEmpty()) {
+            return null;
+        }
+        Map<Integer, Integer> quantities = new LinkedHashMap<>();
+        order.getLines().forEach(line -> quantities.put(line.getId(), scannedTotals.getOrDefault(line.getId(), 0)));
+        boolean completed = packing ? completePacking(orderId, quantities, actorId)
+                : completeLoading(orderId, quantities, actorId);
+        return completed ? (packing ? DeliveryOrderStatus.PACKED : DeliveryOrderStatus.LOADED) : null;
+    }
+
+    @Transactional
+    public DeliveryOrderStatus dispatchMobileFulfillment(Integer orderId, Integer actorId) {
+        if (orderId == null || actorId == null || !dispatch(orderId, actorId)) return null;
+        return deliveryOrderRepository.findStatusById(orderId).orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -538,12 +620,13 @@ public class DeliveryOrderService {
         if (order == null || actor == null || order.getStatus() != expected) return false;
 
         List<DeliveryOrderLotReservation> reservations = reservationRepository.findByOrderIdForUpdate(orderId);
-        String scanStage = loading ? "LOADING_SCAN" : "PACKING_SCAN";
         Map<Integer, Integer> scannedTotals = new HashMap<>();
-        fulfillmentAuditRepository.findByOrderId(orderId).stream()
-                .filter(audit -> scanStage.equals(audit.getStage()))
-                .forEach(audit -> scannedTotals.merge(audit.getDeliveryOrderLine().getId(),
-                        audit.getVerifiedQuantity(), Math::addExact));
+        for (DeliveryOrderLotReservation reservation : reservations) {
+            int scannedQuantity = loading ? reservation.getLoadedQuantity() : reservation.getPackedQuantity();
+            if (scannedQuantity > 0) {
+                scannedTotals.merge(reservation.getDeliveryOrderLine().getId(), scannedQuantity, Math::addExact);
+            }
+        }
         Set<Integer> lineIds = new HashSet<>();
         int totalQuantity = 0;
         for (DeliveryOrderLine line : order.getLines()) {

@@ -431,6 +431,8 @@ class DeliveryOrderServiceTest {
         InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(),
                 new Rak(2, null, "A-01", 100, 4), "LOT-A", 4);
         DeliveryOrderLotReservation reservation = reservation(order, lot, 4);
+        reservation.setPackedQuantity(0);
+        reservation.setLoadedQuantity(0);
         when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
         when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
         when(userRepository.findById(9)).thenReturn(Optional.of(User.builder().id(9).fullName("Operator").build()));
@@ -474,12 +476,101 @@ class DeliveryOrderServiceTest {
         assertEquals(2, reservation.getLoadedQuantity());
         verify(fulfillmentAuditRepository).save(argThat(audit -> audit.getStage().equals("LOADING_SCAN")
                 && audit.getVerifiedQuantity() == 2));
-        User actor = User.builder().id(9).fullName("Operator").build();
-        when(fulfillmentAuditRepository.findByOrderId(7)).thenReturn(List.of(
-                new DeliveryOrderFulfillmentAudit(order, line, actor, "LOADING_SCAN", 2,
-                        java.time.LocalDateTime.now())));
         assertFalse(service.completeLoading(7, Map.of(line.getId(), 1), 9));
         assertTrue(service.completeLoading(7, Map.of(line.getId(), 2), 9));
+    }
+
+    @Test
+    void mobileFulfillmentRequiresDoBarcodeForPackingScans() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKED, 4);
+        DeliveryOrderLine line = order.getLines().get(0);
+        InventoryLotBalance lot = lot(line.getBarang(), new Rak(2, null, "A-01", 100, 4), "LOT-A", 4);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 4);
+        reservation.setPackedQuantity(0);
+        reservation.setLoadedQuantity(0);
+        when(orderRepository.findByIdWithLines(7)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(userRepository.findById(9)).thenReturn(Optional.of(User.builder().id(9).fullName("Operator").build()));
+        when(reservationRepository.findByLineIdForUpdate(8)).thenReturn(List.of(reservation));
+
+        String itemPayload = itemQr("SKU-1", "LOT-A", "-");
+        assertFalse(service.recordMobileFulfillmentScan(7, 8, "DO-WRONG", itemPayload, 1, 9));
+        assertTrue(service.recordMobileFulfillmentScan(7, 8, "DO-TEST", itemPayload, 2, 9));
+
+        assertEquals(2, reservation.getPackedQuantity());
+        verify(fulfillmentAuditRepository).save(argThat(audit -> audit.getStage().equals("PACKING_SCAN")
+                && audit.getVerifiedQuantity() == 2));
+    }
+
+    @Test
+    void mobileFulfillmentDetailReportsOnlyCurrentStageAvailability() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKED, 5);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(),
+                new Rak(2, null, "A-01", 100, 5), "LOT-A", 5);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 5);
+        reservation.setPackedQuantity(2);
+        reservation.setLoadedQuantity(1);
+        when(orderRepository.findByIdWithLines(7)).thenReturn(Optional.of(order));
+        when(reservationRepository.findByOrderId(7)).thenReturn(List.of(reservation));
+
+        var detail = service.getMobileFulfillmentOrder(7).orElseThrow();
+
+        assertEquals("DO-TEST", detail.order().orderCode());
+        assertEquals(3, detail.lines().getFirst().availableQuantity());
+        assertEquals(2, detail.lines().getFirst().packedQuantity());
+    }
+
+    @Test
+    void mobilePackingCompletionUsesScannedTotalsOnly() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKED, 4);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(),
+                new Rak(2, null, "A-01", 100, 4), "LOT-A", 4);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 4);
+        reservation.setPackedQuantity(3);
+        reservation.setLoadedQuantity(0);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(userRepository.findById(9)).thenReturn(Optional.of(User.builder().id(9).fullName("Operator").build()));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+
+        assertEquals(DeliveryOrderStatus.PACKED, service.completeMobileFulfillment(7, 9));
+        assertEquals(3, reservation.getPackedQuantity());
+        assertEquals(DeliveryOrderStatus.PACKED, order.getStatus());
+    }
+
+    @Test
+    void mobilePackingCannotCompleteFromAnEarlierCycleWithoutCurrentScans() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKED, 4);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(),
+                new Rak(2, null, "A-01", 100, 4), "LOT-A", 4);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 4);
+        reservation.setPackedQuantity(0);
+        reservation.setLoadedQuantity(0);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+
+        assertNull(service.completeMobileFulfillment(7, 9));
+        assertEquals(DeliveryOrderStatus.PICKED, order.getStatus());
+        verify(fulfillmentAuditRepository, never()).findByOrderId(7);
+    }
+
+    @Test
+    void mobileDispatchReturnsTheActualPartialDispatchStatus() {
+        DeliveryOrder order = order(DeliveryOrderStatus.LOADED, 5);
+        Rak rack = new Rak(2, null, "A-01", 100, 5);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(), rack, "LOT-A", 5);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 5);
+        reservation.setPackedQuantity(3);
+        reservation.setLoadedQuantity(3);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(userRepository.findById(9)).thenReturn(Optional.of(User.builder().id(9).fullName("Dispatcher").build()));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+        when(lotBalanceRepository.findByIdForUpdate(lot.getId())).thenReturn(Optional.of(lot));
+        when(stockPoster.postOutbound(1, 2, "LOT-A", 3, "Goods Issue " + order.getOrderCode(), 9))
+                .thenReturn(true);
+        when(orderRepository.findStatusById(7)).thenReturn(Optional.of(DeliveryOrderStatus.PARTIALLY_DISPATCHED));
+
+        assertEquals(DeliveryOrderStatus.PARTIALLY_DISPATCHED, service.dispatchMobileFulfillment(7, 9));
+        assertEquals(DeliveryOrderStatus.PARTIALLY_DISPATCHED, order.getStatus());
     }
 
     @Test

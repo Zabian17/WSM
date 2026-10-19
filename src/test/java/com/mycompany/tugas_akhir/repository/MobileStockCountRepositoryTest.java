@@ -32,6 +32,8 @@ class MobileStockCountRepositoryTest {
     @Autowired private SectionRepository sectionRepository;
     @Autowired private RakRepository rakRepository;
     @Autowired private BarangRepository barangRepository;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private DeliveryOrderRepository deliveryOrderRepository;
 
     @Test
     void mobileCountQueriesReturnOnlyAssignedOpenLinesAndDoNotExposeExpectedQuantity() {
@@ -96,6 +98,26 @@ class MobileStockCountRepositoryTest {
         assertEquals(10, reviewLines.getContent().getFirst().countedQuantity());
     }
 
+    @Test
+    void mobileFulfillmentQueryOnlyReturnsOrdersInPackingLoadingOrDispatchStages() {
+        User operator = saveUser("dispatch@example.com", "Dispatcher");
+        Customer customer = customerRepository.save(new Customer(null, "Fulfillment Customer",
+                null, null, null, null, "Aktif"));
+        Barang item = saveItem("SKU-DO");
+        DeliveryOrder picked = saveOrder("DO-PICKED", customer, operator, item, DeliveryOrderStatus.PICKED);
+        saveOrder("DO-DRAFT", customer, operator, item, DeliveryOrderStatus.DRAFT);
+
+        var orders = deliveryOrderRepository.findMobileFulfillmentOrders(List.of(DeliveryOrderStatus.PICKED,
+                DeliveryOrderStatus.PACKED, DeliveryOrderStatus.LOADED), PageRequest.of(0, 25));
+        var detail = deliveryOrderRepository.findByIdWithLines(picked.getId()).orElseThrow();
+
+        assertEquals(List.of("DO-PICKED"), orders.getContent().stream()
+                .map(MobileFulfillmentOrderProjection::orderCode).toList());
+        assertEquals("Fulfillment Customer", orders.getContent().getFirst().customerName());
+        assertEquals(1, detail.getLines().size());
+        assertEquals("SKU-DO", detail.getLines().getFirst().getBarang().getKodeBarang());
+    }
+
     private User saveUser(String email, String name) {
         return userRepository.save(User.builder().fullName(name).email(email)
                 .passwordHash("test-hash").role("user").build());
@@ -110,5 +132,13 @@ class MobileStockCountRepositoryTest {
         StockCountLine line = new StockCountLine(item, 12);
         line.setAssignedUser(user);
         return line;
+    }
+
+    private DeliveryOrder saveOrder(String orderCode, Customer customer, User operator,
+                                    Barang item, DeliveryOrderStatus status) {
+        DeliveryOrder order = new DeliveryOrder(orderCode, customer, operator, null, LocalDateTime.now());
+        order.setStatus(status);
+        order.addLine(new DeliveryOrderLine(item, 3));
+        return deliveryOrderRepository.saveAndFlush(order);
     }
 }

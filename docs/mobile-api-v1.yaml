@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: GudangKu Mobile API
   version: 1.0.0
-  description: Authenticated mobile execution API for stock counts, inbound putaway, DO picking, and MRO.
+  description: Authenticated mobile execution API for stock counts, inbound putaway, DO picking and fulfillment, MRO, and returns.
 servers:
   - url: http://127.0.0.1:8765/api/mobile/v1
     description: Local-only default. Use HTTPS when binding to a warehouse network address.
@@ -300,6 +300,89 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /fulfillment/orders:
+    get:
+      summary: List DOs ready for mobile packing, loading, or dispatch
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: DOs in PICKED, PACKED, or LOADED stage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FulfillmentOrderPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /fulfillment/orders/{orderId}:
+    get:
+      summary: Read per-line picked, packed, loaded, and available quantities
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      responses:
+        '200':
+          description: Fulfillment stage details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FulfillmentOrderDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /fulfillment/orders/{orderId}/scans:
+    post:
+      summary: Verify a DO barcode and item/lot QR for packing or loading
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineId, quantity, deliveryOrderBarcode, itemBarcode]
+              properties:
+                lineId: { type: integer, minimum: 1 }
+                quantity: { type: integer, minimum: 1 }
+                deliveryOrderBarcode: { type: string, maxLength: 128, description: Must match the scanned DO code }
+                itemBarcode: { type: string, maxLength: 512, description: WMS1 item QR payload }
+      responses:
+        '200':
+          description: Scan recorded against the matching reservation lot
+          content:
+            application/json:
+              schema: { type: object, properties: { recorded: { type: boolean, const: true } } }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /fulfillment/orders/{orderId}/complete:
+    post:
+      summary: Complete packing or loading using scanned per-line totals
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      responses:
+        '200':
+          description: Fulfillment stage advanced
+          content:
+            application/json:
+              schema: { type: object, properties: { status: { type: string, enum: [PACKED, LOADED] } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /fulfillment/orders/{orderId}/dispatch:
+    post:
+      summary: Dispatch a loaded DO and post Goods Issue through the stock ledger
+      parameters:
+        - { $ref: '#/components/parameters/orderId' }
+      responses:
+        '200':
+          description: DO fully or partially dispatched
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [DISPATCHED, PARTIALLY_DISPATCHED] }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /mro/tasks:
     get:
       summary: List MRO pick tasks assigned to the signed-in picker
@@ -445,6 +528,11 @@ components:
       in: path
       required: true
       schema: { type: integer }
+    orderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { type: integer }
   schemas:
     StockCount:
       type: object
@@ -555,6 +643,34 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/PickTask' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    FulfillmentOrder:
+      type: object
+      properties:
+        id: { type: integer }
+        orderCode: { type: string }
+        customerName: { type: string }
+        status: { type: string, enum: [PICKED, PACKED, LOADED] }
+        createdAt: { type: string, format: date-time }
+    FulfillmentLine:
+      type: object
+      properties:
+        lineId: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        pickedQuantity: { type: integer }
+        packedQuantity: { type: integer }
+        loadedQuantity: { type: integer }
+        availableQuantity: { type: integer, description: Available for the current packing or loading stage }
+    FulfillmentOrderDetail:
+      type: object
+      properties:
+        order: { $ref: '#/components/schemas/FulfillmentOrder' }
+        lines: { type: array, items: { $ref: '#/components/schemas/FulfillmentLine' } }
+    FulfillmentOrderPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/FulfillmentOrder' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     MroTask:
       type: object

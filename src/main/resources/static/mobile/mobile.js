@@ -107,7 +107,8 @@ async function loadCurrentTab() {
     putaway: ["Simpan barang", "Pilih receipt dan lokasi rak yang disarankan."],
     picking: ["Ambil pesanan", "Tugas yang diberikan kepada akun ini."],
     mro: ["Pengeluaran MRO", "Ambil barang perawatan sesuai QR dan lokasi lot."],
-    returns: ["Posting retur", "Pindai setiap baris return yang telah disetujui."]
+    returns: ["Posting retur", "Pindai setiap baris return yang telah disetujui."],
+    fulfillment: ["Packing dan loading", "Verifikasi barcode DO dan QR item sebelum Goods Issue."]
   };
   document.querySelector("#taskTitle").textContent = names[currentTab][0];
   document.querySelector("#taskHint").textContent = names[currentTab][1];
@@ -118,7 +119,8 @@ async function loadCurrentTab() {
     else if (currentTab === "putaway") await loadPutaway();
     else if (currentTab === "picking") await loadPicking();
     else if (currentTab === "mro") await loadMro();
-    else await loadReturns();
+    else if (currentTab === "returns") await loadReturns();
+    else await loadFulfillment();
     message(appMessage, "");
   } catch (error) {
     message(appMessage, error.message, "error");
@@ -410,6 +412,83 @@ async function openReturn(id) {
     } catch (error) { message(appMessage, error.message, "error"); }
   }));
   card.append(button("Kembali ke daftar", loadReturns, "outline"));
+  taskList.append(card);
+}
+
+async function loadFulfillment() {
+  const orders = await loadPages("/fulfillment/orders", 100);
+  if (!orders.length) return showEmpty("Tidak ada DO yang menunggu packing, loading, atau dispatch.");
+  orders.forEach(order => {
+    const stage = order.status === "PICKED" ? "Packing"
+      : order.status === "PACKED" ? "Loading" : "Goods Issue / dispatch";
+    const card = taskCard(order.orderCode, order.customerName, `${stage} · ${order.status}`);
+    card.append(button("Buka DO", () => openFulfillmentOrder(order.id)));
+    taskList.append(card);
+  });
+}
+
+async function openFulfillmentOrder(id) {
+  const detail = await request(`/fulfillment/orders/${id}`);
+  const order = detail.order;
+  taskList.replaceChildren();
+  document.querySelector("#taskTitle").textContent = order.orderCode;
+  const packing = order.status === "PICKED";
+  const loading = order.status === "PACKED";
+  if (order.status === "LOADED") {
+    document.querySelector("#taskHint").textContent = "Barang selesai dimuat. Konfirmasi akan memposting Goods Issue.";
+    const card = workflowCard();
+    detail.lines.forEach(line => card.append(text("p",
+      `${line.itemCode} · ${line.itemName} · ${line.loadedQuantity} unit dimuat`)));
+    card.append(button("Konfirmasi dispatch dan Goods Issue", async () => {
+      if (!window.confirm(`Dispatch ${order.orderCode}? Stok lot akan dikurangi melalui Goods Issue.`)) return;
+      const result = await request(`/fulfillment/orders/${id}/dispatch`, { method: "POST" });
+      message(appMessage, `DO diposting: ${result.status}.`, "success");
+      await loadFulfillment();
+    }));
+    card.append(button("Kembali ke daftar", loadFulfillment, "outline"));
+    taskList.append(card);
+    return;
+  }
+  document.querySelector("#taskHint").textContent = packing
+    ? "Scan barcode DO, lalu QR item pada unit yang dipacking."
+    : "Scan barcode DO, lalu QR item pada unit yang dimuat.";
+  const card = workflowCard();
+  const deliveryOrderBarcode = input("Barcode DO", "text", { autocomplete: "off", maxlength: "128" });
+  card.append(fieldWithButton(deliveryOrderBarcode,
+    button("Pindai DO", () => openScanner(deliveryOrderBarcode), "outline")));
+  detail.lines.forEach(line => {
+    const row = element("div", "line-row");
+    const available = line.availableQuantity;
+    row.append(text("div", `${line.itemCode} · ${line.itemName}`, "line-title"),
+      text("div", `Dipick ${line.pickedQuantity} · Dipacking ${line.packedQuantity} · Dimuat ${line.loadedQuantity}`),
+      text("div", `${packing ? "Tersedia untuk packing" : "Tersedia untuk loading"}: ${available}`));
+    if (available > 0) {
+      const itemBarcode = input("QR item / lot", "text", { autocomplete: "off", maxlength: "512" });
+      const quantity = input("Jumlah scan", "number", { min: "1", max: String(available), step: "1", inputmode: "numeric", value: "1" });
+      row.append(fieldWithButton(itemBarcode, button("Pindai item", () => openScanner(itemBarcode), "outline")), quantity,
+        button("Catat scan", async () => {
+          const amount = Number(quantity.value);
+          if (!deliveryOrderBarcode.value.trim() || !itemBarcode.value.trim()
+              || !Number.isSafeInteger(amount) || amount < 1 || amount > available) {
+            return message(appMessage, "Barcode DO, QR item, dan jumlah dalam batas tersedia wajib diisi.", "error");
+          }
+          await request(`/fulfillment/orders/${id}/scans`, { method: "POST", body: JSON.stringify({
+            lineId: line.lineId, quantity: amount,
+            deliveryOrderBarcode: deliveryOrderBarcode.value.trim(), itemBarcode: itemBarcode.value.trim()
+          }) });
+          message(appMessage, "Scan fulfillment tercatat.", "success");
+          await openFulfillmentOrder(id);
+        }, "outline"));
+    }
+    card.append(row);
+  });
+  card.append(button(packing ? "Selesaikan packing" : "Selesaikan loading", async () => {
+    if (!window.confirm(`Selesaikan tahap ${packing ? "packing" : "loading"} untuk ${order.orderCode} berdasarkan total scan?`)) return;
+    const result = await request(`/fulfillment/orders/${id}/complete`, { method: "POST" });
+    message(appMessage, `Tahap selesai: ${result.status}.`, "success");
+    await loadFulfillment();
+  }));
+  card.append(button("Kembali ke daftar", loadFulfillment, "outline"));
   taskList.append(card);
 }
 

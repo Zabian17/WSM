@@ -1,7 +1,6 @@
 package com.mycompany.tugas_akhir.repository;
 
 import com.mycompany.tugas_akhir.model.PickTask;
-import com.mycompany.tugas_akhir.model.PickTaskStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

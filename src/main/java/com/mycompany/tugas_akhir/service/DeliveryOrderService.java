@@ -432,12 +432,4 @@ public class DeliveryOrderService {
         deliveryOrderRepository.save(order);
         return true;
     }
-
-    private boolean transition(Integer orderId, DeliveryOrderStatus expected, DeliveryOrderStatus next) {
-        DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
-        if (order == null || order.getStatus() != expected) return false;
-        order.setStatus(next);
-        deliveryOrderRepository.save(order);
-        return true;
-    }
 }

@@ -158,7 +158,10 @@ class MaterialUsageServiceTest {
 
         MaterialUsageScan priorScan = new MaterialUsageScan(request, request.getLines().get(0),
                 user(4), lot, "SKU-1", "A-01", "LOT-A", null, 2, java.time.LocalDateTime.now());
-        when(scanRepository.findByRequestId(5)).thenReturn(List.of(), List.of(priorScan), List.of(priorScan));
+        when(scanRepository.findByRequestId(5))
+                .thenReturn(List.of())
+                .thenReturn(List.of(priorScan))
+                .thenReturn(List.of(priorScan));
         assertFalse(service.issueApprovedRequestWithBarcodes(
                 5, 4, itemQr, "SLOC1|" + encode("A-01"), 3));
         when(lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(2, "RAK-2", "LOT-B"))

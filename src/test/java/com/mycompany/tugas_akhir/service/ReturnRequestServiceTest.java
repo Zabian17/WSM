@@ -13,7 +13,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,7 +24,6 @@ class ReturnRequestServiceTest {
 
     @Mock private ReturnRequestRepository returnRepository;
     @Mock private PurchaseOrderRepository purchaseOrderRepository;
-    @Mock private DeliveryOrderRepository deliveryOrderRepository;
     @Mock private DeliveryOrderLineRepository deliveryOrderLineRepository;
     @Mock private InventoryLotBalanceRepository lotBalanceRepository;
     @Mock private RakRepository rakRepository;
@@ -38,7 +36,7 @@ class ReturnRequestServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReturnRequestService(returnRepository, purchaseOrderRepository,
-                deliveryOrderRepository, deliveryOrderLineRepository, lotBalanceRepository,
+                deliveryOrderLineRepository, lotBalanceRepository,
                 rakRepository, userRepository, inboundStockPoster, outboundStockPoster, approvalRoutingService);
         lenient().when(approvalRoutingService.canReview(any(), any())).thenReturn(true);
     }

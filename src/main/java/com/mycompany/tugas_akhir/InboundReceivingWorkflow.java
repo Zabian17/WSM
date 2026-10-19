@@ -2,51 +2,18 @@ package com.mycompany.tugas_akhir;
 
 
 import com.mycompany.tugas_akhir.model.Barang;
-import com.mycompany.tugas_akhir.model.Customer;
-import com.mycompany.tugas_akhir.model.DeliveryOrder;
-import com.mycompany.tugas_akhir.model.DeliveryOrderLine;
-import com.mycompany.tugas_akhir.model.DeliveryOrderLotReservation;
-import com.mycompany.tugas_akhir.model.DeliveryOrderPickScan;
-import com.mycompany.tugas_akhir.model.DeliveryOrderFulfillmentAudit;
-import com.mycompany.tugas_akhir.model.PickTask;
-import com.mycompany.tugas_akhir.model.MaterialUsage;
-import com.mycompany.tugas_akhir.model.MaterialUsageScan;
-import com.mycompany.tugas_akhir.model.ReturnRequest;
-import com.mycompany.tugas_akhir.model.ReturnRequestLine;
-import com.mycompany.tugas_akhir.model.ReturnType;
 import com.mycompany.tugas_akhir.model.PurchaseOrderLine;
-import com.mycompany.tugas_akhir.model.StockTransferOrder;
-import com.mycompany.tugas_akhir.model.StockTransferOrderScan;
-import com.mycompany.tugas_akhir.model.Warehouse;
 import com.mycompany.tugas_akhir.model.InboundReceipt;
 import com.mycompany.tugas_akhir.model.PurchaseOrder;
-import com.mycompany.tugas_akhir.model.PurchaseOrderLine;
-import com.mycompany.tugas_akhir.model.SalesOrder;
-import com.mycompany.tugas_akhir.model.SalesOrderLine;
-import com.mycompany.tugas_akhir.model.Rak;
 import com.mycompany.tugas_akhir.model.Supplier;
-import com.mycompany.tugas_akhir.model.Transaksi;
 import com.mycompany.tugas_akhir.model.User;
-import com.mycompany.tugas_akhir.service.BarangService;
-import com.mycompany.tugas_akhir.service.CustomerService;
-import com.mycompany.tugas_akhir.service.DeliveryOrderService;
 import com.mycompany.tugas_akhir.service.InboundReceiptService;
 import com.mycompany.tugas_akhir.service.InboundReceiptService.PutawayRecommendation;
 import com.mycompany.tugas_akhir.service.PurchaseOrderService;
-import com.mycompany.tugas_akhir.service.SalesOrderService;
-import com.mycompany.tugas_akhir.service.MaterialUsageService;
-import com.mycompany.tugas_akhir.service.ReturnRequestService;
-import com.mycompany.tugas_akhir.service.StockTransferOrderService;
-import com.mycompany.tugas_akhir.service.SectionService;
-import com.mycompany.tugas_akhir.service.SupplierService;
-import com.mycompany.tugas_akhir.service.TransaksiService;
-import com.mycompany.tugas_akhir.service.UserService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -57,14 +24,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.net.URL;
 import java.nio.file.Path;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ResourceBundle;
 
 @Component
 public class InboundReceivingWorkflow {

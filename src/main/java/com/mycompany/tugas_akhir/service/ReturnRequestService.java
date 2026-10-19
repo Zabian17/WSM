@@ -18,7 +18,6 @@ public class ReturnRequestService {
 
     private final ReturnRequestRepository returnRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
-    private final DeliveryOrderRepository deliveryOrderRepository;
     private final DeliveryOrderLineRepository deliveryOrderLineRepository;
     private final InventoryLotBalanceRepository lotBalanceRepository;
     private final RakRepository rakRepository;
@@ -29,7 +28,6 @@ public class ReturnRequestService {
 
     public ReturnRequestService(ReturnRequestRepository returnRepository,
                                 PurchaseOrderRepository purchaseOrderRepository,
-                                DeliveryOrderRepository deliveryOrderRepository,
                                 DeliveryOrderLineRepository deliveryOrderLineRepository,
                                 InventoryLotBalanceRepository lotBalanceRepository,
                                 RakRepository rakRepository,
@@ -39,7 +37,6 @@ public class ReturnRequestService {
                                 ApprovalRouter approvalRoutingService) {
         this.returnRepository = returnRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
-        this.deliveryOrderRepository = deliveryOrderRepository;
         this.deliveryOrderLineRepository = deliveryOrderLineRepository;
         this.lotBalanceRepository = lotBalanceRepository;
         this.rakRepository = rakRepository;

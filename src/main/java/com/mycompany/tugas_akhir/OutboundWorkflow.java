@@ -124,7 +124,7 @@ public class OutboundWorkflow {
         Button fulfillmentAudit = deliveryOrderButton("Audit pemenuhan", "Tinjau catatan jumlah packing dan loading.");
         Button dispatch = deliveryOrderButton("Dispatch / Goods Issue", "Posting barang yang dimuat sebagai Goods Issue.");
         create.setOnAction(event -> handleCreateDeliveryOrder(table));
-        salesOrders.setOnAction(event -> salesOrderWorkflow.open(currentUser, barangItems, customerItems, table, () -> loadDeliveryOrders(table)));
+        salesOrders.setOnAction(event -> salesOrderWorkflow.open(currentUser, barangItems, customerItems, () -> loadDeliveryOrders(table)));
         assignTask.setOnAction(event -> handleAssignPicker(table));
         taskDetails.setOnAction(event -> handleViewPickTasks(table));
         reservations.setOnAction(event -> handleViewReservations(table));
@@ -153,8 +153,6 @@ public class OutboundWorkflow {
 
         Label selectionHint = new Label("Pilih pesanan pada tabel untuk melihat tindakan yang tersedia.");
         selectionHint.getStyleClass().add("do-selection-hint");
-        List<Button> selectedOrderActions = List.of(release, assignTask, taskDetails, reservations, start,
-                scanPick, scanHistory, picked, packed, loaded, fulfillmentAudit, dispatch);
         table.getSelectionModel().selectedItemProperty().addListener((observable, oldOrder, selectedOrder) -> {
             selectionHint.setText(selectedOrder == null
                     ? "Pilih pesanan pada tabel untuk melihat tindakan yang tersedia."

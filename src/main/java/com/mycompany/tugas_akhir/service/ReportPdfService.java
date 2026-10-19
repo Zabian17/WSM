@@ -14,6 +14,7 @@ import net.sf.jasperreports.engine.design.JRDesignSection;
 import net.sf.jasperreports.engine.design.JasperDesign;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import net.sf.jasperreports.engine.type.OrientationEnum;
+import net.sf.jasperreports.engine.type.TextAdjustEnum;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -114,7 +115,7 @@ public class ReportPdfService {
             valueCell.setWidth(width);
             valueCell.setHeight(24);
             valueCell.setFontSize(7f);
-            valueCell.setStretchWithOverflow(true);
+            valueCell.setTextAdjust(TextAdjustEnum.STRETCH_HEIGHT);
             valueCell.setExpression(new JRDesignExpression("$F{" + FIELDS[i] + "}"));
             detail.addElement(valueCell);
             x += width;

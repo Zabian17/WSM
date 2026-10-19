@@ -148,6 +148,65 @@ class StockCountServiceTest {
     }
 
     @Test
+    void dailyCycleCreatesSnapshotsOnlyForRacksWithTodaysMutations() {
+        User creator = user(7);
+        Rak rackA = rack(4, 100, 8);
+        Rak rackB = rack(5, 100, 3);
+        Rak quietRack = rack(6, 100, 0);
+        Barang item = item(1, 11);
+        when(userRepository.findById(7)).thenReturn(Optional.of(creator));
+        when(stockCountRepository.existsByCycleCode("DC-" + LocalDate.now().toString().replace("-", "")))
+                .thenReturn(false);
+        when(transaksiRepository.countMutationsByRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(4, 1)));
+        when(inventoryTransferRepository.countMutationsFromRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(5, 1)));
+        when(inventoryTransferRepository.countMutationsIntoRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(4, 1)));
+        when(rakRepository.findAll()).thenReturn(List.of(rackA, rackB, quietRack));
+        when(rakRepository.findByIdForUpdate(4)).thenReturn(Optional.of(rackA));
+        when(rakRepository.findByIdForUpdate(5)).thenReturn(Optional.of(rackB));
+        when(stockCountRepository.existsByRakIdAndStatusIn(anyInt(), anyList())).thenReturn(false);
+        when(barangRepository.findAll()).thenReturn(List.of(item));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(List.of(
+                new InventoryBalance(item, rackA, "RAK-4", 6)));
+        when(stockCountRepository.save(any(StockCount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<StockCount> counts = service.createDailyCycleCount(7);
+
+        assertEquals(List.of(4, 5), counts.stream().map(count -> count.getRak().getId()).toList());
+        assertTrue(counts.stream().allMatch(count -> count.getCycleType() == StockCountCycleType.DAILY));
+        assertTrue(counts.stream().allMatch(count -> count.getStatus() == StockCountStatus.COUNTING));
+        assertTrue(counts.stream().allMatch(count -> count.getCycleCode().startsWith("DC-")));
+        assertEquals(6, counts.getFirst().getLines().getFirst().getExpectedQuantity());
+        assertEquals(0, counts.getLast().getLines().getFirst().getExpectedQuantity());
+    }
+
+    @Test
+    void dailyCycleDoesNotCreateSessionsWhenThereWereNoMutations() {
+        when(userRepository.findById(7)).thenReturn(Optional.of(user(7)));
+        when(stockCountRepository.existsByCycleCode(anyString())).thenReturn(false);
+        when(transaksiRepository.countMutationsByRackSince(any(LocalDateTime.class))).thenReturn(List.of());
+        when(inventoryTransferRepository.countMutationsFromRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of());
+        when(inventoryTransferRepository.countMutationsIntoRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        assertTrue(service.createDailyCycleCount(7).isEmpty());
+        verify(rakRepository, never()).findAll();
+        verify(stockCountRepository, never()).save(any(StockCount.class));
+    }
+
+    @Test
+    void dailyCycleCanBeCreatedOnlyOncePerDay() {
+        when(userRepository.findById(7)).thenReturn(Optional.of(user(7)));
+        when(stockCountRepository.existsByCycleCode(anyString())).thenReturn(true);
+
+        assertThrows(IllegalStateException.class, () -> service.createDailyCycleCount(7));
+        verify(transaksiRepository, never()).countMutationsByRackSince(any(LocalDateTime.class));
+    }
+
+    @Test
     void startingMonthlyTaskTakesFreshSnapshotAndMovesItToCounting() {
         User creator = user(7);
         Rak rack = rack(4, 100, 0);

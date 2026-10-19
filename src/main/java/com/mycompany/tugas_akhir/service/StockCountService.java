@@ -123,6 +123,65 @@ public class StockCountService {
     }
 
     @Transactional
+    public List<StockCount> createDailyCycleCount(Integer createdById) {
+        User creator = userRepository.findById(createdById)
+                .orElseThrow(() -> new IllegalArgumentException("Pengguna tidak ditemukan."));
+        LocalDate today = LocalDate.now();
+        String cycleCode = "DC-" + today.toString().replace("-", "");
+        if (stockCountRepository.existsByCycleCode(cycleCode)) {
+            throw new IllegalStateException("Opname harian " + today + " sudah dibuat.");
+        }
+
+        LocalDateTime startOfDay = today.atStartOfDay();
+        Map<Integer, Long> mutationsByRack = new HashMap<>();
+        addMutationCounts(mutationsByRack, transaksiRepository.countMutationsByRackSince(startOfDay));
+        addMutationCounts(mutationsByRack, inventoryTransferRepository.countMutationsFromRackSince(startOfDay));
+        addMutationCounts(mutationsByRack, inventoryTransferRepository.countMutationsIntoRackSince(startOfDay));
+        if (mutationsByRack.isEmpty()) return List.of();
+
+        List<Rak> affectedRacks = rakRepository.findAll().stream()
+                .filter(rack -> mutationsByRack.getOrDefault(rack.getId(), 0L) > 0)
+                .sorted(Comparator.comparing(Rak::getId)).toList();
+        if (affectedRacks.isEmpty()) return List.of();
+
+        List<Rak> lockedRacks = new ArrayList<>();
+        for (Rak rack : affectedRacks) {
+            Rak locked = rakRepository.findByIdForUpdate(rack.getId())
+                    .orElseThrow(() -> new IllegalStateException("Rak opname tidak ditemukan."));
+            if (stockCountRepository.existsByRakIdAndStatusIn(locked.getId(), ACTIVE_STATUSES)) {
+                throw new IllegalStateException("Rak " + locked.getKodeRak()
+                        + " masih memiliki sesi opname yang belum diposting.");
+            }
+            lockedRacks.add(locked);
+        }
+
+        List<Barang> items = barangRepository.findAll().stream()
+                .sorted(Comparator.comparing(Barang::getId)).toList();
+        if (items.isEmpty()) throw new IllegalStateException("Belum ada master barang untuk dihitung.");
+        Map<String, Integer> quantities = new HashMap<>();
+        for (InventoryBalance balance : balanceRepository.findAllForLocationReport()) {
+            if (balance.getRak() != null) {
+                quantities.put(balanceKey(balance.getRak().getId(), balance.getBarang().getId()),
+                        balance.getQuantity());
+            }
+        }
+
+        List<StockCount> created = new ArrayList<>();
+        for (Rak rack : lockedRacks) {
+            StockCount count = new StockCount("SC-" + UUID.randomUUID().toString()
+                    .replace("-", "").substring(0, 16).toUpperCase(Locale.ROOT), rack, creator,
+                    LocalDateTime.now());
+            count.setCycle(cycleCode, StockCountCycleType.DAILY);
+            for (Barang item : items) {
+                count.addLine(new StockCountLine(item,
+                        quantities.getOrDefault(balanceKey(rack.getId(), item.getId()), 0)));
+            }
+            created.add(stockCountRepository.save(count));
+        }
+        return List.copyOf(created);
+    }
+
+    @Transactional
     public List<StockCount> createMonthlySchedule(YearMonth month, Integer createdById) {
         if (month == null) throw new IllegalArgumentException("Bulan jadwal wajib dipilih.");
         User creator = userRepository.findById(createdById)

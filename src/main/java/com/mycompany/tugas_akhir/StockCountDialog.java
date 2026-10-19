@@ -66,6 +66,7 @@ final class StockCountDialog {
         Button createButton = new Button("Buat Sesi Opname");
         createButton.setDisable(true);
         Button periodicButton = new Button("Buat Opname Periodik");
+        Button dailyButton = new Button("Opname Rak Berubah Hari Ini");
         TextField monthField = new TextField(YearMonth.now().toString());
         monthField.setPromptText("yyyy-MM");
         monthField.setPrefColumnCount(8);
@@ -91,6 +92,7 @@ final class StockCountDialog {
         });
 
         createButton.setOnAction(event -> createSession(rackSelector, createButton, sessions));
+        dailyButton.setOnAction(event -> createDailySession(dailyButton, sessions));
         periodicButton.setOnAction(event -> createPeriodicSession(periodicButton, sessions));
         monthlyButton.setOnAction(event -> createMonthlySchedule(monthField, monthlyButton, sessions));
         countButton.setOnAction(event -> {
@@ -110,12 +112,13 @@ final class StockCountDialog {
         });
         refreshButton.setOnAction(event -> loadSessions(sessions));
 
-        HBox createControls = new HBox(8, rackSelector, createButton, periodicButton, refreshButton);
+        HBox createControls = new HBox(8, rackSelector, createButton, dailyButton);
+        HBox cycleControls = new HBox(8, periodicButton, refreshButton);
         HBox monthlyControls = new HBox(8, monthField, monthlyButton);
         HBox actionControls = new HBox(8, countButton, postButton, cancelButton);
         VBox content = new VBox(12,
                 new Label("Cycle count dilakukan per rak. Semua SKU pada rak dimasukkan, termasuk saldo nol."),
-                createControls, monthlyControls, sessions, actionControls);
+                createControls, cycleControls, monthlyControls, sessions, actionControls);
         content.setPadding(new Insets(8, 0, 0, 0));
         VBox.setVgrow(sessions, Priority.ALWAYS);
         dialog.getDialogPane().setContent(content);
@@ -351,6 +354,33 @@ final class StockCountDialog {
             showError(table.getScene().getWindow(), messageFor(task.getException()));
         });
         startTask(task, "stock-count-periodic-create");
+    }
+
+    private void createDailySession(Button button, TableView<StockCount> table) {
+        button.setDisable(true);
+        Task<List<StockCount>> task = new Task<>() {
+            @Override
+            protected List<StockCount> call() {
+                return stockCountService.createDailyCycleCount(currentUser.getId());
+            }
+        };
+        task.setOnSucceeded(event -> {
+            button.setDisable(false);
+            loadSessions(table);
+            List<StockCount> counts = task.getValue();
+            if (counts.isEmpty()) {
+                showInfo(table.getScene().getWindow(), "Tidak ada mutasi stok pada rak hari ini.");
+                return;
+            }
+            showInfo(table.getScene().getWindow(), "Opname harian " + counts.getFirst().getCycleCode()
+                    + " dibuat untuk " + counts.size() + " rak yang mengalami mutasi hari ini.");
+        });
+        task.setOnFailed(event -> {
+            button.setDisable(false);
+            log.error("Gagal membuat opname harian", task.getException());
+            showError(table.getScene().getWindow(), messageFor(task.getException()));
+        });
+        startTask(task, "stock-count-daily-create");
     }
 
     private void createMonthlySchedule(TextField monthField, Button button, TableView<StockCount> table) {

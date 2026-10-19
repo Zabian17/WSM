@@ -37,7 +37,7 @@ input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #cb
 .topbar, .section-heading, .scanner-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar { margin-bottom: 12px; }
 .topbar h1 { margin: 0; }
-.tabs { position: sticky; z-index: 2; top: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 16px -4px 18px; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: #edf1f7; }
+.tabs { position: sticky; z-index: 2; top: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 16px -4px 18px; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: #edf1f7; }
 .tabs button { padding: 8px; border: 0; border-radius: 7px; background: transparent; color: #536176; font-size: 13px; font-weight: 650; }
 .tabs button[aria-pressed="true"] { background: white; color: #1e3a70; box-shadow: 0 1px 3px #1e293b1a; }
 .section-heading { align-items: flex-start; margin-bottom: 12px; }

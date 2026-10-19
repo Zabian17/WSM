@@ -27,6 +27,7 @@ implemented.
   SO/DO reservations, MRO Goods Issue, and STO dispatch. FEFO is the default.
 - Interactive schematic warehouse map, inventory filters, and stock alerts.
 - Mobile web execution for scheduled stock counts, putaway, and assigned DO picking.
+- Mobile MRO picking with scanned Goods Issue against the assigned operator's task.
 - Desktop stock count by rack, including book-stock snapshot, physical count,
   variance review, guarded posting, and on-demand count-priority
   recommendations.
@@ -263,8 +264,8 @@ src/
 
 ## Current limitations
 
-- The mobile web client covers cycle counting, putaway, and assigned picking.
-  MRO, return, and STO mobile workflows remain pending.
+- The mobile web client covers cycle counting, putaway, DO picking, and MRO
+  Goods Issue. Return and STO mobile workflows remain pending.
 - Camera scanning depends on HTTPS (or localhost) and browser `BarcodeDetector`
   support; keyboard-wedge and manual entry are fallback methods. Physical
   scanner hardware has not been integration-tested.

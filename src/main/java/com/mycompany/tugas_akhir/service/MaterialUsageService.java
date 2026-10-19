@@ -9,6 +9,8 @@ import com.mycompany.tugas_akhir.repository.MaterialUsageReservationRepository;
 import com.mycompany.tugas_akhir.repository.PickTaskRepository;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,10 @@ import java.util.UUID;
 
 @Service
 public class MaterialUsageService {
+
+    public record MobilePickInstruction(Integer lineId, String itemCode, String itemName, String unit,
+                                         Integer requestedQuantity, Integer issuedQuantity,
+                                         Integer remainingQuantity) {}
 
     private final MaterialUsageRepository materialUsageRepository;
     private final BarangRepository barangRepository;
@@ -60,6 +66,47 @@ public class MaterialUsageService {
     @Transactional(readOnly = true)
     public List<MaterialUsage> getRecentRequests() {
         return materialUsageRepository.findTop100ByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PickTask> getMobilePickTasks(Integer pickerId, Pageable pageable) {
+        return pickTaskRepository.findMobileMaterialUsageTasks(pickerId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<PickTask> getMobilePickTask(Integer taskId, Integer pickerId) {
+        if (taskId == null || pickerId == null) return java.util.Optional.empty();
+        return pickTaskRepository.findById(taskId).filter(task -> task.getMaterialUsage() != null
+                && task.getAssignedPicker() != null && pickerId.equals(task.getAssignedPicker().getId())
+                && (task.getStatus() == PickTaskStatus.ASSIGNED || task.getStatus() == PickTaskStatus.IN_PROGRESS)
+                && (task.getMaterialUsage().getStatus() == MaterialUsageStatus.APPROVED
+                || task.getMaterialUsage().getStatus() == MaterialUsageStatus.PARTIALLY_ISSUED));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MobilePickInstruction> getMobilePickInstructions(Integer taskId, Integer pickerId) {
+        PickTask task = getMobilePickTask(taskId, pickerId).orElse(null);
+        if (task == null) return List.of();
+        Map<Integer, Integer> issuedByLine = new java.util.HashMap<>();
+        for (MaterialUsageScan scan : scanRepository.findByRequestId(task.getMaterialUsage().getId())) {
+            Integer lineId = scan.getMaterialUsageLine().getId();
+            issuedByLine.merge(lineId, scan.getQuantity(), Integer::sum);
+        }
+        return task.getMaterialUsage().getLines().stream().map(line -> {
+            int issued = issuedByLine.getOrDefault(line.getId(), 0);
+            return new MobilePickInstruction(line.getId(), line.getBarang().getKodeBarang(),
+                    line.getBarang().getNamaBarang(), line.getBarang().getSatuan(),
+                    line.getRequestedQuantity(), issued, Math.max(0, line.getRequestedQuantity() - issued));
+        }).toList();
+    }
+
+    @Transactional
+    public boolean recordMobilePick(Integer taskId, String itemBarcode, String locationBarcode,
+                                    Integer quantity, Integer pickerId) {
+        PickTask task = getMobilePickTask(taskId, pickerId).orElse(null);
+        return quantity != null && quantity >= 1 && task != null
+                && issueApprovedRequestWithBarcodes(task.getMaterialUsage().getId(), pickerId,
+                itemBarcode, locationBarcode, quantity);
     }
 
     @Transactional(readOnly = true)

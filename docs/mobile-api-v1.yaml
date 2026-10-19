@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: GudangKu Mobile API
   version: 1.0.0
-  description: Authenticated mobile execution API for stock cycle counts.
+  description: Authenticated mobile execution API for stock counts, inbound putaway, DO picking, and MRO.
 servers:
   - url: http://127.0.0.1:8765/api/mobile/v1
     description: Local-only default. Use HTTPS when binding to a warehouse network address.
@@ -264,6 +264,61 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /mro/tasks:
+    get:
+      summary: List MRO pick tasks assigned to the signed-in picker
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Assigned MRO pick tasks
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MroTaskPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /mro/tasks/{taskId}:
+    get:
+      summary: Read remaining quantities for an assigned MRO pick task
+      parameters:
+        - { $ref: '#/components/parameters/taskId' }
+      responses:
+        '200':
+          description: MRO request lines and issued quantities
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MroTaskDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /mro/tasks/{taskId}/scans:
+    post:
+      summary: Issue reserved MRO stock after scanning item and location barcodes
+      parameters:
+        - { $ref: '#/components/parameters/taskId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, itemBarcode, locationBarcode]
+              properties:
+                quantity: { type: integer, minimum: 1 }
+                itemBarcode: { type: string, maxLength: 512, description: WMS1 item QR payload }
+                locationBarcode: { type: string, maxLength: 512, description: SLOC1 rack QR payload }
+      responses:
+        '200':
+          description: Goods Issue recorded; the task closes when all requested units are issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recorded: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     bearerAuth:
@@ -381,6 +436,37 @@ components:
       type: object
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/PickTask' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
+    MroTask:
+      type: object
+      properties:
+        taskId: { type: integer }
+        taskCode: { type: string }
+        requestId: { type: integer }
+        requestCode: { type: string }
+        reason: { type: string }
+        taskStatus: { type: string, enum: [ASSIGNED, IN_PROGRESS] }
+        requestStatus: { type: string, enum: [APPROVED, PARTIALLY_ISSUED] }
+        createdAt: { type: string, format: date-time }
+    MroInstruction:
+      type: object
+      properties:
+        lineId: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        unit: { type: [string, 'null'] }
+        requestedQuantity: { type: integer }
+        issuedQuantity: { type: integer }
+        remainingQuantity: { type: integer }
+    MroTaskDetail:
+      type: object
+      properties:
+        task: { $ref: '#/components/schemas/MroTask' }
+        lines: { type: array, items: { $ref: '#/components/schemas/MroInstruction' } }
+    MroTaskPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/MroTask' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
     ApiError:
       type: object

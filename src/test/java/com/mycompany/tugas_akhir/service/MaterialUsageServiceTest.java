@@ -64,6 +64,41 @@ class MaterialUsageServiceTest {
     }
 
     @Test
+    void mobileMroInstructionsRequireAssignedPickerAndReportRemainingLineQuantity() {
+        User picker = user(7);
+        MaterialUsage request = mock(MaterialUsage.class);
+        PickTask task = mock(PickTask.class);
+        MaterialUsageLine line = mock(MaterialUsageLine.class);
+        Barang item = mock(Barang.class);
+        MaterialUsageScan scan = mock(MaterialUsageScan.class);
+        when(pickTaskRepository.findById(44)).thenReturn(Optional.of(task));
+        when(task.getMaterialUsage()).thenReturn(request);
+        when(task.getAssignedPicker()).thenReturn(picker);
+        when(task.getStatus()).thenReturn(PickTaskStatus.IN_PROGRESS);
+        when(request.getStatus()).thenReturn(MaterialUsageStatus.PARTIALLY_ISSUED);
+        when(request.getId()).thenReturn(12);
+        when(request.getLines()).thenReturn(List.of(line));
+        when(line.getId()).thenReturn(23);
+        when(line.getBarang()).thenReturn(item);
+        when(line.getRequestedQuantity()).thenReturn(10);
+        when(item.getKodeBarang()).thenReturn("SKU-1");
+        when(item.getNamaBarang()).thenReturn("Bearing");
+        when(item.getSatuan()).thenReturn("pcs");
+        when(scanRepository.findByRequestId(12)).thenReturn(List.of(scan));
+        when(scan.getMaterialUsageLine()).thenReturn(line);
+        when(scan.getQuantity()).thenReturn(3);
+
+        assertTrue(service.getMobilePickTask(44, 7).isPresent());
+        assertTrue(service.getMobilePickTask(44, 8).isEmpty());
+        MaterialUsageService.MobilePickInstruction instruction =
+                service.getMobilePickInstructions(44, 7).getFirst();
+
+        assertEquals(10, instruction.requestedQuantity());
+        assertEquals(3, instruction.issuedQuantity());
+        assertEquals(7, instruction.remainingQuantity());
+    }
+
+    @Test
     void requiresDifferentReviewerAndRejectReason() {
         MaterialUsage request = request(5);
         when(requestRepository.findByIdWithLinesForUpdate(5)).thenReturn(Optional.of(request));

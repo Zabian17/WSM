@@ -16,9 +16,15 @@ import java.util.Optional;
 public interface PickTaskRepository extends JpaRepository<PickTask, Integer> {
 
     @Query("SELECT t FROM PickTask t WHERE t.assignedPicker.id = :pickerId AND t.status = :status "
-            + "ORDER BY t.createdAt ASC")
+            + "AND t.deliveryOrder IS NOT NULL ORDER BY t.createdAt ASC")
     Page<PickTask> findMobileTasks(@Param("pickerId") Integer pickerId,
                                    @Param("status") PickTaskStatus status, Pageable pageable);
+
+    @Query("SELECT t FROM PickTask t WHERE t.assignedPicker.id = :pickerId "
+            + "AND t.materialUsage IS NOT NULL AND t.status IN ("
+            + "com.mycompany.tugas_akhir.model.PickTaskStatus.ASSIGNED, "
+            + "com.mycompany.tugas_akhir.model.PickTaskStatus.IN_PROGRESS) ORDER BY t.createdAt ASC")
+    Page<PickTask> findMobileMaterialUsageTasks(@Param("pickerId") Integer pickerId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM PickTask t WHERE t.id = :id")

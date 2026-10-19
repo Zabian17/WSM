@@ -105,7 +105,8 @@ async function loadCurrentTab() {
   const names = {
     count: ["Hitung stok", "Pilih sesi opname yang tersedia."],
     putaway: ["Simpan barang", "Pilih receipt dan lokasi rak yang disarankan."],
-    picking: ["Ambil pesanan", "Tugas yang diberikan kepada akun ini." ]
+    picking: ["Ambil pesanan", "Tugas yang diberikan kepada akun ini."],
+    mro: ["Pengeluaran MRO", "Ambil barang perawatan sesuai QR dan lokasi lot." ]
   };
   document.querySelector("#taskTitle").textContent = names[currentTab][0];
   document.querySelector("#taskHint").textContent = names[currentTab][1];
@@ -114,7 +115,8 @@ async function loadCurrentTab() {
   try {
     if (currentTab === "count") await loadCounts();
     else if (currentTab === "putaway") await loadPutaway();
-    else await loadPicking();
+    else if (currentTab === "picking") await loadPicking();
+    else await loadMro();
     message(appMessage, "");
   } catch (error) {
     message(appMessage, error.message, "error");
@@ -268,6 +270,62 @@ async function loadPicking() {
     card.append(button("Buka tugas", () => openPicking(task.taskId)));
     taskList.append(card);
   });
+}
+
+async function loadMro() {
+  const page = await request("/mro/tasks?page=0&size=100");
+  if (!page.data.length) return showEmpty("Tidak ada tugas MRO yang ditugaskan ke akun ini.");
+  page.data.forEach(task => {
+    const card = taskCard(task.taskCode, `${task.requestCode} · ${task.reason}`,
+      `${task.taskStatus} · ${task.requestStatus}`);
+    card.append(button("Buka tugas MRO", () => openMroTask(task.taskId)));
+    taskList.append(card);
+  });
+}
+
+async function openMroTask(id) {
+  const detail = await request(`/mro/tasks/${id}`);
+  taskList.replaceChildren();
+  document.querySelector("#taskTitle").textContent = detail.task.taskCode;
+  document.querySelector("#taskHint").textContent = `${detail.task.requestCode} · ${detail.task.reason}`;
+  const card = workflowCard();
+  card.append(text("p", "Goods Issue tercatat saat jumlah permintaan terpenuhi."));
+  detail.lines.forEach(line => {
+    const row = element("div", "line-row");
+    const description = element("div");
+    description.append(text("p", line.itemCode, "line-title"), text("p", line.itemName),
+      text("p", `${line.issuedQuantity}/${line.requestedQuantity} unit dikeluarkan · sisa ${line.remainingQuantity}`));
+    if (line.remainingQuantity <= 0) {
+      row.append(description, text("p", "Jumlah permintaan terpenuhi.", "muted"));
+      card.append(row);
+      return;
+    }
+    const fields = element("div");
+    const quantity = input("Jumlah scan", "number", { min: "1", max: String(line.remainingQuantity), step: "1", inputmode: "numeric" });
+    const itemBarcode = input("QR barang dan batch", "text", { autocomplete: "off", maxlength: "512" });
+    const locationBarcode = input("Barcode lokasi", "text", { autocomplete: "off", maxlength: "512" });
+    fields.append(quantity, fieldWithButton(itemBarcode, button("Kamera", () => openScanner(itemBarcode), "outline")),
+      fieldWithButton(locationBarcode, button("Kamera", () => openScanner(locationBarcode), "outline")),
+      button("Catat Goods Issue", async () => {
+        const amount = Number(quantity.value);
+        if (!Number.isSafeInteger(amount) || amount < 1 || amount > line.remainingQuantity
+            || !itemBarcode.value.trim() || !locationBarcode.value.trim()) {
+          return message(appMessage, "Isi jumlah yang tersedia dan pindai item serta lokasi.", "error");
+        }
+        try {
+          await request(`/mro/tasks/${id}/scans`, { method: "POST", body: JSON.stringify({
+            quantity: amount, itemBarcode: itemBarcode.value.trim(), locationBarcode: locationBarcode.value.trim()
+          }) });
+          message(appMessage, "Goods Issue MRO berhasil dicatat.", "success");
+          try { await openMroTask(id); }
+          catch { await loadMro(); }
+        } catch (error) { message(appMessage, error.message, "error"); }
+      }));
+    row.append(description, fields);
+    card.append(row);
+  });
+  card.append(button("Kembali ke daftar", loadMro, "outline"));
+  taskList.append(card);
 }
 
 async function openPicking(id) {

@@ -324,8 +324,8 @@ public class DeliveryOrderService {
     }
 
     @Transactional
-    public boolean recordFulfillmentScan(Integer orderId, Integer lineId, String itemQrPayload,
-                                         int quantity, Integer actorId) {
+    public boolean recordFulfillmentScan(Integer orderId, Integer lineId, String deliveryOrderBarcode,
+                                         String itemQrPayload, int quantity, Integer actorId) {
         BarcodePayload.Item item = BarcodePayload.parseItem(itemQrPayload);
         if (item == null || orderId == null || lineId == null || quantity <= 0 || actorId == null) return false;
         DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
@@ -333,6 +333,8 @@ public class DeliveryOrderService {
         boolean packing = order != null && order.getStatus() == DeliveryOrderStatus.PICKED;
         boolean loading = order != null && order.getStatus() == DeliveryOrderStatus.PACKED;
         if (order == null || actor == null || (!packing && !loading)) return false;
+        if (loading && (deliveryOrderBarcode == null
+                || !order.getOrderCode().equalsIgnoreCase(deliveryOrderBarcode.trim()))) return false;
         DeliveryOrderLine line = order.getLines().stream()
                 .filter(value -> Objects.equals(value.getId(), lineId)).findFirst().orElse(null);
         if (line == null || !line.getBarang().getKodeBarang().equalsIgnoreCase(item.sku().trim())) return false;

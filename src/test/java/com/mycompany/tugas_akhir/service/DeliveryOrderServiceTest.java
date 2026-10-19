@@ -385,9 +385,12 @@ class DeliveryOrderServiceTest {
         when(reservationRepository.findByLineIdForUpdate(line.getId())).thenReturn(List.of(reservation));
         when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
 
-        assertFalse(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "OTHER", expiry.toString()), 1, 9));
-        assertFalse(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "LOT-A", expiry.toString()), 3, 9));
-        assertTrue(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "LOT-A", expiry.toString()), 2, 9));
+        String itemPayload = itemQr("SKU-1", "LOT-A", expiry.toString());
+        assertFalse(service.recordFulfillmentScan(7, line.getId(), "DO-WRONG", itemPayload, 1, 9));
+        assertFalse(service.recordFulfillmentScan(7, line.getId(), "DO-TEST",
+                itemQr("SKU-1", "OTHER", expiry.toString()), 1, 9));
+        assertFalse(service.recordFulfillmentScan(7, line.getId(), "DO-TEST", itemPayload, 3, 9));
+        assertTrue(service.recordFulfillmentScan(7, line.getId(), "DO-TEST", itemPayload, 2, 9));
 
         assertEquals(2, reservation.getLoadedQuantity());
         verify(fulfillmentAuditRepository).save(argThat(audit -> audit.getStage().equals("LOADING_SCAN")

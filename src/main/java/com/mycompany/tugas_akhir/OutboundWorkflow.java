@@ -23,12 +23,17 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
+import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -127,6 +132,7 @@ public class OutboundWorkflow {
         Button loaded = deliveryOrderButton("Konfirmasi loading", "Masukkan jumlah aktual yang dimuat per barang.");
         Button scanPacking = deliveryOrderButton("Scan packing", "Verifikasi QR item terhadap barang yang sudah dipick.");
         Button scanLoading = deliveryOrderButton("Scan loading", "Verifikasi QR item terhadap barang yang sudah dipacking.");
+        Button packingList = deliveryOrderButton("Packing list / label", "Simpan packing list dan label QR untuk DO.");
         Button fulfillmentAudit = deliveryOrderButton("Audit pemenuhan", "Tinjau catatan jumlah packing dan loading.");
         Button dispatch = deliveryOrderButton("Dispatch / Goods Issue", "Posting barang yang dimuat sebagai Goods Issue.");
         create.setOnAction(event -> handleCreateDeliveryOrder(table));
@@ -143,6 +149,7 @@ public class OutboundWorkflow {
         loaded.setOnAction(event -> handleCompleteLoading(table));
         scanPacking.setOnAction(event -> handleRecordFulfillmentScan(table));
         scanLoading.setOnAction(event -> handleRecordFulfillmentScan(table));
+        packingList.setOnAction(event -> handleExportPackingList(table));
         scanHistory.setOnAction(event -> handlePickScanHistory(table));
         dispatch.setOnAction(event -> {
             DeliveryOrder selected = table.getSelectionModel().getSelectedItem();
@@ -170,18 +177,18 @@ public class OutboundWorkflow {
                     + " unit tersisa");
             updateDeliveryOrderActionState(selectedOrder, release, assignTask, taskDetails, reservations,
                     start, scanPick, scanHistory, picked, packed, loaded, scanPacking, scanLoading,
-                    fulfillmentAudit, dispatch);
+                    packingList, fulfillmentAudit, dispatch);
         });
         updateDeliveryOrderActionState(null, release, assignTask, taskDetails, reservations, start,
                 scanPick, scanHistory, picked, packed, loaded, scanPacking, scanLoading,
-                fulfillmentAudit, dispatch);
+                packingList, fulfillmentAudit, dispatch);
 
         VBox createGroup = deliveryOrderActionGroup("Buat pesanan", create, salesOrders);
         VBox preparationGroup = deliveryOrderActionGroup("Persiapan", release, assignTask,
                 taskDetails, reservations);
         VBox pickingGroup = deliveryOrderActionGroup("Picking", start, scanPick, scanHistory, picked);
         VBox fulfillmentGroup = deliveryOrderActionGroup("Packing & pengiriman", packed, loaded,
-                scanPacking, scanLoading, fulfillmentAudit, dispatch);
+                scanPacking, scanLoading, packingList, fulfillmentAudit, dispatch);
         javafx.scene.layout.FlowPane actions = new javafx.scene.layout.FlowPane(
                 12, 12, createGroup, preparationGroup, pickingGroup, fulfillmentGroup);
         actions.setPrefWrapLength(980);
@@ -283,7 +290,7 @@ public class OutboundWorkflow {
     private void updateDeliveryOrderActionState(DeliveryOrder order, Button release, Button assignTask,
             Button taskDetails, Button reservations, Button start, Button scanPick, Button scanHistory,
             Button picked, Button packed, Button loaded, Button scanPacking, Button scanLoading,
-            Button fulfillmentAudit, Button dispatch) {
+            Button packingList, Button fulfillmentAudit, Button dispatch) {
         boolean selected = order != null;
         release.setDisable(!selected || (order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.DRAFT
@@ -307,6 +314,9 @@ public class OutboundWorkflow {
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PICKED);
         scanLoading.setDisable(!selected || order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PACKED);
+        packingList.setDisable(!selected || (order.getStatus()
+                != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PACKED
+                && order.getStatus() != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.LOADED));
         fulfillmentAudit.setDisable(!selected);
         dispatch.setDisable(!selected || order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.LOADED);
@@ -844,18 +854,25 @@ public class OutboundWorkflow {
             public DeliveryOrderLine fromString(String value) { return null; }
         });
         lineBox.getSelectionModel().selectFirst();
+        boolean loading = order.getStatus() == com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PACKED;
+        TextField deliveryOrderBarcode = new TextField();
+        deliveryOrderBarcode.setPromptText("Scan barcode DO " + order.getOrderCode());
         TextField qrField = new TextField();
         qrField.setPromptText("Pindai QR barang (WMS1)");
         TextField quantityField = new TextField("1");
         GridPane grid = new GridPane();
-        grid.addRow(0, new Label("Barang DO"), lineBox);
-        grid.addRow(1, new Label("QR item"), qrField);
-        grid.addRow(2, new Label("Jumlah scan"), quantityField);
+        int row = 0;
+        if (loading) grid.addRow(row++, new Label("Barcode DO"), deliveryOrderBarcode);
+        grid.addRow(row++, new Label("Barang DO"), lineBox);
+        grid.addRow(row++, new Label("QR item"), qrField);
+        grid.addRow(row, new Label("Jumlah scan"), quantityField);
         configureDeliveryOrderFormGrid(grid);
-        boolean packing = order.getStatus() == com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PICKED;
+        boolean packing = !loading;
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(packing ? "Scan Packing" : "Scan Loading");
-        dialog.setHeaderText("Scan hanya diterima jika SKU, batch, expiry, dan jumlah cocok dengan reservasi DO.");
+        dialog.setHeaderText(loading
+                ? "Scan barcode DO dan item; SKU, batch, expiry, serta jumlah harus cocok dengan packing."
+                : "Scan hanya diterima jika SKU, batch, expiry, dan jumlah cocok dengan reservasi DO.");
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         styleDeliveryOrderDialog(dialog);
@@ -870,14 +887,17 @@ public class OutboundWorkflow {
             showAlert(Alert.AlertType.WARNING, "Jumlah Tidak Valid", "Jumlah scan harus bilangan positif.");
             return;
         }
-        if (line == null || qrField.getText().isBlank()) {
-            showAlert(Alert.AlertType.WARNING, "Scan Tidak Lengkap", "Pilih barang dan pindai QR item.");
+        if (line == null || qrField.getText().isBlank()
+                || loading && deliveryOrderBarcode.getText().isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "Scan Tidak Lengkap",
+                    "Scan barcode DO saat loading, pilih barang, dan pindai QR item.");
             return;
         }
         Task<Boolean> task = new Task<>() {
             @Override
             protected Boolean call() {
                 return deliveryOrderService.recordFulfillmentScan(order.getId(), line.getId(),
+                        loading ? deliveryOrderBarcode.getText().trim() : null,
                         qrField.getText().trim(), quantity, actorId);
             }
         };
@@ -887,7 +907,7 @@ public class OutboundWorkflow {
                 loadDeliveryOrders(table);
             } else {
                 showAlert(Alert.AlertType.ERROR, "Scan Ditolak",
-                        "QR item, status tahap, atau jumlah tidak cocok dengan reservasi DO.");
+                        "Barcode DO, QR item, status tahap, atau jumlah tidak cocok dengan reservasi DO.");
             }
         });
         task.setOnFailed(event -> {
@@ -897,6 +917,118 @@ public class OutboundWorkflow {
         Thread thread = new Thread(task, "delivery-order-fulfillment-scan");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void handleExportPackingList(TableView<DeliveryOrder> table) {
+        DeliveryOrder order = table.getSelectionModel().getSelectedItem();
+        if (order == null) return;
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Simpan Packing List dan Label DO");
+        chooser.setInitialFileName(order.getOrderCode().replaceAll("[^A-Za-z0-9._-]", "_")
+                + "-packing.html");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Packing List HTML", "*.html"));
+        java.io.File target = chooser.showSaveDialog(table.getScene().getWindow());
+        if (target == null) return;
+        Task<Path> task = new Task<>() {
+            @Override
+            protected Path call() throws Exception {
+                List<DeliveryOrderLotReservation> reservations = deliveryOrderService.getReservations(order.getId());
+                if (reservations.isEmpty()) throw new IllegalStateException("DO belum memiliki alokasi lot.");
+                Path destination = target.toPath();
+                Files.writeString(destination, createPackingListHtml(order, reservations),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                return destination;
+            }
+        };
+        task.setOnSucceeded(event -> {
+            try {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().browse(task.getValue().toUri());
+                } else {
+                    showAlert(Alert.AlertType.INFORMATION, "Packing List Tersimpan",
+                            "File tersimpan di " + task.getValue());
+                }
+            } catch (java.io.IOException ex) {
+                log.error("Packing list tersimpan tetapi browser gagal dibuka", ex);
+                showAlert(Alert.AlertType.INFORMATION, "Packing List Tersimpan",
+                        "File tersimpan di " + task.getValue());
+            }
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal membuat packing list {}", order.getOrderCode(), task.getException());
+            showAlert(Alert.AlertType.ERROR, "Gagal Membuat Packing List",
+                    task.getException() instanceof IllegalStateException
+                            ? task.getException().getMessage() : "File packing list tidak dapat dibuat.");
+        });
+        Thread thread = new Thread(task, "delivery-order-packing-list");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private String createPackingListHtml(DeliveryOrder order,
+                                         List<DeliveryOrderLotReservation> reservations) throws Exception {
+        StringBuilder html = new StringBuilder("<!doctype html><html lang=\"id\"><head><meta charset=\"utf-8\">")
+                .append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Packing ")
+                .append(escapeHtml(order.getOrderCode())).append("</title><style>")
+                .append("body{font:14px Arial,sans-serif;color:#17212b;margin:24px}h1{font-size:22px}")
+                .append("table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #9aa7b2;padding:7px;text-align:left}")
+                .append("th{background:#edf2f6}.barcode{width:360px;height:90px}.label{border:1px dashed #687986;padding:16px;margin:16px 0;page-break-inside:avoid}")
+                .append(".qr{width:140px;height:140px}.muted{color:#52616c}@media print{.label{page-break-inside:avoid}body{margin:12mm}}")
+                .append("</style></head><body><h1>Packing List / Label</h1><p><b>DO:</b> ")
+                .append(escapeHtml(order.getOrderCode())).append("<br><b>Customer:</b> ")
+                .append(escapeHtml(order.getCustomer().getNamaCustomer())).append("</p><img class=\"barcode\" alt=\"Barcode DO\" src=\"data:image/png;base64,")
+                .append(barcodeImage(order.getOrderCode(), false)).append("\"><table><thead><tr><th>SKU</th><th>Barang</th>")
+                .append("<th>Pesanan</th><th>Picked</th><th>Packed</th></tr></thead><tbody>");
+        for (DeliveryOrderLine line : order.getLines()) {
+            int picked = reservations.stream().filter(value -> value.getDeliveryOrderLine().getId().equals(line.getId()))
+                    .mapToInt(DeliveryOrderLotReservation::getPickedQuantity).sum();
+            int packed = reservations.stream().filter(value -> value.getDeliveryOrderLine().getId().equals(line.getId()))
+                    .mapToInt(DeliveryOrderLotReservation::getPackedQuantity).sum();
+            html.append("<tr><td>").append(escapeHtml(line.getBarang().getKodeBarang())).append("</td><td>")
+                    .append(escapeHtml(line.getBarang().getNamaBarang())).append("</td><td>")
+                    .append(line.getOrderedQuantity()).append("</td><td>").append(picked).append("</td><td>")
+                    .append(packed).append("</td></tr>");
+        }
+        html.append("</tbody></table><h2>Label per lot</h2>");
+        for (DeliveryOrderLotReservation reservation : reservations) {
+            int packed = reservation.getPackedQuantity();
+            if (packed <= 0) continue;
+            var line = reservation.getDeliveryOrderLine();
+            var lot = reservation.getLotBalance();
+            String expiry = lot.getExpiryDate() == null ? "-" : lot.getExpiryDate().toString();
+            String payload = "WMS1|" + barcodePart(line.getBarang().getKodeBarang()) + "|"
+                    + barcodePart(lot.getBatchCode()) + "|" + expiry;
+            html.append("<section class=\"label\"><b>DO ").append(escapeHtml(order.getOrderCode()))
+                    .append("</b><p>").append(escapeHtml(line.getBarang().getKodeBarang())).append(" — ")
+                    .append(escapeHtml(line.getBarang().getNamaBarang())).append("</p><p>Batch: ")
+                    .append(escapeHtml(lot.getBatchCode())).append(" | Expiry: ").append(escapeHtml(expiry))
+                    .append(" | SLOC: ").append(escapeHtml(lot.getRak() == null ? "-" : lot.getRak().getKodeRak()))
+                    .append(" | Qty: ").append(packed).append("</p><img class=\"qr\" alt=\"QR item\" src=\"data:image/png;base64,")
+                    .append(barcodeImage(payload, true)).append("\"><p class=\"muted\">")
+                    .append(escapeHtml(payload)).append("</p></section>");
+        }
+        return html.append("</body></html>").toString();
+    }
+
+    private String barcodeImage(String value, boolean qr) throws Exception {
+        var matrix = qr
+                ? new com.google.zxing.qrcode.QRCodeWriter().encode(value,
+                        com.google.zxing.BarcodeFormat.QR_CODE, 240, 240)
+                : new com.google.zxing.oned.Code128Writer().encode(value,
+                        com.google.zxing.BarcodeFormat.CODE_128, 720, 180);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        com.google.zxing.client.j2se.MatrixToImageWriter.writeToStream(matrix, "PNG", output);
+        return Base64.getEncoder().encodeToString(output.toByteArray());
+    }
+
+    private String barcodePart(String value) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) return "-";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
     }
 
     private void handleFulfillmentQuantities(TableView<DeliveryOrder> table, boolean loading) {

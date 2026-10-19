@@ -304,6 +304,85 @@ class DeliveryOrderServiceTest {
     }
 
     @Test
+    void mobilePickInstructionsAreLimitedToAssignedSectionAndRemainingLots() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
+        User picker = User.builder().id(9).fullName("Picker").build();
+        PickTask task = activeTask(order, picker);
+        ReflectionTestUtils.setField(task, "id", 22);
+        InventoryLotBalance assignedLot = lot(order.getLines().get(0).getBarang(),
+                new Rak(2, pickingSection(), "A-01", 100, 3), "LOT-A", 3);
+        InventoryLotBalance otherLot = lot(order.getLines().get(0).getBarang(),
+                new Rak(3, new Section(6, "SEC-6", "Zone 6", 12), "B-01", 100, 3), "LOT-B", 3);
+        DeliveryOrderLotReservation assignedReservation = new DeliveryOrderLotReservation(
+                order.getLines().get(0), assignedLot, 3);
+        assignedReservation.setPickedQuantity(1);
+        DeliveryOrderLotReservation otherReservation = new DeliveryOrderLotReservation(
+                order.getLines().get(0), otherLot, 3);
+        when(pickTaskRepository.findById(22)).thenReturn(Optional.of(task));
+        when(reservationRepository.findByOrderId(7)).thenReturn(List.of(assignedReservation, otherReservation));
+
+        List<DeliveryOrderService.MobilePickInstruction> instructions = service.getMobilePickInstructions(22, 9);
+
+        assertEquals(1, instructions.size());
+        assertEquals("A-01", instructions.get(0).rackCode());
+        assertEquals(2, instructions.get(0).remainingQuantity());
+    }
+
+    @Test
+    void mobilePickingCanCompletePartiallyAndReleasesUnpickedReservations() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
+        User picker = User.builder().id(9).fullName("Picker").build();
+        PickTask task = activeTask(order, picker);
+        ReflectionTestUtils.setField(task, "id", 22);
+        DeliveryOrderLotReservation reservation = reservation(order,
+                lot(order.getLines().get(0).getBarang(),
+                        new Rak(2, pickingSection(), "A-01", 100, 3), "LOT-A", 3), 3);
+        reservation.setPickedQuantity(2);
+        when(pickTaskRepository.findById(22)).thenReturn(Optional.of(task));
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(pickTaskRepository.findActiveByOrderId(7)).thenReturn(List.of(task));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+        when(lotBalanceRepository.findByIdForUpdate(101))
+                .thenReturn(Optional.of(reservation.getLotBalance()));
+
+        assertTrue(service.completeMobilePicking(22, 9));
+
+        assertEquals(DeliveryOrderStatus.PICKED, order.getStatus());
+        assertEquals(2, reservation.getReservedQuantity());
+    }
+
+    @Test
+    void mobilePickingCompletesOrderAfterAllReservedLotsArePicked() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
+        User picker = User.builder().id(9).fullName("Picker").build();
+        PickTask task = activeTask(order, picker);
+        ReflectionTestUtils.setField(task, "id", 22);
+        InventoryLotBalance lot = lot(order.getLines().get(0).getBarang(),
+                new Rak(2, pickingSection(), "A-01", 100, 3), "LOT-A", 3);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 3);
+        when(pickTaskRepository.findById(22)).thenReturn(Optional.of(task));
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(pickTaskRepository.findActiveByOrderId(7)).thenReturn(List.of(task));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+        when(lotBalanceRepository.findByIdForUpdate(101)).thenReturn(Optional.of(lot));
+
+        assertTrue(service.completeMobilePicking(22, 9));
+
+        assertEquals(DeliveryOrderStatus.PICKED, order.getStatus());
+        assertEquals(PickTaskStatus.COMPLETED, task.getStatus());
+    }
+
+    @Test
+    void mobilePickerCannotReadAnotherPickersTask() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
+        PickTask task = activeTask(order, User.builder().id(9).fullName("Picker").build());
+        ReflectionTestUtils.setField(task, "id", 22);
+        when(pickTaskRepository.findById(22)).thenReturn(Optional.of(task));
+
+        assertTrue(service.getMobilePickTask(22, 10).isEmpty());
+    }
+
+    @Test
     void dispatchPostsGoodsIssueAcrossLocationsAndAdvancesState() {
         DeliveryOrder order = order(DeliveryOrderStatus.LOADED, 5);
         Rak firstRack = new Rak(2, null, "A-01", 100, 3);

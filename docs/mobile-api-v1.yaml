@@ -191,6 +191,79 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /picking/tasks:
+    get:
+      summary: List in-progress picking tasks assigned to the signed-in picker
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Paginated tasks assigned to the current picker
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickTaskPage' }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /picking/tasks/{taskId}:
+    get:
+      summary: Read section-scoped lot, location, and quantity instructions
+      parameters:
+        - { $ref: '#/components/parameters/taskId' }
+      responses:
+        '200':
+          description: Task details with unpicked lot allocations in the assigned section
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PickTaskDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /picking/tasks/{taskId}/scans:
+    post:
+      summary: Record a pick after scanning item and SLOC barcodes
+      parameters:
+        - { $ref: '#/components/parameters/taskId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lineId, quantity, itemBarcode, locationBarcode]
+              properties:
+                lineId: { type: integer, minimum: 1 }
+                quantity: { type: integer, minimum: 1 }
+                itemBarcode: { type: string, maxLength: 512, description: WMS1 item QR payload }
+                locationBarcode: { type: string, maxLength: 512, description: SLOC1 rack QR payload }
+      responses:
+        '200':
+          description: Scan recorded against its order, lot reservation, and assigned section
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recorded: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/InvalidRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /picking/tasks/{taskId}/complete:
+    post:
+      summary: Complete the picking order; release unpicked reserved quantities
+      parameters:
+        - { $ref: '#/components/parameters/taskId' }
+      responses:
+        '200':
+          description: Picking completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: PICKED }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     bearerAuth:
@@ -205,6 +278,11 @@ components:
       schema: { type: integer }
     receiptId:
       name: receiptId
+      in: path
+      required: true
+      schema: { type: integer }
+    taskId:
+      name: taskId
       in: path
       required: true
       schema: { type: integer }
@@ -271,6 +349,39 @@ components:
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/PutawayTask' } }
         pagination: { $ref: '#/components/schemas/Pagination' }
+    PickTask:
+      type: object
+      properties:
+        taskId: { type: integer }
+        taskCode: { type: string }
+        orderId: { type: integer }
+        orderCode: { type: string }
+        sectionCode: { type: string }
+        status: { type: string, const: IN_PROGRESS }
+        createdAt: { type: string, format: date-time }
+    PickInstruction:
+      type: object
+      properties:
+        lineId: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        unit: { type: [string, 'null'] }
+        rackCode: { type: string }
+        batchCode: { type: string }
+        expiryDate: { type: [string, 'null'], format: date }
+        reservedQuantity: { type: integer }
+        pickedQuantity: { type: integer }
+        remainingQuantity: { type: integer }
+    PickTaskDetail:
+      type: object
+      properties:
+        task: { $ref: '#/components/schemas/PickTask' }
+        lines: { type: array, items: { $ref: '#/components/schemas/PickInstruction' } }
+    PickTaskPage:
+      type: object
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PickTask' } }
+        pagination: { $ref: '#/components/schemas/Pagination' }
     ApiError:
       type: object
       properties:
@@ -301,7 +412,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
     NotFound:
-      description: Stock count does not exist
+      description: Requested resource does not exist
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }

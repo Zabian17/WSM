@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -41,9 +43,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class DeliveryOrderService {
+
+    public record MobilePickInstruction(Integer lineId, String itemCode, String itemName, String unit,
+                                        String rackCode, String batchCode, LocalDate expiryDate,
+                                        Integer reservedQuantity, Integer pickedQuantity,
+                                        Integer remainingQuantity) {}
 
     private static final Logger log = LoggerFactory.getLogger(DeliveryOrderService.class);
     private final DeliveryOrderRepository deliveryOrderRepository;
@@ -99,6 +107,61 @@ public class DeliveryOrderService {
     @Transactional(readOnly = true)
     public List<PickTask> getPickTasks(Integer orderId) {
         return orderId == null ? List.of() : pickTaskRepository.findActiveByOrderId(orderId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PickTask> getMobilePickTasks(Integer pickerId, Pageable pageable) {
+        return pickTaskRepository.findMobileTasks(pickerId, PickTaskStatus.IN_PROGRESS, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PickTask> getMobilePickTask(Integer taskId, Integer pickerId) {
+        if (taskId == null || pickerId == null) return Optional.empty();
+        return pickTaskRepository.findById(taskId).filter(task -> task.getStatus() == PickTaskStatus.IN_PROGRESS
+                && task.getAssignedPicker() != null && Objects.equals(task.getAssignedPicker().getId(), pickerId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MobilePickInstruction> getMobilePickInstructions(Integer taskId, Integer pickerId) {
+        PickTask task = getMobilePickTask(taskId, pickerId).orElse(null);
+        if (task == null || task.getAssignedSection() == null || task.getDeliveryOrder() == null) return List.of();
+        Integer sectionId = task.getAssignedSection().getId();
+        return reservationRepository.findByOrderId(task.getDeliveryOrder().getId()).stream()
+                .filter(reservation -> reservation.getLotBalance() != null
+                        && reservation.getLotBalance().getRak() != null
+                        && reservation.getLotBalance().getRak().getSection() != null
+                        && Objects.equals(reservation.getLotBalance().getRak().getSection().getId(), sectionId))
+                .map(reservation -> {
+                    InventoryLotBalance lot = reservation.getLotBalance();
+                    DeliveryOrderLine line = reservation.getDeliveryOrderLine();
+                    return new MobilePickInstruction(line.getId(), line.getBarang().getKodeBarang(),
+                            line.getBarang().getNamaBarang(), line.getBarang().getSatuan(),
+                            lot.getRak().getKodeRak(), lot.getBatchCode(), lot.getExpiryDate(),
+                            reservation.getReservedQuantity(), reservation.getPickedQuantity(),
+                            reservation.getReservedQuantity() - reservation.getPickedQuantity());
+                })
+                .toList();
+    }
+
+    @Transactional
+    public boolean recordMobilePick(Integer taskId, Integer lineId, String itemQrPayload,
+                                    String locationBarcode, int quantity, Integer pickerId) {
+        PickTask task = getMobilePickTask(taskId, pickerId).orElse(null);
+        return task != null && task.getDeliveryOrder() != null
+                && recordPickWithBarcodes(task.getDeliveryOrder().getId(), lineId, itemQrPayload,
+                locationBarcode, quantity, pickerId);
+    }
+
+    @Transactional
+    public boolean completeMobilePicking(Integer taskId, Integer pickerId) {
+        PickTask requestedTask = getMobilePickTask(taskId, pickerId).orElse(null);
+        if (requestedTask == null || requestedTask.getDeliveryOrder() == null) return false;
+        Integer orderId = requestedTask.getDeliveryOrder().getId();
+        if (deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).isEmpty()) return false;
+        List<PickTask> tasks = pickTaskRepository.findActiveByOrderId(orderId);
+        if (tasks.isEmpty() || tasks.stream().anyMatch(task -> task.getStatus() != PickTaskStatus.IN_PROGRESS))
+            return false;
+        return completePicking(orderId);
     }
 
     @Transactional(readOnly = true)

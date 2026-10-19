@@ -25,7 +25,7 @@ public class MobileApiExceptionHandler {
 
     @ExceptionHandler(MobileApiExceptions.NotFound.class)
     ResponseEntity<MobileApiError> notFound() {
-        return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Sesi opname tidak ditemukan.");
+        return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "Data tidak ditemukan.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

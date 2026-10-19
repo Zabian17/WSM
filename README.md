@@ -1,314 +1,234 @@
 # GudangKu
 
-GudangKu is a Java desktop warehouse management system (WMS) for managing
-inventory, inbound and outbound operations, warehouse transfers, and day-to-day
-stock control. The desktop interface is built with JavaFX; Spring Boot and
-Spring Data JPA provide the application and persistence layers, with MySQL as
-the database.
+GudangKu adalah sistem manajemen gudang berbasis desktop untuk mengelola persediaan, penerimaan, pengeluaran, perpindahan barang, dan pengendalian stok. Antarmuka desktop menggunakan JavaFX. Spring Boot dan Spring Data JPA menyediakan layanan aplikasi dan akses data dengan MySQL.
 
-The application includes a JavaFX desktop client and a mobile web client for
-cycle counts, putaway, and assigned picking. Live ERP integration is not
-implemented.
+Aplikasi menyediakan klien desktop JavaFX dan klien web untuk perangkat seluler. Fitur gudang seluler mencakup penghitungan stok, putaway, pemenuhan DO, pemetikan MRO, retur yang disetujui, dan pemetikan STO. Integrasi Accurate telah menyediakan autentikasi dan transport API; sinkronisasi dokumen PO/SO belum tersedia.
 
-## Capabilities
+## Fitur
 
-### Foundation and inventory
+### Persediaan dan operasional dasar
 
-- User registration and login with BCrypt password hashing, startup migration
-  of legacy plaintext passwords, and login-time migration of salted SHA-256 hashes.
-- Admins can reset another user's password from Settings; new and reset passwords
-  require at least 12 characters and no more than 72 UTF-8 bytes.
-- Item, customer, supplier, warehouse-section, and rack management.
-- Inventory balances by storage location (SLOC), batch, and expiry.
-- Stock-in and stock-out movements recorded in the inventory ledger.
-- Stock transfers between SLOCs with lot allocation history and optional
-  keyboard-wedge verification of item QR plus source/destination SLOC barcodes.
-- FIFO, FEFO, or LEFO lot-allocation configuration shared by stock issues,
-  SO/DO reservations, MRO Goods Issue, and STO dispatch. FEFO is the default.
-- Interactive schematic warehouse map, inventory filters, and stock alerts.
-- Mobile web execution for scheduled stock counts, putaway, and assigned DO picking.
-- Mobile MRO picking with scanned Goods Issue against the assigned operator's task.
-- Desktop stock count by rack, including book-stock snapshot, physical count,
-  variance review, guarded posting, and on-demand count-priority
-  recommendations.
-- Excel `.xlsx` import and template support for item, customer, and supplier
-  master data. Invalid rows block the complete import; imported item stock
-  starts at zero.
+- Pendaftaran dan autentikasi pengguna dengan hashing BCrypt. Saat startup, aplikasi memigrasikan kata sandi plaintext lama; saat login, aplikasi memigrasikan hash SHA-256 bersalt.
+- Admin dapat mereset kata sandi pengguna melalui Settings. Kata sandi baru harus memiliki sedikitnya 12 karakter dan panjang maksimal 72 byte UTF-8.
+- Pengelolaan barang, pelanggan, pemasok, gudang, section, dan rak.
+- Saldo persediaan berdasarkan lokasi penyimpanan (SLOC), batch, dan tanggal kedaluwarsa.
+- Transaksi barang masuk dan keluar dicatat pada ledger persediaan.
+- Transfer antar-SLOC menyimpan riwayat alokasi lot dan dapat memvalidasi QR barang serta barcode SLOC asal dan tujuan.
+- Strategi alokasi lot FIFO, FEFO, atau LEFO dapat digunakan bersama untuk pengeluaran stok, reservasi SO/DO, Goods Issue MRO, dan pengiriman STO. FEFO menjadi pilihan bawaan.
+- Peta gudang skematis, filter persediaan, dan peringatan stok.
+- Penghitungan siklus harian dan berkala dapat dibagi ke beberapa petugas. Jadwal bulanan menggunakan hari kerja Senin–Jumat dan menyimpan snapshot stok saat penghitungan dimulai.
+- Penghitungan stok per rak mencatat stok buku, hasil hitung fisik, petugas, tinjauan selisih, dan posting selisih ke ledger beserta alokasi lot. Sistem juga menyediakan rekomendasi prioritas hitung.
+- Impor Excel `.xlsx` dan templat untuk data barang, pelanggan, dan pemasok. Jika ada baris tidak valid, seluruh impor dibatalkan. Stok barang hasil impor dimulai dari nol.
 
-### Inbound and purchasing
+### Penerimaan dan pembelian
 
-- Purchase orders with maker-checker approval and receipt linkage.
-- Inbound receipt, quality-control review, and putaway workflow.
-- Putaway recommendations based on target section category and rack capacity.
-- Desktop keyboard-wedge scan validation for item QR and destination SLOC
-  barcode. Item scans validate SKU, batch, and expiry.
-- QR label generation for receipt items and warehouse locations.
+- Purchase Order (PO) dengan persetujuan maker-checker, mata uang, harga per baris, referensi tender, syarat pembayaran, tanggal pengiriman yang diharapkan, dan keterkaitan ke penerimaan barang.
+- Penerimaan, pemeriksaan kualitas (QC), dan proses putaway.
+- Rekomendasi putaway berdasarkan kategori section, jenis penyimpanan, dan kapasitas rak.
+- Urutan oldest-first untuk antrean QC dapat dikonfigurasi. Alokasi lot pengeluaran mendukung FIFO, FEFO, atau LEFO.
+- Data volume CBM barang dan kapasitas CBM rak mendukung pemeringkatan lokasi putaway.
+- Pemindaian barcode pada desktop memvalidasi QR barang dan SLOC tujuan, termasuk SKU, batch, dan tanggal kedaluwarsa.
+- Pembuatan label QR untuk barang pada receipt dan lokasi gudang.
 
-### Outbound
+### Pengeluaran dan pemenuhan pesanan
 
-- Sales orders converted to delivery orders (SO to DO), preserving source
-  document references and remaining quantities.
-- DO release, strategy-based lot reservation, pick task creation, selectable
-  picker assignment, and section assignment.
-- Admins can exclude configured section zones from DO reservations, SLOC
-  transfers, or barcode-based transfers; physical inventory remains unchanged.
-- Admins can restrict Stock Transfer and Purchase Return picking to configured
-  section zones; all zones remain available until a picklist is configured.
-- ERP adapters share a provider-neutral contract for SAP, Oracle, and Accurate;
-  vendor connectors remain disabled until API versions and mappings are agreed.
-- Accurate transport supports OAuth bearer access tokens with database sessions
-  and API Tokens with HMAC-signed requests. Set `ACCURATE_AUTH_MODE=API_TOKEN`
-  with `ACCURATE_API_TOKEN` and `ACCURATE_API_SECRET`; OAuth remains the default
-  and accepts `ACCURATE_BEARER_TOKEN` (or the legacy `ACCURATE_API_TOKEN`).
-- Desktop picking scan validation for item QR, SLOC, batch, expiry, assigned
-  picker, and section.
-- Packing and loading quantity checks with operator/time audit.
-- Dispatch and Goods Issue through the inventory ledger, including partial
-  delivery support.
+- Sales Order (SO) dapat dikonversi menjadi Delivery Order (DO) dengan referensi dokumen sumber dan sisa kuantitas.
+- Pelepasan DO membuat reservasi lot berdasarkan strategi alokasi, tugas picking, serta penugasan picker dan section.
+- Admin dapat mengecualikan zona tertentu dari reservasi DO dan transfer stok, atau membatasi zona yang tersedia untuk picking Stock Transfer dan Purchase Return.
+- Daftar packing DO dapat dicetak dengan barcode Code 128 untuk DO dan label QR untuk lot yang sudah dikemas.
+- Pemindaian picking desktop memvalidasi QR barang, SLOC, batch, tanggal kedaluwarsa, picker, dan section.
+- Pemeriksaan jumlah saat packing dan loading mencatat operator dan waktu.
+- Dispatch dan Goods Issue memperbarui ledger persediaan serta mendukung pengiriman parsial.
+- Mobile DO Fulfillment memvalidasi pemindaian saat packing, loading, dan dispatch.
 
-### Material usage, returns, and inter-warehouse transfers
+### Material Usage, retur, dan transfer antargudang
 
-- Material Usage/MRO requests with maker-checker review and configured lot
-  allocation during Goods Issue. Multi-item requests can issue progressively
-  using item QR, source SLOC, quantity verification, and persisted scan history.
-- Purchase returns linked to received PO lines and sales returns linked to
-  dispatched DO lines.
-- Return review, reason tracking, source-quantity checks, and ledger posting.
-- Optional return scans validate purchase-return item/lot/source SLOC or
-  sales-return item/destination SLOC before posting.
-- Posted single-item sales returns can reuse an existing item QR payload or
-  generate/reprint a matching replacement label.
-- Warehouse master and section-to-warehouse mapping.
-- Stock Transfer Plan / STO with approval, picker assignment, keyboard-wedge
-  item/SLOC verification, partial dispatch and receipt, scan history, and
-  batch/expiry-preserving ledger posting.
+- Permintaan Material Usage/MRO menggunakan persetujuan maker-checker dan alokasi lot. Permintaan dapat memuat beberapa barang dan diproses bertahap melalui Goods Issue.
+- Tugas picking MRO mencatat pemindaian QR barang, SLOC asal, jumlah, dan riwayat pemindaian. Stok tidak direservasi saat tugas dibuka; ketersediaan diperiksa kembali saat Goods Issue.
+- Purchase Return terhubung ke baris PO yang diterima. Sales Return terhubung ke baris DO yang dikirim.
+- Proses retur mencatat persetujuan, alasan, validasi kuantitas sumber, dan posting ke ledger.
+- Mobile Return hanya memproses retur yang telah disetujui. Pemindaian memvalidasi barang dan lokasi sebelum posting.
+- Label QR sales return yang sudah diposting dapat menggunakan QR barang yang sesuai atau membuat dan mencetak ulang label pengganti.
+- Data gudang dan pemetaan section ke gudang mendukung Stock Transfer Order (STO).
+- STO mendukung persetujuan, penugasan picker, validasi pemindaian barang dan SLOC, pengiriman dan penerimaan parsial, riwayat pemindaian, serta posting ledger yang mempertahankan batch dan tanggal kedaluwarsa.
+- Mobile STO mendukung pemetikan oleh picker yang ditugaskan, pemindaian barang dan lokasi sumber, serta Goods Issue.
 
-### Reporting
+### Klien web seluler
 
-- Transaction reports and recent operational views for inbound/QC,
-  outbound fulfillment, STO, pick scans, picker activity, supplier QC
-  turnaround, PO-to-receipt delivery lead time, and packing/loading audit.
-- Operational report filters by inclusive date range and category. Results
-  remain bounded to the most recent repository windows documented below.
-- CSV export for transaction and operational reports; PDF export for filtered
-  transaction reports.
+- API seluler memiliki autentikasi, token sesi, pembatasan laju login, validasi jaringan, dan respons berbentuk halaman.
+- Alur seluler mencakup putaway, picking/pemenuhan DO, penghitungan siklus, picking MRO, posting retur yang disetujui, dan picking STO.
+- Pemindaian kamera memerlukan HTTPS (atau localhost) dan dukungan `BarcodeDetector` pada browser. Pemindai keyboard-wedge dan entri manual tersedia sebagai alternatif.
+- Token akses hanya disimpan selama tab browser aktif dan tidak disimpan oleh browser.
 
-Operational reports support user-selected inclusive date ranges, but searches
-remain bounded to recent repository windows.
+### Dasbor dan laporan
 
-## Technology
+- Dasbor menyajikan metrik fulfillment, produktivitas picker, waktu penyelesaian QC pemasok, packing, dan loading.
+- Admin dapat mengatur target fulfillment, packing, loading, waktu pemasok, serta keluaran picker.
+- Periode dasbor dapat dipilih: 7, 30, atau 90 hari; bulan berjalan; atau rentang tanggal khusus.
+- Saran persediaan memakai rata-rata permintaan bulanan dari jumlah bulan kalender selesai yang dapat dikonfigurasi serta mempertimbangkan stok buffer, stok maksimum, dan jumlah yang sudah direservasi.
+- Laporan mencakup transaksi dan aktivitas operasional seperti QC/penerimaan, fulfillment, STO, pemindaian picker, waktu proses pemasok, serta audit packing/loading.
+- Filter laporan menggunakan rentang tanggal inklusif dan kategori. Ekspor transaksi dan laporan operasional tersedia dalam CSV; laporan transaksi juga mendukung PDF.
 
-| Component | Technology |
+### Integrasi ERP
+
+- Kontrak ERP netral dan kunci penyedia SAP, Oracle, serta Accurate telah tersedia.
+- Klien Accurate mendukung OAuth untuk daftar dan pembukaan database serta API Token dengan permintaan bertanda tangan HMAC.
+- Transport Accurate mendukung GET/POST, pengalihan 308 yang dibatasi, validasi ukuran permintaan dan respons, serta batas 8 permintaan per detik dan 8 permintaan bersamaan.
+- Host database yang dikembalikan Accurate harus menggunakan HTTPS pada domain Accurate yang diizinkan.
+- Adapter penyedia ERP untuk sinkronisasi PO/SO dan pengiriman event gudang belum tersedia. Implementasinya menunggu dokumentasi endpoint, kredensial, dan pemetaan field dari vendor.
+
+## Teknologi
+
+| Komponen | Teknologi |
 | --- | --- |
-| Language and runtime | Java 25 |
-| Desktop UI | JavaFX 25, FXML, AtlantaFX Primer Light |
-| Application framework | Spring Boot 3.5.16 |
-| Persistence | Spring Data JPA, Hibernate |
-| Database | MySQL 8-compatible server and MySQL Connector/J |
+| Bahasa dan runtime | Java 25 |
+| Antarmuka desktop | JavaFX 25, FXML, AtlantaFX Primer Light |
+| Kerangka aplikasi | Spring Boot 3.5.16 |
+| Persistensi | Spring Data JPA, Hibernate |
+| Basis data | Server yang kompatibel dengan MySQL 8 dan MySQL Connector/J |
 | Build | Maven Wrapper |
-| Password hashing | Spring Security Crypto (BCrypt) |
-| QR/barcodes | ZXing 3.5.3 |
-| Excel import | Apache POI 5.4.1 |
-| Reporting library | JasperReports 6.21.3 |
-| Automated tests | JUnit 5, Mockito, Spring Boot Test |
+| Hashing kata sandi | Spring Security Crypto (BCrypt) |
+| QR dan barcode | ZXing 3.5.3 |
+| Impor Excel | Apache POI 5.4.1 |
+| Pelaporan | JasperReports 6.21.3 |
+| Pengujian otomatis | JUnit 5, Mockito, Spring Boot Test |
 
-## Requirements
+## Persyaratan
 
-- JDK 25 or newer. The project compiles with Java 25 language/API settings.
-- MySQL server accessible from the development machine.
-- Network access on the first build so Maven can download dependencies.
-- Git, if cloning the repository.
+- JDK 25 atau lebih baru. Proyek menggunakan konfigurasi bahasa dan API Java 25.
+- Server MySQL yang dapat diakses dari komputer pengembangan.
+- Akses jaringan pada build pertama agar Maven dapat mengunduh dependensi.
+- Git jika proyek dikloning dari repositori.
 
-## Database configuration
+## Konfigurasi basis data
 
-The default development connection is:
+Konfigurasi bawaan profil pengembangan:
 
 - Host: `localhost`
 - Port: `3306`
 - Database: `gudang_akhir`
-- Username: `root`
+- Pengguna: `root`
 
-The default JDBC URL requests creation of the database if it does not already
-exist. The application uses Hibernate schema update for local development.
-For a new database, the canonical schema is also available in
-[`src/main/resources/sql/schema.sql`](./src/main/resources/sql/schema.sql).
+URL JDBC bawaan dapat membuat database jika belum tersedia. Profil `dev` mengaktifkan pembaruan skema Hibernate dan menggunakan akun Laragon lokal `root` tanpa kata sandi. Untuk lingkungan selain pengembangan, gunakan profil non-`dev`; konfigurasi dasar mewajibkan `DB_USER` dan `DB_PASSWORD`, koneksi terenkripsi, serta validasi skema tanpa perubahan otomatis.
 
-Local runs use the `dev` profile by default. It enables Hibernate schema update
-and defaults to Laragon's local `root` account without a password. For a
-production-like run, activate a profile other than `dev`; the base configuration
-requires `DB_USER` and `DB_PASSWORD`, requires encrypted database connections,
-and validates rather than modifies the schema.
+Nilai koneksi dapat diatur melalui environment variable:
 
-Connection values can be overridden with environment variables:
-
-| Variable | Default | Purpose |
+| Variabel | Nilai bawaan | Fungsi |
 | --- | --- | --- |
-| `DB_HOST` | `localhost` | MySQL host |
-| `DB_PORT` | `3306` | MySQL port |
-| `DB_NAME` | `gudang_akhir` | Database name |
-| `DB_USER` | `root` in `dev`; required otherwise | Database username |
-| `DB_PASSWORD` | Empty in `dev`; required otherwise | Database password |
-| `DB_SSL_MODE` | `DISABLED` in `dev`; `REQUIRED` otherwise | MySQL TLS mode (`REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`, or `DISABLED` for local development only) |
-| `ITEM_BARCODE_PREFIX` | `WMS1` | Prefix used when generating item QR payloads |
-| `LOCATION_BARCODE_PREFIX` | `SLOC1` | Prefix used when generating location QR payloads |
+| `DB_HOST` | `localhost` | Host MySQL |
+| `DB_PORT` | `3306` | Port MySQL |
+| `DB_NAME` | `gudang_akhir` | Nama database |
+| `DB_USER` | `root` pada `dev`; wajib di profil lain | Nama pengguna database |
+| `DB_PASSWORD` | Kosong pada `dev`; wajib di profil lain | Kata sandi database |
+| `DB_SSL_MODE` | `DISABLED` pada `dev`; `REQUIRED` pada profil lain | Mode TLS MySQL |
+| `ITEM_BARCODE_PREFIX` | `WMS1` | Awalan payload QR barang |
+| `LOCATION_BARCODE_PREFIX` | `SLOC1` | Awalan payload barcode lokasi |
 
-For example, in PowerShell:
+Contoh konfigurasi melalui PowerShell:
 
 ```powershell
-$env:DB_HOST = "localhost"
-$env:DB_PORT = "3306"
-$env:DB_NAME = "gudang_akhir"
-$env:DB_USER = "root"
-$env:DB_PASSWORD = "your-local-password"
-$env:DB_SSL_MODE = "VERIFY_IDENTITY"
-$env:ITEM_BARCODE_PREFIX = "WMS1"
-$env:LOCATION_BARCODE_PREFIX = "SLOC1"
-$env:SPRING_PROFILES_ACTIVE = "prod"
+$env:DB_HOST = 'localhost'
+$env:DB_PORT = '3306'
+$env:DB_NAME = 'gudang_akhir'
+$env:DB_USER = 'root'
+$env:DB_PASSWORD = 'kata-sandi-lokal'
+$env:DB_SSL_MODE = 'VERIFY_IDENTITY'
+$env:ITEM_BARCODE_PREFIX = 'WMS1'
+$env:LOCATION_BARCODE_PREFIX = 'SLOC1'
+$env:SPRING_PROFILES_ACTIVE = 'prod'
 ```
 
-Barcode prefixes accept 1–16 letters, digits, underscores, or hyphens. Scanners
-continue accepting legacy `WMS1` item and `SLOC1` location labels after prefixes
-change; newly generated labels use the configured values.
+Mode TLS yang didukung: `REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`, dan `DISABLED` hanya untuk pengembangan lokal. Gunakan `VERIFY_IDENTITY` untuk server remote dengan sertifikat tepercaya. Gunakan `REQUIRED` jika enkripsi diperlukan tetapi verifikasi sertifikat belum dikonfigurasi.
 
-Use `VERIFY_IDENTITY` for remote databases with a trusted server certificate.
-Use `REQUIRED` when encryption is needed but certificate verification is not
-configured. Set `DISABLED` only for a local development server without TLS.
+Awalan barcode menerima 1–16 huruf, angka, garis bawah, atau tanda hubung. Scanner tetap menerima label lama berawalan `WMS1` dan `SLOC1`; label baru memakai awalan yang dikonfigurasi.
 
-Do not commit credentials or production data. The bundled
-[`database/gudang_akhir.sql`](./database/gudang_akhir.sql) is a local
-development export, not a production backup.
+Jangan menyimpan kredensial atau data produksi di repositori. [`database/gudang_akhir.sql`](./database/gudang_akhir.sql) adalah ekspor untuk pengembangan lokal, bukan cadangan produksi.
 
-### SQL migrations
+### Migrasi SQL
 
-Flyway manages schema changes from version 15 onward. On startup it adopts an
-existing non-empty database at baseline 15, without replaying the historical
-manual scripts. A new empty database receives the v15 table schema without
-development seed records. Add new
-changes as `V16__description.sql` and later versions in
-`src/main/resources/db/migration`. If an existing database is incomplete,
-Hibernate validation will fail after adoption; repair it from a verified backup
-before raising its baseline.
+Flyway mengelola skema mulai versi 15. Database lama yang tidak kosong dan belum memiliki riwayat Flyway diadopsi dengan baseline versi 15. Database baru yang kosong menjalankan skema awal versi 15, lalu migrasi berikutnya hingga versi 25. Migrasi dijalankan saat aplikasi dimulai.
 
-The scripts in `src/main/resources/sql/` document historical manual changes
-through `migration_v15.sql`; Flyway does not replay them. Back up databases
-before schema updates.
+Jika database lama belum lengkap saat diadopsi, Hibernate dapat gagal memvalidasi skema. Periksa kondisi database dan pulihkan dari cadangan terverifikasi sebelum mengubah baseline atau skema. Jangan menjalankan skrip impor database pada data yang perlu dipertahankan.
 
-The helper
-[`scripts/windows/import_db.bat`](./scripts/windows/import_db.bat) resets and
-imports the local development database. It is destructive to the selected
-database; do not use it with valuable or production data.
+Skrip di `src/main/resources/sql/` mencatat perubahan manual historis hingga `migration_v15.sql`; Flyway tidak menjalankan ulang skrip tersebut. Migrasi baru harus ditambahkan sebagai `V26__deskripsi.sql` atau versi lebih tinggi di `src/main/resources/db/migration`. Cadangkan database sebelum memperbarui skema.
 
-## Run the desktop application
+File [`scripts/windows/import_db.bat`](./scripts/windows/import_db.bat) menghapus dan mengimpor ulang database pengembangan yang dipilih. Skrip tersebut bersifat destruktif dan tidak boleh digunakan pada database berisi data penting atau data produksi.
 
-Start MySQL first, then open PowerShell in the repository root:
+## Menjalankan aplikasi desktop
+
+Jalankan MySQL terlebih dahulu, lalu buka PowerShell di direktori utama repositori:
 
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
 
-The JavaFX login window should open after Spring Boot has initialized. Maven
-downloads required dependencies on the first run.
+Jendela login JavaFX akan terbuka setelah Spring Boot selesai melakukan inisialisasi. Maven mengunduh dependensi yang diperlukan saat build pertama.
 
-The mobile API listens on `127.0.0.1:8765` by default. Its OpenAPI contract is
-[`docs/mobile-api-v1.yaml`](./docs/mobile-api-v1.yaml). To expose it on a
-warehouse network, set `MOBILE_API_BIND_ADDRESS` to the server's LAN address,
-enable `MOBILE_API_TLS_ENABLED=true`, and configure the standard Spring Boot
-`SERVER_SSL_KEY_STORE`, `SERVER_SSL_KEY_STORE_PASSWORD`, `SERVER_SSL_KEY_STORE_TYPE`,
-and `SERVER_SSL_KEY_ALIAS` environment variables. Startup rejects non-loopback
-binding without TLS.
+## Menjalankan klien seluler
 
-Open the mobile interface at `/mobile/` on the same server. Camera barcode
-scanning requires HTTPS (or localhost) and a browser with `BarcodeDetector`;
-keyboard-wedge scanners and manual entry remain available as fallbacks. The
-access token stays in tab memory and is not persisted by the browser.
+API seluler menggunakan alamat `127.0.0.1:8765` secara bawaan. Kontrak OpenAPI tersedia di [`docs/mobile-api-v1.yaml`](./docs/mobile-api-v1.yaml). Antarmuka web dapat dibuka di `/mobile/` melalui server yang sama.
 
-An optional Windows launcher is available:
+Untuk mengakses API dari jaringan gudang, atur `MOBILE_API_BIND_ADDRESS` ke alamat LAN server, aktifkan `MOBILE_API_TLS_ENABLED=true`, lalu konfigurasi environment variable `SERVER_SSL_KEY_STORE`, `SERVER_SSL_KEY_STORE_PASSWORD`, `SERVER_SSL_KEY_STORE_TYPE`, dan `SERVER_SSL_KEY_ALIAS`. Aplikasi menolak binding non-loopback tanpa TLS.
 
-```powershell
-.\scripts\windows\run.ps1
-```
+Pemindaian kamera memerlukan HTTPS (atau localhost) dan browser yang mendukung `BarcodeDetector`. Pemindai keyboard-wedge dan entri manual tetap tersedia.
 
-In NetBeans, the project action in `nbactions.xml` is configured to launch the
-JavaFX application.
+Launcher Windows opsional tersedia di `scripts/windows/run.ps1`. Aksi proyek NetBeans pada `nbactions.xml` juga dikonfigurasi untuk menjalankan aplikasi JavaFX.
 
-To change the stock-picking strategy, set `PICKING_STRATEGY` to `FEFO`, `FIFO`,
-or `LEFO` before startup. The shared strategy applies to unscanned stock issues,
-DO lot reservations, MRO Goods Issue, and STO dispatch. Invalid values stop
-application startup; if unset, the application uses `FEFO`.
-Inbound QC is required by default. Set `QC_REQUIRED=false` only when quality
-checks are performed and documented outside GudangKu; receipts then proceed
-directly to putaway and are still not posted to stock until putaway completes.
+Strategi picking dapat diatur melalui `PICKING_STRATEGY` ke `FEFO`, `FIFO`, atau `LEFO`. Strategi ini berlaku untuk pengeluaran stok tanpa pemindaian, reservasi lot DO, Goods Issue MRO, dan dispatch STO. Nilai yang tidak valid menghentikan startup; jika tidak diatur, aplikasi memakai `FEFO`.
 
-## Run tests
+QC penerimaan diwajibkan secara bawaan. Atur `QC_REQUIRED=false` hanya jika pemeriksaan kualitas dilakukan dan dicatat di luar GudangKu. Receipt tetap belum menambah stok sampai proses putaway selesai.
 
-On Windows:
+## Menjalankan pengujian
+
+Di Windows:
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-On macOS or Linux:
+Di macOS atau Linux:
 
 ```sh
 ./mvnw test
 ```
 
-The test suite covers inventory posting, inbound receipt, delivery orders,
-purchase orders, sales orders, cycle count, imports, Material Usage, returns,
-STO, and operational reports. The tests use mocks for persistence and do not
-replace integration testing against MySQL.
+Suite pengujian mencakup posting persediaan, penerimaan, DO, PO, SO, stock count, impor, Material Usage, retur, STO, laporan operasional, API seluler, dan transport ERP. Sebagian besar pengujian menggunakan mock untuk persistensi; pengujian tersebut tidak menggantikan validasi alur operasional terhadap database MySQL.
 
-## Project layout
+## Struktur proyek
 
 ```text
-database/                         Local development database export
+database/                         Ekspor database pengembangan lokal
 scripts/
-  release/                        Optional Git release helpers
-  windows/                        Windows run, build, and DB helpers
+  release/                        Skrip rilis Git opsional
+  windows/                        Skrip Windows untuk menjalankan, membangun, dan mengelola basis data
 src/
   main/
     java/com/mycompany/tugas_akhir/
-      config/                     Spring/JavaFX integration
-      model/                      JPA domain entities
-      repository/                 Spring Data repositories
-      service/                    Business workflows and stock ledger
-      *Controller.java            JavaFX screen controllers
+      config/                     Integrasi Spring dan JavaFX
+      model/                      Entitas domain JPA
+      repository/                 Repository Spring Data
+      service/                    Alur bisnis dan ledger persediaan
+      *Controller.java            Controller layar JavaFX
+      api/mobile/                 API klien seluler
+      integration/erp/            Kontrak dan klien transport ERP
     resources/
-      css/                        JavaFX styles
-      fxml/                       JavaFX screens
-      sql/                        Canonical schema and SQL migrations
-  test/java/                      Unit and service tests
+      css/                        Gaya JavaFX
+      fxml/                       Tampilan JavaFX
+      db/migration/               Migrasi Flyway
+      sql/                        Skema kanonis dan skrip SQL historis
+  test/java/                      Pengujian otomatis
 ```
 
-## Current limitations
+## Batasan saat ini
 
-- The mobile web client covers cycle counting, putaway, DO picking, and MRO
-  Goods Issue. Return and STO mobile workflows remain pending.
-- Camera scanning depends on HTTPS (or localhost) and browser `BarcodeDetector`
-  support; keyboard-wedge and manual entry are fallback methods. Physical
-  scanner hardware has not been integration-tested.
-- PO, MRO, returns, and STO approvals now use an admin-managed department
-  routing matrix in Settings. Admins assign each user's department and route a
-  request department to a distinct approver department; missing routes block
-  approval. Existing users need department assignments and routes configured
-  after applying `migration_v14.sql`.
-- MRO requests support multiple items; Goods Issue scanning progresses each
-  line against verified lots and a dedicated picker-assigned pick task. Stock
-  is not reserved while the task is open; availability is revalidated at issue.
-- STO plans currently support one item per document and do not support
-  multi-picker/shift scheduling.
-- Return barcode verification and sales-return QR reprint are desktop features;
-  camera/mobile scanning and multi-item label batches are not implemented.
-- STO scan history supports partial dispatch and receipt, but does not create
-  a separate pick-task lifecycle or support multi-picker/shift scheduling.
-- The dashboard shows rolling 30-day fulfillment, picker, packing, loading,
-  and supplier turnaround metrics. Supplier target SLA and business-calendar
-  compliance are not configured.
-- Operational reports are limited to recent records (up to 200 receipts,
-  100 delivery orders, 200 STOs, and 500 scans/audit rows); date filters apply
-  within those limits. Supplier lead-time metrics include only receipts linked
-  to a purchase order and do not account for business calendars or target SLAs.
-- Advanced ERP integration, including SAP, Oracle, and Accurate, is not
-  implemented.
-- Database migrations and full workflows have not been validated against a
-  live MySQL environment.
+- Sinkronisasi PO/SO dan pengiriman event gudang ke ERP belum tersedia. Belum ada adapter penyedia SAP, Oracle, atau Accurate yang memetakan API vendor ke kontrak WMS.
+- Uji sinkronisasi live Accurate belum dilakukan karena dokumentasi endpoint, kredensial, dan pemetaan field vendor belum tersedia.
+- Migrasi hingga skema versi 25 dan startup aplikasi telah dijalankan pada MySQL Laragon lokal. Alur operasional lengkap dan basis data produksi belum diuji secara menyeluruh.
+- Dukungan kamera bergantung pada HTTPS (atau localhost) dan `BarcodeDetector` pada browser. Perangkat scanner fisik belum diuji integrasinya.
+- STO saat ini hanya mendukung satu barang per dokumen. Penjadwalan multi-picker dan shift untuk STO belum tersedia.
+- Pembuatan atau cetak ulang QR sales return hanya tersedia pada desktop; pembuatan batch label multi-item belum tersedia.
+- Persetujuan PO, MRO, retur, dan STO memakai matriks routing departemen di Settings. Admin perlu menetapkan departemen pengguna dan rute approver. Rute yang tidak tersedia akan memblokir persetujuan.
+- Tugas picking MRO tidak mereservasi stok saat dibuka. Sistem memeriksa kembali ketersediaan pada saat Goods Issue.
+- Dasbor menampilkan metrik fulfillment, picker, packing, loading, dan waktu proses pemasok. Target SLA pemasok dan kepatuhan kalender kerja belum dihitung.
+- Laporan operasional dibatasi pada data terbaru: maksimal 200 receipt, 100 DO, 200 STO, serta 500 baris scan/audit. Filter tanggal bekerja di dalam batas tersebut.
+- Metrik waktu pemasok hanya menghitung receipt yang terhubung ke PO. Perhitungan belum memperhitungkan kalender kerja atau target SLA.

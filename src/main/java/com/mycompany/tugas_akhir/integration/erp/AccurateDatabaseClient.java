@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.integration.erp;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycompany.tugas_akhir.integration.erp.AccurateSessionClient.DatabaseSession;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -32,6 +33,7 @@ public class AccurateDatabaseClient {
     private final Clock clock;
     private final AccurateRequestGate requestGate = new AccurateRequestGate();
 
+    @Autowired
     public AccurateDatabaseClient(RestClient.Builder builder, AccurateApiProperties properties,
                                   ObjectMapper objectMapper) {
         this(builder, properties, objectMapper, Clock.systemUTC());

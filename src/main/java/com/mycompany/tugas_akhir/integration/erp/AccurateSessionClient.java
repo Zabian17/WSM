@@ -1,6 +1,7 @@
 package com.mycompany.tugas_akhir.integration.erp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -17,6 +18,7 @@ public class AccurateSessionClient {
     private final AccurateApiProperties properties;
     private final Clock clock;
 
+    @Autowired
     public AccurateSessionClient(RestClient.Builder builder, AccurateApiProperties properties) {
         this(builder, properties, Clock.systemUTC());
     }

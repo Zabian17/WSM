@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -14,7 +15,7 @@ import java.util.*;
 public class StockCountService {
 
     private static final List<StockCountStatus> ACTIVE_STATUSES =
-            List.of(StockCountStatus.COUNTING, StockCountStatus.COUNTED);
+            List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING, StockCountStatus.COUNTED);
 
     private final StockCountRepository stockCountRepository;
     private final BarangRepository barangRepository;
@@ -22,17 +23,23 @@ public class StockCountService {
     private final UserRepository userRepository;
     private final InventoryBalanceRepository balanceRepository;
     private final InventoryLotBalanceRepository lotBalanceRepository;
+    private final TransaksiRepository transaksiRepository;
+    private final InventoryTransferRepository inventoryTransferRepository;
 
     public StockCountService(StockCountRepository stockCountRepository, BarangRepository barangRepository,
                             RakRepository rakRepository, UserRepository userRepository,
                             InventoryBalanceRepository balanceRepository,
-                            InventoryLotBalanceRepository lotBalanceRepository) {
+                            InventoryLotBalanceRepository lotBalanceRepository,
+                            TransaksiRepository transaksiRepository,
+                            InventoryTransferRepository inventoryTransferRepository) {
         this.stockCountRepository = stockCountRepository;
         this.barangRepository = barangRepository;
         this.rakRepository = rakRepository;
         this.userRepository = userRepository;
         this.balanceRepository = balanceRepository;
         this.lotBalanceRepository = lotBalanceRepository;
+        this.transaksiRepository = transaksiRepository;
+        this.inventoryTransferRepository = inventoryTransferRepository;
     }
 
     @Transactional
@@ -64,6 +71,128 @@ public class StockCountService {
         return stockCountRepository.save(count);
     }
 
+    @Transactional
+    public List<StockCount> createPeriodicCycleCount(Integer createdById) {
+        User creator = userRepository.findById(createdById)
+                .orElseThrow(() -> new IllegalArgumentException("Pengguna tidak ditemukan."));
+        List<User> operators = userRepository.findAll().stream()
+                .sorted(Comparator.comparing(User::getId)).toList();
+        if (operators.isEmpty()) throw new IllegalStateException("Belum ada pengguna untuk pembagian opname.");
+        List<Rak> racks = rakRepository.findAll().stream()
+                .sorted(Comparator.comparing(Rak::getId)).toList();
+        if (racks.isEmpty()) throw new IllegalStateException("Belum ada rak untuk dihitung.");
+        List<Barang> items = barangRepository.findAll().stream()
+                .sorted(Comparator.comparing(Barang::getId)).toList();
+        if (items.isEmpty()) throw new IllegalStateException("Belum ada master barang untuk dihitung.");
+
+        List<Rak> lockedRacks = new ArrayList<>();
+        for (Rak rack : racks) {
+            Rak locked = rakRepository.findByIdForUpdate(rack.getId())
+                    .orElseThrow(() -> new IllegalStateException("Rak opname tidak ditemukan."));
+            if (stockCountRepository.existsByRakIdAndStatusIn(locked.getId(), ACTIVE_STATUSES)) {
+                throw new IllegalStateException("Rak " + locked.getKodeRak()
+                        + " masih memiliki sesi opname yang belum diposting.");
+            }
+            lockedRacks.add(locked);
+        }
+
+        Map<String, Integer> quantities = new HashMap<>();
+        for (InventoryBalance balance : balanceRepository.findAllForLocationReport()) {
+            if (balance.getRak() != null) {
+                quantities.put(balanceKey(balance.getRak().getId(), balance.getBarang().getId()), balance.getQuantity());
+            }
+        }
+        String cycleCode = "PC-" + UUID.randomUUID().toString().replace("-", "")
+                .substring(0, 16).toUpperCase(Locale.ROOT);
+        List<StockCount> created = new ArrayList<>();
+        int assignmentIndex = 0;
+        for (Rak rack : lockedRacks) {
+            StockCount count = new StockCount("SC-" + UUID.randomUUID().toString()
+                    .replace("-", "").substring(0, 16).toUpperCase(Locale.ROOT), rack, creator,
+                    LocalDateTime.now());
+            count.setCycle(cycleCode, StockCountCycleType.PERIODIC);
+            for (Barang item : items) {
+                StockCountLine line = new StockCountLine(item,
+                        quantities.getOrDefault(balanceKey(rack.getId(), item.getId()), 0));
+                line.setAssignedUser(operators.get(assignmentIndex++ % operators.size()));
+                count.addLine(line);
+            }
+            created.add(stockCountRepository.save(count));
+        }
+        return List.copyOf(created);
+    }
+
+    @Transactional
+    public List<StockCount> createMonthlySchedule(YearMonth month, Integer createdById) {
+        if (month == null) throw new IllegalArgumentException("Bulan jadwal wajib dipilih.");
+        User creator = userRepository.findById(createdById)
+                .orElseThrow(() -> new IllegalArgumentException("Pengguna tidak ditemukan."));
+        String cycleCode = "MC-" + month.toString().replace("-", "");
+        if (stockCountRepository.existsByCycleCode(cycleCode))
+            throw new IllegalStateException("Jadwal opname " + month + " sudah dibuat.");
+        List<LocalDate> operatingDays = month.atDay(1)
+                .datesUntil(month.plusMonths(1).atDay(1))
+                .filter(date -> date.getDayOfWeek().getValue() <= 5).toList();
+        if (operatingDays.isEmpty()) throw new IllegalStateException("Bulan tidak memiliki hari kerja.");
+        List<Rak> racks = rakRepository.findAll().stream()
+                .sorted(Comparator.comparing(Rak::getId)).toList();
+        if (racks.isEmpty()) throw new IllegalStateException("Belum ada rak untuk dijadwalkan.");
+        List<Rak> lockedRacks = new ArrayList<>();
+        for (Rak rack : racks) {
+            Rak locked = rakRepository.findByIdForUpdate(rack.getId())
+                    .orElseThrow(() -> new IllegalStateException("Rak opname tidak ditemukan."));
+            if (stockCountRepository.existsByRakIdAndStatusIn(locked.getId(), ACTIVE_STATUSES))
+                throw new IllegalStateException("Rak " + locked.getKodeRak()
+                        + " masih memiliki sesi opname yang belum diposting.");
+            lockedRacks.add(locked);
+        }
+        List<StockCount> scheduled = new ArrayList<>();
+        for (int i = 0; i < lockedRacks.size(); i++) {
+            Rak rack = lockedRacks.get(i);
+            int dayIndex = (int) ((long) i * operatingDays.size() / lockedRacks.size());
+            StockCount count = new StockCount("SC-" + UUID.randomUUID().toString()
+                    .replace("-", "").substring(0, 16).toUpperCase(Locale.ROOT), rack, creator,
+                    LocalDateTime.now());
+            count.setCycle(cycleCode, StockCountCycleType.MONTHLY);
+            count.setDueDate(operatingDays.get(dayIndex));
+            count.setStatus(StockCountStatus.SCHEDULED);
+            scheduled.add(stockCountRepository.save(count));
+        }
+        return List.copyOf(scheduled);
+    }
+
+    @Transactional
+    public StockCount startScheduledCount(Integer countId) {
+        StockCount count = stockCountRepository.findByIdForUpdate(countId)
+                .orElseThrow(() -> new IllegalArgumentException("Jadwal opname tidak ditemukan."));
+        if (count.getStatus() != StockCountStatus.SCHEDULED
+                || count.getCycleType() != StockCountCycleType.MONTHLY)
+            throw new IllegalStateException("Sesi ini bukan jadwal opname bulanan yang dapat dimulai.");
+        if (count.getDueDate().isAfter(LocalDate.now()))
+            throw new IllegalStateException("Opname rak ini baru dapat dimulai pada " + count.getDueDate() + ".");
+        Rak rack = rakRepository.findByIdForUpdate(count.getRak().getId())
+                .orElseThrow(() -> new IllegalStateException("Rak opname tidak ditemukan."));
+        List<Barang> items = barangRepository.findAll().stream()
+                .sorted(Comparator.comparing(Barang::getId)).toList();
+        if (items.isEmpty()) throw new IllegalStateException("Belum ada master barang untuk dihitung.");
+        Map<String, Integer> quantities = new HashMap<>();
+        for (InventoryBalance balance : balanceRepository.findAllForLocationReport()) {
+            if (balance.getRak() != null)
+                quantities.put(balanceKey(balance.getRak().getId(), balance.getBarang().getId()), balance.getQuantity());
+        }
+        count.getLines().clear();
+        for (Barang item : items) {
+            count.addLine(new StockCountLine(item,
+                    quantities.getOrDefault(balanceKey(rack.getId(), item.getId()), 0)));
+        }
+        count.setStatus(StockCountStatus.COUNTING);
+        return stockCountRepository.save(count);
+    }
+
+    private String balanceKey(Integer rackId, Integer itemId) {
+        return rackId + ":" + itemId;
+    }
+
     @Transactional(readOnly = true)
     public List<StockCount> getRecentCounts() {
         return stockCountRepository.findAllByOrderByCreatedAtDesc();
@@ -84,8 +213,15 @@ public class StockCountService {
             }
         }
 
+        LocalDateTime startOfDay = today.atStartOfDay();
+        Map<Integer, Long> mutationsByRack = new HashMap<>();
+        addMutationCounts(mutationsByRack, transaksiRepository.countMutationsByRackSince(startOfDay));
+        addMutationCounts(mutationsByRack, inventoryTransferRepository.countMutationsFromRackSince(startOfDay));
+        addMutationCounts(mutationsByRack, inventoryTransferRepository.countMutationsIntoRackSince(startOfDay));
+
         List<CycleCountRecommendation> recommendations = new ArrayList<>();
         for (Rak rack : rakRepository.findAll()) {
+            long dailyMutationCount = mutationsByRack.getOrDefault(rack.getId(), 0L);
             StockCount lastCount = lastCountByRack.get(rack.getId());
             long daysSinceCount = lastCount == null ? Long.MAX_VALUE
                     : ChronoUnit.DAYS.between(lastCount.getPostedAt().toLocalDate(), today);
@@ -102,7 +238,8 @@ public class StockCountService {
             int score = (lastCount == null ? 80 : daysSinceCount >= 30 ? 70
                     : daysSinceCount >= 14 ? 50 : daysSinceCount >= 7 ? 25 : 0)
                     + Math.toIntExact(Math.min(40, riskItems * 10))
-                    + Math.toIntExact(Math.min(30, varianceItems * 10));
+                    + Math.toIntExact(Math.min(30, varianceItems * 10))
+                    + Math.toIntExact(Math.min(8L, dailyMutationCount) * 5L);
             String priority = score >= 80 ? "URGENT" : score >= 50 ? "HIGH"
                     : score >= 25 ? "NORMAL" : "LOW";
             List<String> reasons = new ArrayList<>();
@@ -110,9 +247,11 @@ public class StockCountService {
             else if (daysSinceCount >= 7) reasons.add("terakhir dihitung " + daysSinceCount + " hari lalu");
             if (riskItems > 0) reasons.add(riskItems + " SKU stok kritis");
             if (varianceItems > 0) reasons.add(varianceItems + " selisih pada opname terakhir");
+            if (dailyMutationCount > 0) reasons.add(dailyMutationCount + " mutasi stok hari ini");
             if (reasons.isEmpty()) reasons.add("opname masih baru dan tanpa risiko terdeteksi");
             recommendations.add(new CycleCountRecommendation(rack, score, priority, String.join("; ", reasons),
-                    lastCount == null ? null : lastCount.getPostedAt(), (int) riskItems, (int) varianceItems));
+                    lastCount == null ? null : lastCount.getPostedAt(), (int) riskItems, (int) varianceItems,
+                    Math.toIntExact(Math.min(Integer.MAX_VALUE, dailyMutationCount))));
         }
         recommendations.sort(Comparator.comparingInt(CycleCountRecommendation::priorityScore).reversed()
                 .thenComparing(recommendation -> recommendation.lastCountedAt() == null
@@ -122,15 +261,31 @@ public class StockCountService {
         return List.copyOf(recommendations);
     }
 
+    private void addMutationCounts(Map<Integer, Long> target, List<RackMutationCount> mutations) {
+        for (RackMutationCount mutation : mutations) {
+            target.merge(mutation.getRackId(), mutation.getMutationCount(), Long::sum);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<CountLineView> getCountLines(Integer countId) {
+        return getCountLines(countId, null, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CountLineView> getCountLines(Integer countId, Integer userId, boolean editable) {
         StockCount count = getCount(countId);
         return count.getLines().stream()
+                .filter(line -> !editable || line.getCountedQuantity() == null)
+                .filter(line -> !editable || line.getAssignedUser() == null
+                        || Objects.equals(line.getAssignedUser().getId(), userId))
                 .sorted(Comparator.comparing(line -> line.getBarang().getKodeBarang(),
                         String.CASE_INSENSITIVE_ORDER))
                 .map(line -> new CountLineView(line.getId(), line.getBarang().getKodeBarang(),
                         line.getBarang().getNamaBarang(), line.getExpectedQuantity(), line.getCountedQuantity(),
-                        line.getBarang().getSatuan()))
+                        line.getBarang().getSatuan(), line.getAssignedUser() == null
+                        ? null : line.getAssignedUser().getFullName(), line.getCountedBy() == null
+                        ? null : line.getCountedBy().getFullName()))
                 .toList();
     }
 
@@ -143,11 +298,16 @@ public class StockCountService {
         }
         User counter = userId == null ? null : userRepository.findById(userId).orElse(null);
         if (counter == null) throw new IllegalArgumentException("Pengguna penghitung tidak ditemukan.");
-        if (countedQuantities == null || countedQuantities.size() != count.getLines().size()) {
-            throw new IllegalArgumentException("Hasil hitung harus diisi untuk seluruh barang pada sesi ini.");
-        }
+        if (countedQuantities == null || countedQuantities.isEmpty())
+            throw new IllegalArgumentException("Tidak ada baris opname yang dikirim.");
+        List<StockCountLine> assignedLines = count.getLines().stream()
+                .filter(line -> line.getCountedQuantity() == null)
+                .filter(line -> line.getAssignedUser() == null
+                        || Objects.equals(line.getAssignedUser().getId(), counter.getId())).toList();
+        if (countedQuantities.size() != assignedLines.size())
+            throw new IllegalArgumentException("Hasil hitung harus mencakup seluruh SKU yang ditugaskan kepada Anda.");
         Map<Integer, StockCountLine> linesById = new HashMap<>();
-        for (StockCountLine line : count.getLines()) linesById.put(line.getId(), line);
+        for (StockCountLine line : assignedLines) linesById.put(line.getId(), line);
         for (Map.Entry<Integer, Integer> entry : countedQuantities.entrySet()) {
             StockCountLine line = linesById.get(entry.getKey());
             Integer quantity = entry.getValue();
@@ -155,9 +315,13 @@ public class StockCountService {
                 throw new IllegalArgumentException("Hasil hitung berisi baris yang tidak sah.");
             }
             line.setCountedQuantity(quantity);
+            line.setCountedBy(counter);
         }
-        count.setCountedBy(counter);
-        count.setStatus(StockCountStatus.COUNTED);
+        boolean complete = count.getLines().stream().allMatch(line -> line.getCountedQuantity() != null);
+        if (complete) {
+            count.setCountedBy(counter);
+            count.setStatus(StockCountStatus.COUNTED);
+        }
         stockCountRepository.save(count);
     }
 
@@ -278,7 +442,8 @@ public class StockCountService {
         StockCount count = stockCountRepository.findByIdForUpdate(countId)
                 .orElseThrow(() -> new IllegalArgumentException("Sesi opname tidak ditemukan."));
         if (count.getStatus() != StockCountStatus.COUNTING
-                && count.getStatus() != StockCountStatus.COUNTED) {
+                && count.getStatus() != StockCountStatus.COUNTED
+                && count.getStatus() != StockCountStatus.SCHEDULED) {
             throw new IllegalStateException("Sesi opname ini tidak dapat dibatalkan.");
         }
         count.setStatus(StockCountStatus.CANCELLED);
@@ -291,11 +456,13 @@ public class StockCountService {
     }
 
     public record CountLineView(Integer lineId, String itemCode, String itemName,
-                                Integer expectedQuantity, Integer countedQuantity, String unit) {}
+                                Integer expectedQuantity, Integer countedQuantity, String unit,
+                                String assignedUserName, String countedByName) {}
 
     public record CycleCountRecommendation(Rak rack, int priorityScore, String priority,
                                            String reason, LocalDateTime lastCountedAt,
-                                           int riskItemCount, int previousVarianceCount) {}
+                                           int riskItemCount, int previousVarianceCount,
+                                           int dailyMutationCount) {}
 
     private record LockedLine(StockCountLine line, Barang item, InventoryBalance balance,
                               List<InventoryLotBalance> availableLots, int variance) {}

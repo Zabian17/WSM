@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS barang (
     nama_barang VARCHAR(150)  NOT NULL,
     kategori    VARCHAR(80),
     satuan      VARCHAR(20)   DEFAULT 'pcs',
+    volume_cbm  DECIMAL(12,6) NULL,
+    storage_type VARCHAR(40) NULL,
     stok        INT           DEFAULT 0,
     stok_min    INT           DEFAULT 0,   
     stok_max    INT           DEFAULT 0,   
@@ -83,6 +85,13 @@ CREATE TABLE IF NOT EXISTS section (
     warehouse_id INT NOT NULL DEFAULT 1,
     nama_section VARCHAR(80),
     kapasitas    INT          DEFAULT 12,  
+    target_kategori VARCHAR(80) NOT NULL DEFAULT 'Semua',
+    alert_threshold INT NOT NULL DEFAULT 80,
+    alert_type VARCHAR(50) NOT NULL DEFAULT 'Kapasitas Penuh (>= %)',
+    alert_active BOOLEAN NOT NULL DEFAULT TRUE,
+    zone_code VARCHAR(40) NULL,
+    storage_type VARCHAR(40) NOT NULL DEFAULT 'GENERAL',
+    putaway_priority INT NOT NULL DEFAULT 50,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (warehouse_id) REFERENCES warehouse(id)
 );
@@ -97,6 +106,7 @@ CREATE TABLE IF NOT EXISTS rak (
     kode_rak     VARCHAR(10)  NOT NULL UNIQUE,
     kapasitas    INT          DEFAULT 100, 
     terisi       INT          DEFAULT 0,
+    capacity_cbm DECIMAL(12,6) NULL,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (section_id) REFERENCES section(id) ON DELETE CASCADE
 );
@@ -192,6 +202,10 @@ CREATE TABLE IF NOT EXISTS purchase_order (
     reviewed_at DATETIME NULL,
     review_notes TEXT,
     notes       TEXT,
+    currency_code CHAR(3) NOT NULL DEFAULT 'IDR',
+    tender_reference VARCHAR(80) NULL,
+    payment_terms VARCHAR(120) NULL,
+    expected_delivery_date DATE NULL,
     created_at  DATETIME NOT NULL,
     open_line_count INT NOT NULL DEFAULT 0,
     received_quantity INT NOT NULL DEFAULT 0,
@@ -205,6 +219,7 @@ CREATE TABLE IF NOT EXISTS purchase_order_line (
     purchase_order_id  INT NOT NULL,
     barang_id          INT NOT NULL,
     ordered_quantity   INT NOT NULL,
+    unit_price         DECIMAL(19,4) NOT NULL DEFAULT 0,
     received_quantity  INT NOT NULL DEFAULT 0,
     pending_quantity   INT NOT NULL DEFAULT 0,
     UNIQUE KEY uk_purchase_order_item (purchase_order_id, barang_id),
@@ -387,6 +402,7 @@ CREATE TABLE IF NOT EXISTS pick_task (
     material_usage_id   INT NULL,
     assigned_picker_id  INT NULL,
     assigned_section_id INT NULL,
+    assigned_shift      VARCHAR(40) NOT NULL DEFAULT 'FLEXIBLE',
     status              VARCHAR(16) NOT NULL,
     created_at          DATETIME NOT NULL,
     assigned_at         DATETIME NULL,
@@ -507,29 +523,39 @@ CREATE TABLE IF NOT EXISTS stock_transfer_order_scan (
 CREATE TABLE IF NOT EXISTS stock_count (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     count_code  VARCHAR(24) NOT NULL UNIQUE,
+    cycle_code  VARCHAR(24) NULL,
+    cycle_type  VARCHAR(16) NOT NULL DEFAULT 'AD_HOC',
     rak_id      INT NOT NULL,
     created_by  INT NOT NULL,
     counted_by  INT NULL,
     posted_by   INT NULL,
     status      VARCHAR(16) NOT NULL,
     created_at  DATETIME NOT NULL,
+    due_date    DATE NULL,
     posted_at   DATETIME NULL,
     FOREIGN KEY (rak_id) REFERENCES rak(id),
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (counted_by) REFERENCES users(id),
     FOREIGN KEY (posted_by) REFERENCES users(id),
-    INDEX idx_stock_count_rack_status (rak_id, status)
+    INDEX idx_stock_count_rack_status (rak_id, status),
+    INDEX idx_stock_count_cycle_code (cycle_code),
+    INDEX idx_stock_count_due_date (due_date, status)
 );
 
 CREATE TABLE IF NOT EXISTS stock_count_line (
     id                 INT AUTO_INCREMENT PRIMARY KEY,
     stock_count_id     INT NOT NULL,
     barang_id          INT NOT NULL,
+    assigned_user_id   INT NULL,
     expected_quantity  INT NOT NULL,
     counted_quantity   INT NULL,
+    counted_by         INT NULL,
     UNIQUE KEY uk_stock_count_barang (stock_count_id, barang_id),
     FOREIGN KEY (stock_count_id) REFERENCES stock_count(id),
-    FOREIGN KEY (barang_id) REFERENCES barang(id)
+    FOREIGN KEY (barang_id) REFERENCES barang(id),
+    FOREIGN KEY (assigned_user_id) REFERENCES users(id),
+    FOREIGN KEY (counted_by) REFERENCES users(id),
+    INDEX idx_stock_count_line_assignment (assigned_user_id, counted_quantity)
 );
 
 -- ============================================================

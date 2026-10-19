@@ -1,6 +1,7 @@
 package com.mycompany.tugas_akhir.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "barang")
@@ -27,6 +28,12 @@ public class Barang {
 
     @Column(name = "stok_min", nullable = false)
     private Integer stokMin;
+
+    @Column(name = "volume_cbm", precision = 12, scale = 6)
+    private BigDecimal volumeCbm;
+
+    @Column(name = "storage_type", length = 40)
+    private String storageType;
 
     public Barang() {}
 
@@ -60,6 +67,10 @@ public class Barang {
 
     public Integer getStokMin() { return stokMin; }
     public void setStokMin(Integer stokMin) { this.stokMin = stokMin; }
+    public BigDecimal getVolumeCbm() { return volumeCbm; }
+    public void setVolumeCbm(BigDecimal volumeCbm) { this.volumeCbm = volumeCbm; }
+    public String getStorageType() { return storageType; }
+    public void setStorageType(String storageType) { this.storageType = storageType; }
 
     @Override
     public String toString() {

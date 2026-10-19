@@ -11,6 +11,7 @@ import com.mycompany.tugas_akhir.model.DeliveryOrderFulfillmentAudit;
 import com.mycompany.tugas_akhir.model.PickTask;
 import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.service.DeliveryOrderService;
+import com.mycompany.tugas_akhir.service.DeliveryOrderService.PickerAssignment;
 import com.mycompany.tugas_akhir.service.SectionService;
 import com.mycompany.tugas_akhir.service.UserService;
 import javafx.beans.property.SimpleStringProperty;
@@ -44,6 +45,9 @@ public class OutboundWorkflow {
     private List<Customer> customerItems;
 
     private record PickerAssignmentOptions(List<User> pickers, List<com.mycompany.tugas_akhir.model.Section> sections) {}
+    private record PickerAssignmentRow(ComboBox<User> picker,
+                                       ComboBox<com.mycompany.tugas_akhir.model.Section> section,
+                                       TextField shift) {}
 
     public OutboundWorkflow(DeliveryOrderService deliveryOrderService, SalesOrderWorkflow salesOrderWorkflow, UserService userService, SectionService sectionService) {
         this.deliveryOrderService = deliveryOrderService;
@@ -332,69 +336,53 @@ public class OutboundWorkflow {
             }
         };
         task.setOnSucceeded(event -> {
-            ComboBox<User> pickers = new ComboBox<>(FXCollections.observableArrayList(task.getValue().pickers()));
-            pickers.setConverter(new javafx.util.StringConverter<>() {
-                @Override
-                public String toString(User picker) {
-                    return picker == null ? "" : picker.getFullName() + " (" + picker.getEmail() + ")";
-                }
-
-                @Override
-                public User fromString(String value) {
-                    return null;
-                }
+            List<PickerAssignmentRow> rows = new java.util.ArrayList<>();
+            VBox rowsBox = new VBox(6);
+            Runnable addRow = () -> {
+                PickerAssignmentRow row = new PickerAssignmentRow(
+                        pickerCombo(task.getValue().pickers()), sectionCombo(task.getValue().sections()),
+                        new TextField("Pagi"));
+                row.shift().setPromptText("Shift");
+                if (rows.isEmpty()) row.picker().setValue(task.getValue().pickers().stream()
+                        .filter(picker -> java.util.Objects.equals(picker.getId(), currentUser.getId()))
+                        .findFirst().orElse(null));
+                rows.add(row);
+                rowsBox.getChildren().add(new HBox(8, row.picker(), row.section(), row.shift()));
+            };
+            addRow.run();
+            Button addPicker = new Button("Tambah Picker");
+            addPicker.setOnAction(addEvent -> {
+                if (rows.size() < 24) addRow.run();
             });
-            pickers.setValue(task.getValue().pickers().stream()
-                    .filter(picker -> java.util.Objects.equals(picker.getId(), currentUser.getId()))
-                    .findFirst().orElse(null));
-            pickers.setPromptText("Pilih picker");
-            ComboBox<com.mycompany.tugas_akhir.model.Section> sections =
-                    new ComboBox<>(FXCollections.observableArrayList(task.getValue().sections()));
-            sections.setConverter(new javafx.util.StringConverter<>() {
-                @Override
-                public String toString(com.mycompany.tugas_akhir.model.Section section) {
-                    return section == null ? "" : section.getKodeSection() + " — " + section.getNamaSection();
-                }
-
-                @Override
-                public com.mycompany.tugas_akhir.model.Section fromString(String value) {
-                    return null;
-                }
-            });
-            sections.setPromptText("Pilih zona / section");
-            pickers.setMaxWidth(Double.MAX_VALUE);
-            sections.setMaxWidth(Double.MAX_VALUE);
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle("Tugaskan Picker");
-            dialog.setHeaderText("DO: " + order.getOrderCode());
+            dialog.setTitle("Tugaskan Multi-Picker");
+            dialog.setHeaderText("Tugas per section dan shift — DO: " + order.getOrderCode());
             dialog.getDialogPane().setContent(new VBox(8,
-                    new Label("Pilih petugas yang akan mengambil barang."), new Label("Picker"), pickers,
-                    new Label("Pilih area gudang yang menjadi tanggung jawab picker."),
-                    new Label("Zona / Section"), sections));
+                    new Label("Satu section hanya boleh ditugaskan sekali."), rowsBox, addPicker));
             dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
             styleDeliveryOrderDialog(dialog);
-            dialog.getDialogPane().setPrefWidth(480);
+            dialog.getDialogPane().setPrefWidth(760);
             Optional<ButtonType> result = dialog.showAndWait();
             if (result.isEmpty() || result.get() != ButtonType.OK) return;
-            if (pickers.getValue() == null || sections.getValue() == null) {
-                showAlert(Alert.AlertType.WARNING, "Data Wajib", "Pilih picker dan section untuk tugas picking.");
+            if (rows.stream().anyMatch(row -> row.picker().getValue() == null
+                    || row.section().getValue() == null || row.shift().getText().isBlank())) {
+                showAlert(Alert.AlertType.WARNING, "Data Wajib", "Pilih picker, section, dan shift pada setiap baris.");
                 return;
             }
-            User selectedPicker = pickers.getValue();
-            Integer pickerId = selectedPicker.getId();
-            Integer sectionId = sections.getValue().getId();
+            List<PickerAssignment> assignments = rows.stream().map(row -> new PickerAssignment(
+                    row.picker().getValue().getId(), row.section().getValue().getId(), row.shift().getText()))
+                    .toList();
             Task<Boolean> assignTask = new Task<>() {
                 @Override
                 protected Boolean call() {
-                    return deliveryOrderService.assignPicker(order.getId(), pickerId, sectionId);
+                    return deliveryOrderService.assignPickers(order.getId(), assignments);
                 }
             };
             assignTask.setOnSucceeded(assignEvent -> {
                 if (assignTask.getValue()) {
                     showAlert(Alert.AlertType.INFORMATION, "Pick Task Ditugaskan",
-                            "Tugas untuk " + order.getOrderCode() + " ditugaskan ke "
-                                    + selectedPicker.getFullName() + " di section "
-                                    + sections.getValue().getKodeSection() + ".");
+                            assignments.size() + " tugas untuk " + order.getOrderCode()
+                                    + " ditugaskan menurut picker, section, dan shift.");
                 } else {
                     showAlert(Alert.AlertType.ERROR, "Assignment Ditolak",
                             "DO harus berstatus READY_TO_PICK dan memiliki tugas aktif.");
@@ -415,6 +403,34 @@ public class OutboundWorkflow {
         Thread thread = new Thread(task, "pick-task-sections");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private ComboBox<User> pickerCombo(List<User> pickers) {
+        ComboBox<User> combo = new ComboBox<>(FXCollections.observableArrayList(pickers));
+        combo.setPromptText("Pilih picker");
+        combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(User value) {
+                return value == null ? "" : value.getFullName() + " (" + value.getEmail() + ")";
+            }
+            @Override public User fromString(String value) { return null; }
+        });
+        return combo;
+    }
+
+    private ComboBox<com.mycompany.tugas_akhir.model.Section> sectionCombo(
+            List<com.mycompany.tugas_akhir.model.Section> sections) {
+        ComboBox<com.mycompany.tugas_akhir.model.Section> combo =
+                new ComboBox<>(FXCollections.observableArrayList(sections));
+        combo.setPromptText("Pilih section");
+        combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(com.mycompany.tugas_akhir.model.Section value) {
+                return value == null ? "" : value.getKodeSection() + " — " + value.getNamaSection();
+            }
+            @Override public com.mycompany.tugas_akhir.model.Section fromString(String value) { return null; }
+        });
+        return combo;
     }
 
     private void handleViewReservations(TableView<DeliveryOrder> table) {
@@ -501,6 +517,7 @@ public class OutboundWorkflow {
                     ? "-" : value.getAssignedPicker().getFullName()));
             taskTable.getColumns().add(pickTaskColumn("Zona", value -> value.getAssignedSection() == null
                     ? "-" : value.getAssignedSection().getKodeSection()));
+            taskTable.getColumns().add(pickTaskColumn("Shift", PickTask::getAssignedShift));
             taskTable.getColumns().add(pickTaskColumn("Waktu penugasan", value -> value.getAssignedAt() == null
                     ? "-" : value.getAssignedAt().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))));
             taskTable.setPlaceholder(new Label("Belum ada pick task aktif."));

@@ -1,6 +1,7 @@
 package com.mycompany.tugas_akhir.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "purchase_order_line", uniqueConstraints =
@@ -28,11 +29,19 @@ public class PurchaseOrderLine {
     @Column(name = "pending_quantity", nullable = false)
     private Integer pendingQuantity = 0;
 
+    @Column(name = "unit_price", nullable = false, precision = 19, scale = 4)
+    private BigDecimal unitPrice = BigDecimal.ZERO;
+
     protected PurchaseOrderLine() {}
 
     public PurchaseOrderLine(Barang barang, Integer orderedQuantity) {
+        this(barang, orderedQuantity, BigDecimal.ZERO);
+    }
+
+    public PurchaseOrderLine(Barang barang, Integer orderedQuantity, BigDecimal unitPrice) {
         this.barang = barang;
         this.orderedQuantity = orderedQuantity;
+        this.unitPrice = unitPrice;
     }
 
     public Integer getId() { return id; }
@@ -41,6 +50,8 @@ public class PurchaseOrderLine {
     public Integer getOrderedQuantity() { return orderedQuantity; }
     public Integer getReceivedQuantity() { return receivedQuantity == null ? 0 : receivedQuantity; }
     public Integer getPendingQuantity() { return pendingQuantity == null ? 0 : pendingQuantity; }
+    public BigDecimal getUnitPrice() { return unitPrice == null ? BigDecimal.ZERO : unitPrice; }
+    public BigDecimal getLineAmount() { return getUnitPrice().multiply(BigDecimal.valueOf(orderedQuantity)); }
     public Integer getRemainingQuantity() {
         return orderedQuantity - getReceivedQuantity() - getPendingQuantity();
     }

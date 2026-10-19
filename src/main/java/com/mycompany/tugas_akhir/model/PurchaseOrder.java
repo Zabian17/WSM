@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +32,18 @@ public class PurchaseOrder {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "currency_code", nullable = false, length = 3)
+    private String currencyCode = "IDR";
+
+    @Column(name = "tender_reference", length = 80)
+    private String tenderReference;
+
+    @Column(name = "payment_terms", length = 120)
+    private String paymentTerms;
+
+    @Column(name = "expected_delivery_date")
+    private LocalDate expectedDeliveryDate;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -80,6 +93,10 @@ public class PurchaseOrder {
     public User getCreatedBy() { return createdBy; }
     public PurchaseOrderStatus getStatus() { return status; }
     public String getNotes() { return notes; }
+    public String getCurrencyCode() { return currencyCode; }
+    public String getTenderReference() { return tenderReference; }
+    public String getPaymentTerms() { return paymentTerms; }
+    public LocalDate getExpectedDeliveryDate() { return expectedDeliveryDate; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public List<PurchaseOrderLine> getLines() { return lines; }
     public Integer getOpenLineCount() { return openLineCount == null ? 0 : openLineCount; }
@@ -93,4 +110,15 @@ public class PurchaseOrder {
     public void setReviewedBy(User reviewedBy) { this.reviewedBy = reviewedBy; }
     public void setReviewedAt(LocalDateTime reviewedAt) { this.reviewedAt = reviewedAt; }
     public void setReviewNotes(String reviewNotes) { this.reviewNotes = reviewNotes; }
+    public void setCommercialDetails(String currencyCode, String tenderReference,
+                                     String paymentTerms, LocalDate expectedDeliveryDate) {
+        this.currencyCode = currencyCode;
+        this.tenderReference = tenderReference;
+        this.paymentTerms = paymentTerms;
+        this.expectedDeliveryDate = expectedDeliveryDate;
+    }
+    public java.math.BigDecimal getTotalAmount() {
+        return lines.stream().map(PurchaseOrderLine::getLineAmount)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+    }
 }

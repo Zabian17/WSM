@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.service;
 import com.mycompany.tugas_akhir.model.Barang;
 import com.mycompany.tugas_akhir.model.InboundReceipt;
 import com.mycompany.tugas_akhir.model.InboundReceiptStatus;
+import com.mycompany.tugas_akhir.model.InventoryBalance;
 import com.mycompany.tugas_akhir.model.PurchaseOrder;
 import com.mycompany.tugas_akhir.model.PurchaseOrderLine;
 import com.mycompany.tugas_akhir.model.PurchaseOrderStatus;
@@ -16,6 +17,7 @@ import com.mycompany.tugas_akhir.repository.PurchaseOrderRepository;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.SupplierRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
+import com.mycompany.tugas_akhir.repository.InventoryBalanceRepository;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
@@ -29,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -48,6 +51,7 @@ class InboundReceiptServiceTest {
     @Mock private RakRepository rakRepository;
     @Mock private UserRepository userRepository;
     @Mock private InboundStockPoster stockPoster;
+    @Mock private InventoryBalanceRepository balanceRepository;
 
     @TempDir Path tempDirectory;
 
@@ -56,7 +60,7 @@ class InboundReceiptServiceTest {
     @BeforeEach
     void setUp() {
         service = new InboundReceiptService(receiptRepository, purchaseOrderRepository, barangRepository, supplierRepository,
-            rakRepository, userRepository, stockPoster);
+            rakRepository, userRepository, stockPoster, balanceRepository);
     }
 
     @Test
@@ -75,6 +79,18 @@ class InboundReceiptServiceTest {
         assertEquals("LOT-01", receipt.getBatchCode());
         assertEquals(InboundReceiptStatus.QC_PENDING, receipt.getStatus());
         verifyNoInteractions(stockPoster);
+    }
+
+    @Test
+    void configuredQcFifoLoadsOldestPendingReceiptsBeforeRecentReceipts() {
+        ReflectionTestUtils.setField(service, "qcFifoEnabled", true);
+        when(receiptRepository.findWithPurchaseOrderQcFifo(
+                eq(InboundReceiptStatus.QC_PENDING), any())).thenReturn(java.util.List.of());
+
+        assertTrue(service.getRecentReceipts().isEmpty());
+
+        verify(receiptRepository).findWithPurchaseOrderQcFifo(eq(InboundReceiptStatus.QC_PENDING), any());
+        verify(receiptRepository, never()).findRecentWithPurchaseOrder(any());
     }
 
     @Test
@@ -289,6 +305,7 @@ class InboundReceiptServiceTest {
         when(receiptRepository.findById(8)).thenReturn(Optional.of(receipt));
         when(rakRepository.findAll()).thenReturn(
                 java.util.List.of(genericRack, otherRack, fullRack, matchingRack));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(java.util.List.of());
 
         var recommendations = service.recommendPutawayLocations(8);
 
@@ -311,7 +328,65 @@ class InboundReceiptServiceTest {
         receipt.setStatus(InboundReceiptStatus.PUTAWAY_PENDING);
         Rak insufficientRack = new Rak(11, section("A", "Semua"), "A-01", 10, 6);
         when(rakRepository.findAll()).thenReturn(java.util.List.of(insufficientRack));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(java.util.List.of());
         assertTrue(service.recommendPutawayLocations(8).isEmpty());
+    }
+
+    @Test
+    void putawayRecommendationsRespectCbmCapacityAndRankByCbmUtilization() {
+        InboundReceipt receipt = receipt(InboundReceiptStatus.PUTAWAY_PENDING,
+                LocalDate.now().plusDays(20), 1);
+        receipt.getBarang().setVolumeCbm(new BigDecimal("0.100000"));
+        Section section = section("A", "Semua");
+        Rak tooSmall = new Rak(21, section, "A-01", 100, 0);
+        tooSmall.setCapacityCbm(new BigDecimal("0.45"));
+        Rak nearlyFull = new Rak(22, section, "A-02", 100, 10);
+        nearlyFull.setCapacityCbm(new BigDecimal("1.00"));
+        Rak betterFit = new Rak(23, section, "A-03", 100, 90);
+        betterFit.setCapacityCbm(new BigDecimal("2.00"));
+        Barang storedA = Barang.builder().id(2).kodeBarang("BRG-2").namaBarang("Stored A").build();
+        storedA.setVolumeCbm(new BigDecimal("0.100000"));
+        Barang storedB = Barang.builder().id(3).kodeBarang("BRG-3").namaBarang("Stored B").build();
+        storedB.setVolumeCbm(new BigDecimal("0.010000"));
+        when(receiptRepository.findById(8)).thenReturn(Optional.of(receipt));
+        when(rakRepository.findAll()).thenReturn(java.util.List.of(tooSmall, nearlyFull, betterFit));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(java.util.List.of(
+                new InventoryBalance(storedA, tooSmall, "RAK-21", 4),
+                new InventoryBalance(storedA, nearlyFull, "RAK-22", 9),
+                new InventoryBalance(storedB, betterFit, "RAK-23", 50)));
+
+        var recommendations = service.recommendPutawayLocations(8);
+
+        assertEquals(java.util.List.of(betterFit, nearlyFull), recommendations.stream()
+                .map(InboundReceiptService.PutawayRecommendation::rack).toList());
+        assertEquals(new BigDecimal("1.500000"), recommendations.getFirst().availableCbm());
+        assertEquals(new BigDecimal("0.100000"), recommendations.getLast().availableCbm());
+    }
+
+    @Test
+    void putawayRulesFilterIncompatibleStorageTypesAndPreferExactTypeThenPriority() {
+        InboundReceipt receipt = receipt(InboundReceiptStatus.PUTAWAY_PENDING,
+                LocalDate.now().plusDays(20));
+        receipt.getBarang().setStorageType("cold");
+        Rak generalRack = new Rak(31, section("A", "Frozen"), "A-01", 100, 0);
+        generalRack.getSection().setStorageType("GENERAL");
+        generalRack.getSection().setPutawayPriority(0);
+        Rak coldRack = new Rak(32, section("B", "Semua"), "B-01", 100, 0);
+        coldRack.getSection().setZoneCode("COLD-ZONE");
+        coldRack.getSection().setStorageType("COLD");
+        coldRack.getSection().setPutawayPriority(90);
+        Rak chemicalRack = new Rak(33, section("C", "Frozen"), "C-01", 100, 0);
+        chemicalRack.getSection().setStorageType("HAZARDOUS");
+        when(receiptRepository.findById(8)).thenReturn(Optional.of(receipt));
+        when(rakRepository.findAll()).thenReturn(java.util.List.of(generalRack, chemicalRack, coldRack));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(java.util.List.of());
+
+        var recommendations = service.recommendPutawayLocations(8);
+
+        assertEquals(java.util.List.of(coldRack, generalRack), recommendations.stream()
+                .map(InboundReceiptService.PutawayRecommendation::rack).toList());
+        assertTrue(recommendations.getFirst().storageTypeMatch());
+        assertTrue(recommendations.getFirst().getPreferenceLabel().contains("Tipe storage cocok"));
     }
 
     @Test

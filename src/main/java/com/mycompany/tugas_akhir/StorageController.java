@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Comparator;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Component
 public class StorageController implements Initializable {
@@ -362,8 +363,42 @@ public class StorageController implements Initializable {
         button.setStyle("-fx-background-color: " + fillColor + "; -fx-text-fill: " + fillText
                 + "; -fx-font-weight: bold; -fx-background-radius: 8; -fx-cursor: hand;");
         button.setTooltip(new Tooltip(rack.getTerisi() + " dari " + rack.getKapasitas()
-                + " unit (" + rack.getPersentase() + "%)"));
+                + " unit (" + rack.getPersentase() + "%)"
+                + (rack.getCapacityCbm() == null ? "; kapasitas CBM belum disetel"
+                : "; kapasitas " + rack.getCapacityCbm().toPlainString() + " CBM")));
         button.setOnAction(event -> onSelected.run());
+        button.setOnContextMenuRequested(event -> {
+            TextInputDialog input = new TextInputDialog(rack.getCapacityCbm() == null
+                    ? "" : rack.getCapacityCbm().toPlainString());
+            input.setTitle("Kapasitas Volume Rak");
+            input.setHeaderText(rack.getKodeRak());
+            input.setContentText("Kapasitas CBM:");
+            input.showAndWait().ifPresent(value -> {
+                final BigDecimal capacityCbm;
+                try {
+                    capacityCbm = new BigDecimal(value.trim());
+                } catch (NumberFormatException exception) {
+                    showAlert(Alert.AlertType.WARNING, "Nilai Tidak Valid", "Masukkan angka kapasitas CBM.");
+                    return;
+                }
+                Task<Boolean> saveTask = new Task<>() {
+                    @Override protected Boolean call() {
+                        return sectionService.updateRackCbm(rack.getId(), capacityCbm);
+                    }
+                };
+                saveTask.setOnSucceeded(saveEvent -> {
+                    if (saveTask.getValue()) loadData();
+                    else showAlert(Alert.AlertType.WARNING, "Nilai Tidak Valid",
+                            "Kapasitas CBM harus positif dengan maksimal 6 desimal.");
+                });
+                saveTask.setOnFailed(saveEvent -> log.error("Gagal memperbarui kapasitas CBM rak {}",
+                        rack.getKodeRak(), saveTask.getException()));
+                Thread saveThread = new Thread(saveTask, "rack-cbm-save");
+                saveThread.setDaemon(true);
+                saveThread.start();
+            });
+            event.consume();
+        });
         return button;
     }
 
@@ -470,6 +505,11 @@ public class StorageController implements Initializable {
         TextField tfSatuan   = new TextField(isEdit ? existing.getSatuan() : "pcs");
         TextField tfStok     = new TextField(isEdit ? String.valueOf(existing.getStok()) : "0");
         TextField tfStokMin  = new TextField(isEdit ? String.valueOf(existing.getStokMin()) : "0");
+        TextField tfVolumeCbm = new TextField(isEdit && existing.getVolumeCbm() != null
+                ? existing.getVolumeCbm().toPlainString() : "");
+        tfVolumeCbm.setPromptText("Opsional, CBM per unit");
+        TextField tfStorageType = new TextField(isEdit ? existing.getStorageType() : "");
+        tfStorageType.setPromptText("Contoh: COLD, HAZARDOUS, GENERAL");
         if (isEdit) {
             tfStok.setEditable(false);
             tfStok.setTooltip(new Tooltip("Perubahan stok dicatat melalui transaksi."));
@@ -481,6 +521,8 @@ public class StorageController implements Initializable {
         addRow(grid, 3, "Satuan", tfSatuan);
         addRow(grid, 4, isEdit ? "Stok Saat Ini" : "Stok Awal", tfStok);
         addRow(grid, 5, "Stok Min. (Alert)", tfStokMin);
+        addRow(grid, 6, "Volume CBM / Unit", tfVolumeCbm);
+        addRow(grid, 7, "Tipe Penyimpanan", tfStorageType);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -494,11 +536,17 @@ public class StorageController implements Initializable {
                 return;
             }
             int stok, stokMin;
+            BigDecimal volumeCbm;
             try {
                 stok    = Integer.parseInt(tfStok.getText().trim());
                 stokMin = Integer.parseInt(tfStokMin.getText().trim());
+                String rawVolume = tfVolumeCbm.getText().trim();
+                volumeCbm = rawVolume.isEmpty() ? null : new BigDecimal(rawVolume);
+                if (volumeCbm != null && (volumeCbm.signum() <= 0 || volumeCbm.precision() > 12
+                        || Math.max(0, volumeCbm.stripTrailingZeros().scale()) > 6)) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
-                showAlert(Alert.AlertType.WARNING, "Peringatan", "Nilai stok harus berupa angka!");
+                showAlert(Alert.AlertType.WARNING, "Peringatan",
+                        "Nilai stok harus bilangan bulat dan CBM harus positif dengan maksimal 6 desimal.");
                 return;
             }
 
@@ -507,10 +555,10 @@ public class StorageController implements Initializable {
                 protected Boolean call() {
                     if (isEdit) {
                         return barangService.updateBarang(existing.getId(), nama, tfKategori.getText().trim(),
-                                tfSatuan.getText().trim(), stok, stokMin);
+                                tfSatuan.getText().trim(), stok, stokMin, volumeCbm, tfStorageType.getText());
                     } else {
                         return barangService.addBarang(kode, nama, tfKategori.getText().trim(),
-                                tfSatuan.getText().trim(), stok, stokMin) != null;
+                                tfSatuan.getText().trim(), stok, stokMin, volumeCbm, tfStorageType.getText()) != null;
                     }
                 }
             };

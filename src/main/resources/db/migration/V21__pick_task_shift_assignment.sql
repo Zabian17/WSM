@@ -1,0 +1,2 @@
+ALTER TABLE pick_task
+    ADD COLUMN assigned_shift VARCHAR(40) NOT NULL DEFAULT 'FLEXIBLE';

@@ -3,6 +3,7 @@ package com.mycompany.tugas_akhir.model;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +17,13 @@ public class StockCount {
 
     @Column(name = "count_code", nullable = false, unique = true, length = 24)
     private String countCode;
+
+    @Column(name = "cycle_code", length = 24)
+    private String cycleCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cycle_type", nullable = false, length = 16)
+    private StockCountCycleType cycleType = StockCountCycleType.AD_HOC;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "rak_id", nullable = false)
@@ -43,6 +51,9 @@ public class StockCount {
     @Column(name = "posted_at")
     private LocalDateTime postedAt;
 
+    @Column(name = "due_date")
+    private LocalDate dueDate;
+
     @OneToMany(mappedBy = "stockCount", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<StockCountLine> lines = new ArrayList<>();
 
@@ -63,6 +74,8 @@ public class StockCount {
 
     public Integer getId() { return id; }
     public String getCountCode() { return countCode; }
+    public String getCycleCode() { return cycleCode; }
+    public StockCountCycleType getCycleType() { return cycleType; }
     public Rak getRak() { return rak; }
     public User getCreatedBy() { return createdBy; }
     public User getPostedBy() { return postedBy; }
@@ -70,9 +83,15 @@ public class StockCount {
     public StockCountStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getPostedAt() { return postedAt; }
+    public LocalDate getDueDate() { return dueDate; }
     public List<StockCountLine> getLines() { return lines; }
     public void setStatus(StockCountStatus status) { this.status = status; }
     public void setPostedBy(User postedBy) { this.postedBy = postedBy; }
     public void setCountedBy(User countedBy) { this.countedBy = countedBy; }
     public void setPostedAt(LocalDateTime postedAt) { this.postedAt = postedAt; }
+    public void setCycle(String cycleCode, StockCountCycleType cycleType) {
+        this.cycleCode = cycleCode;
+        this.cycleType = cycleType;
+    }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 }

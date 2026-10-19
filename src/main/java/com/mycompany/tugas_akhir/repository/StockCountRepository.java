@@ -22,4 +22,6 @@ public interface StockCountRepository extends JpaRepository<StockCount, Integer>
     List<StockCount> findAllByStatusOrderByPostedAtDesc(StockCountStatus status);
 
     boolean existsByRakIdAndStatusIn(Integer rackId, List<StockCountStatus> statuses);
+
+    boolean existsByCycleCode(String cycleCode);
 }

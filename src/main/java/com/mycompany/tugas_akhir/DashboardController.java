@@ -304,6 +304,11 @@ public class DashboardController implements Initializable {
         Spinner<Integer> spKapasitas = new Spinner<>(2, 24, 12);
         TextField tfKategori = new TextField("Semua");
         tfKategori.setPromptText("Kategori barang...");
+        TextField tfZone = new TextField();
+        tfZone.setPromptText("Contoh: ZONE-A");
+        TextField tfStorageType = new TextField("GENERAL");
+        tfStorageType.setPromptText("GENERAL, COLD, HAZARDOUS");
+        Spinner<Integer> spPutawayPriority = new Spinner<>(0, 1000, 50);
         Spinner<Integer> spThreshold = new Spinner<>(10, 100, 80);
         ComboBox<String> cbAlertType = new ComboBox<>(FXCollections.observableArrayList(
             "Kapasitas Penuh (>= %)", "Stok Rendah (< Unit)", "Stok Habis (= 0)"
@@ -318,10 +323,16 @@ public class DashboardController implements Initializable {
         grid.add(spKapasitas, 1, 2);
         grid.add(new Label("Target Kategori:"), 0, 3);
         grid.add(tfKategori, 1, 3);
-        grid.add(new Label("Alert Threshold (%):"), 0, 4);
-        grid.add(spThreshold, 1, 4);
-        grid.add(new Label("Tipe Kondisi Alert:"), 0, 5);
-        grid.add(cbAlertType, 1, 5);
+        grid.add(new Label("Zona:"), 0, 4);
+        grid.add(tfZone, 1, 4);
+        grid.add(new Label("Tipe Storage:"), 0, 5);
+        grid.add(tfStorageType, 1, 5);
+        grid.add(new Label("Prioritas Putaway:"), 0, 6);
+        grid.add(spPutawayPriority, 1, 6);
+        grid.add(new Label("Alert Threshold (%):"), 0, 7);
+        grid.add(spThreshold, 1, 7);
+        grid.add(new Label("Tipe Kondisi Alert:"), 0, 8);
+        grid.add(cbAlertType, 1, 8);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -334,7 +345,8 @@ public class DashboardController implements Initializable {
                         return sectionService.addSection(
                             tfKode.getText(), tfNama.getText(),
                             spKapasitas.getValue(), tfKategori.getText(),
-                            spThreshold.getValue(), cbAlertType.getValue()
+                            spThreshold.getValue(), cbAlertType.getValue(), tfZone.getText(),
+                            tfStorageType.getText(), spPutawayPriority.getValue()
                         );
                     }
                 };
@@ -362,6 +374,9 @@ public class DashboardController implements Initializable {
         TextField tfNama = new TextField(section.getNamaSection());
         Spinner<Integer> spKapasitas = new Spinner<>(section.getRaks().size(), 36, section.getKapasitas());
         TextField tfKategori = new TextField(section.getTargetKategori());
+        TextField tfZone = new TextField(section.getZoneCode());
+        TextField tfStorageType = new TextField(section.getStorageType());
+        Spinner<Integer> spPutawayPriority = new Spinner<>(0, 1000, section.getPutawayPriority());
         Spinner<Integer> spThreshold = new Spinner<>(10, 100, section.getAlertThreshold());
         ComboBox<String> cbAlertType = new ComboBox<>(FXCollections.observableArrayList(
             "Kapasitas Penuh (>= %)", "Stok Rendah (< Unit)", "Stok Habis (= 0)"
@@ -376,11 +391,17 @@ public class DashboardController implements Initializable {
         grid.add(spKapasitas, 1, 1);
         grid.add(new Label("Target Kategori:"), 0, 2);
         grid.add(tfKategori, 1, 2);
-        grid.add(new Label("Alert Threshold (%):"), 0, 3);
-        grid.add(spThreshold, 1, 3);
-        grid.add(new Label("Tipe Kondisi Alert:"), 0, 4);
-        grid.add(cbAlertType, 1, 4);
-        grid.add(cbActive, 1, 5);
+        grid.add(new Label("Zona:"), 0, 3);
+        grid.add(tfZone, 1, 3);
+        grid.add(new Label("Tipe Storage:"), 0, 4);
+        grid.add(tfStorageType, 1, 4);
+        grid.add(new Label("Prioritas Putaway:"), 0, 5);
+        grid.add(spPutawayPriority, 1, 5);
+        grid.add(new Label("Alert Threshold (%):"), 0, 6);
+        grid.add(spThreshold, 1, 6);
+        grid.add(new Label("Tipe Kondisi Alert:"), 0, 7);
+        grid.add(cbAlertType, 1, 7);
+        grid.add(cbActive, 1, 8);
 
         dlg.getDialogPane().setContent(grid);
         dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -394,7 +415,8 @@ public class DashboardController implements Initializable {
                             section.getId(), tfNama.getText(),
                             spKapasitas.getValue(), tfKategori.getText(),
                             spThreshold.getValue(), cbAlertType.getValue(),
-                            cbActive.isSelected()
+                            cbActive.isSelected(), tfZone.getText(), tfStorageType.getText(),
+                            spPutawayPriority.getValue()
                         );
                     }
                 };

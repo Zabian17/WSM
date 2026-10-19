@@ -28,6 +28,15 @@ public class Section {
     @Column(name = "target_kategori", length = 80)
     private String targetKategori = "Semua";
 
+    @Column(name = "zone_code", length = 40)
+    private String zoneCode;
+
+    @Column(name = "storage_type", nullable = false, length = 40)
+    private String storageType = "GENERAL";
+
+    @Column(name = "putaway_priority", nullable = false)
+    private Integer putawayPriority = 50;
+
     @Column(name = "alert_threshold")
     private Integer alertThreshold = 80;
 
@@ -65,6 +74,12 @@ public class Section {
 
     public String getTargetKategori() { return targetKategori != null ? targetKategori : "Semua"; }
     public void setTargetKategori(String targetKategori) { this.targetKategori = targetKategori; }
+    public String getZoneCode() { return zoneCode != null ? zoneCode : ""; }
+    public void setZoneCode(String zoneCode) { this.zoneCode = zoneCode; }
+    public String getStorageType() { return storageType != null ? storageType : "GENERAL"; }
+    public void setStorageType(String storageType) { this.storageType = storageType; }
+    public Integer getPutawayPriority() { return putawayPriority != null ? putawayPriority : 50; }
+    public void setPutawayPriority(Integer putawayPriority) { this.putawayPriority = putawayPriority; }
 
     public Integer getAlertThreshold() { return alertThreshold != null ? alertThreshold : 80; }
     public void setAlertThreshold(Integer alertThreshold) { this.alertThreshold = alertThreshold; }

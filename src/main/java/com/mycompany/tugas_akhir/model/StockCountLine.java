@@ -25,6 +25,14 @@ public class StockCountLine {
     @Column(name = "counted_quantity")
     private Integer countedQuantity;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "assigned_user_id")
+    private User assignedUser;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "counted_by")
+    private User countedBy;
+
     public StockCountLine() {}
 
     public StockCountLine(Barang barang, Integer expectedQuantity) {
@@ -37,6 +45,10 @@ public class StockCountLine {
     public Barang getBarang() { return barang; }
     public Integer getExpectedQuantity() { return expectedQuantity; }
     public Integer getCountedQuantity() { return countedQuantity; }
+    public User getAssignedUser() { return assignedUser; }
+    public User getCountedBy() { return countedBy; }
     public void setStockCount(StockCount stockCount) { this.stockCount = stockCount; }
     public void setCountedQuantity(Integer countedQuantity) { this.countedQuantity = countedQuantity; }
+    public void setAssignedUser(User assignedUser) { this.assignedUser = assignedUser; }
+    public void setCountedBy(User countedBy) { this.countedBy = countedBy; }
 }

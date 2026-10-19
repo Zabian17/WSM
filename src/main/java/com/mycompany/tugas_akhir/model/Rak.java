@@ -1,6 +1,7 @@
 package com.mycompany.tugas_akhir.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "rak")
@@ -22,6 +23,9 @@ public class Rak {
 
     @Column(columnDefinition = "int default 0")
     private Integer terisi = 0;
+
+    @Column(name = "capacity_cbm", precision = 12, scale = 6)
+    private BigDecimal capacityCbm;
 
     public Rak() {}
 
@@ -47,6 +51,8 @@ public class Rak {
 
     public Integer getTerisi() { return terisi != null ? terisi : 0; }
     public void setTerisi(Integer terisi) { this.terisi = terisi; }
+    public BigDecimal getCapacityCbm() { return capacityCbm; }
+    public void setCapacityCbm(BigDecimal capacityCbm) { this.capacityCbm = capacityCbm; }
 
     public int getPersentase() {
         if (kapasitas == null || kapasitas <= 0) return 0;

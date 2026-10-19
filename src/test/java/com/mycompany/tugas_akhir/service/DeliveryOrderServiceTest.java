@@ -134,6 +134,64 @@ class DeliveryOrderServiceTest {
     }
 
     @Test
+    void assignsDifferentPickersAndShiftsToDistinctReservedSections() {
+        DeliveryOrder order = order(DeliveryOrderStatus.READY_TO_PICK, 4);
+        Section firstSection = new Section(5, "SEC-5", "Zone 5", 12);
+        Section secondSection = new Section(6, "SEC-6", "Zone 6", 12);
+        User firstPicker = User.builder().id(9).fullName("Picker 1").build();
+        User secondPicker = User.builder().id(10).fullName("Picker 2").build();
+        PickTask openTask = new PickTask("PICK-OPEN", order, LocalDateTime.now());
+        Rak firstRack = new Rak(2, firstSection, "A-01", 100, 0);
+        Rak secondRack = new Rak(3, secondSection, "B-01", 0, 0);
+        InventoryLotBalance firstLot = lot(order.getLines().getFirst().getBarang(), firstRack, "LOT-A", 2);
+        InventoryLotBalance secondLot = lot(order.getLines().getFirst().getBarang(), secondRack, "LOT-B", 2);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(pickTaskRepository.findActiveByOrderId(7)).thenReturn(List.of(openTask));
+        when(userRepository.findById(9)).thenReturn(Optional.of(firstPicker));
+        when(userRepository.findById(10)).thenReturn(Optional.of(secondPicker));
+        when(sectionRepository.findById(5)).thenReturn(Optional.of(firstSection));
+        when(sectionRepository.findById(6)).thenReturn(Optional.of(secondSection));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(
+                new DeliveryOrderLotReservation(order.getLines().getFirst(), firstLot, 2),
+                new DeliveryOrderLotReservation(order.getLines().getFirst(), secondLot, 2)));
+
+        assertTrue(service.assignPickers(7, List.of(
+                new DeliveryOrderService.PickerAssignment(9, 5, "Pagi"),
+                new DeliveryOrderService.PickerAssignment(10, 6, "Malam"))));
+
+        assertEquals(PickTaskStatus.CANCELLED, openTask.getStatus());
+        verify(pickTaskRepository, times(3)).save(any(PickTask.class));
+        verify(pickTaskRepository).save(argThat(value -> value.getAssignedPicker() == firstPicker
+                && value.getAssignedSection() == firstSection && "Pagi".equals(value.getAssignedShift())));
+        verify(pickTaskRepository).save(argThat(value -> value.getAssignedPicker() == secondPicker
+                && value.getAssignedSection() == secondSection && "Malam".equals(value.getAssignedShift())));
+    }
+
+    @Test
+    void pickerCannotScanReservedRackOutsideTheirAssignedSection() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
+        DeliveryOrderLine line = order.getLines().getFirst();
+        User firstPicker = User.builder().id(9).fullName("Picker 1").build();
+        User secondPicker = User.builder().id(10).fullName("Picker 2").build();
+        Section otherSection = new Section(6, "SEC-6", "Zone 6", 12);
+        Rak otherRack = new Rak(3, otherSection, "B-01", 100, 0);
+        InventoryLotBalance lot = lot(line.getBarang(), otherRack, "LOT-B", 3);
+        DeliveryOrderLotReservation reservation = new DeliveryOrderLotReservation(line, lot, 3);
+        PickTask firstTask = activeTask(order, firstPicker);
+        PickTask secondTask = new PickTask("PICK-OTHER", order, LocalDateTime.now());
+        secondTask.assign(secondPicker, otherSection, "Malam", LocalDateTime.now());
+        secondTask.setStatus(PickTaskStatus.IN_PROGRESS);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(userRepository.findById(9)).thenReturn(Optional.of(firstPicker));
+        when(pickTaskRepository.findActiveByOrderId(7)).thenReturn(List.of(firstTask, secondTask));
+        when(reservationRepository.findByLineIdForUpdate(line.getId())).thenReturn(List.of(reservation));
+
+        assertFalse(service.recordPickWithBarcodes(7, line.getId(),
+                itemQr("SKU-1", "LOT-B", "-"), locationBarcode("B-01"), 1, 9));
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
     void scanRejectsMismatchedSkuOrLocation() {
         DeliveryOrder order = order(DeliveryOrderStatus.PICKING, 3);
         Rak rack = new Rak(2, pickingSection(), "A-01", 100, 3);

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -44,9 +45,24 @@ public class BarangService {
 
     @Transactional
     public Barang addBarang(String kode, String nama, String kategori, String satuan, int stok, int stokMin) {
+        return addBarang(kode, nama, kategori, satuan, stok, stokMin, null);
+    }
+
+    @Transactional
+    public Barang addBarang(String kode, String nama, String kategori, String satuan,
+                            int stok, int stokMin, BigDecimal volumeCbm) {
+        return addBarang(kode, nama, kategori, satuan, stok, stokMin, volumeCbm, null);
+    }
+
+    @Transactional
+    public Barang addBarang(String kode, String nama, String kategori, String satuan,
+                            int stok, int stokMin, BigDecimal volumeCbm, String storageType) {
         if (stok < 0 || stokMin < 0) {
             throw new IllegalArgumentException("Stok dan stok minimum tidak boleh negatif.");
         }
+        validateVolumeCbm(volumeCbm);
+        if (storageType != null && storageType.trim().length() > 40)
+            throw new IllegalArgumentException("Tipe penyimpanan maksimal 40 karakter.");
         Barang b = Barang.builder()
                 .kodeBarang(kode)
                 .namaBarang(nama)
@@ -55,6 +71,8 @@ public class BarangService {
                 .stok(stok)
                 .stokMin(stokMin)
                 .build();
+            b.setVolumeCbm(volumeCbm);
+            b.setStorageType(normalizeStorageType(storageType));
             Barang saved = barangRepository.save(b);
             balanceRepository.save(new InventoryBalance(saved, null,
                 InventoryBalance.UNASSIGNED_LOCATION, stok));
@@ -66,7 +84,25 @@ public class BarangService {
 
     @Transactional
     public boolean updateBarang(int id, String nama, String kategori, String satuan, int stok, int stokMin) {
+        return updateBarang(id, nama, kategori, satuan, stok, stokMin, null);
+    }
+
+    @Transactional
+    public boolean updateBarang(int id, String nama, String kategori, String satuan,
+                                int stok, int stokMin, BigDecimal volumeCbm) {
+        return updateBarang(id, nama, kategori, satuan, stok, stokMin, volumeCbm, null);
+    }
+
+    @Transactional
+    public boolean updateBarang(int id, String nama, String kategori, String satuan,
+                                int stok, int stokMin, BigDecimal volumeCbm, String storageType) {
         if (stok < 0 || stokMin < 0) {
+            return false;
+        }
+        try {
+            validateVolumeCbm(volumeCbm);
+            if (storageType != null && storageType.trim().length() > 40) return false;
+        } catch (IllegalArgumentException exception) {
             return false;
         }
         return barangRepository.findById(id).map(existing -> {
@@ -74,9 +110,23 @@ public class BarangService {
             existing.setKategori((kategori == null || kategori.isBlank()) ? "Umum" : kategori);
             existing.setSatuan((satuan == null || satuan.isBlank()) ? "pcs" : satuan);
             existing.setStokMin(stokMin);
+            existing.setVolumeCbm(volumeCbm);
+            existing.setStorageType(normalizeStorageType(storageType));
             barangRepository.save(existing);
             return true;
         }).orElse(false);
+    }
+
+    private void validateVolumeCbm(BigDecimal volumeCbm) {
+        if (volumeCbm != null && (volumeCbm.signum() <= 0 || volumeCbm.precision() > 12
+                || Math.max(0, volumeCbm.stripTrailingZeros().scale()) > 6)) {
+            throw new IllegalArgumentException("CBM barang harus positif dengan maksimal 6 desimal.");
+        }
+    }
+
+    private String normalizeStorageType(String storageType) {
+        return storageType == null || storageType.isBlank() ? null
+                : storageType.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     @Transactional

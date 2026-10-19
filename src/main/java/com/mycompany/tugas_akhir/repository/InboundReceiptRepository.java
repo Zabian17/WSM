@@ -1,6 +1,7 @@
 package com.mycompany.tugas_akhir.repository;
 
 import com.mycompany.tugas_akhir.model.InboundReceipt;
+import com.mycompany.tugas_akhir.model.InboundReceiptStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,14 @@ public interface InboundReceiptRepository extends JpaRepository<InboundReceipt, 
             + "LEFT JOIN FETCH line.purchaseOrder "
             + "ORDER BY r.createdAt DESC")
     List<InboundReceipt> findRecentWithPurchaseOrder(Pageable pageable);
+
+    @Query("SELECT r FROM InboundReceipt r "
+            + "LEFT JOIN FETCH r.purchaseOrderLine line "
+            + "LEFT JOIN FETCH line.purchaseOrder "
+            + "ORDER BY CASE WHEN r.status = :pending THEN 0 ELSE 1 END, "
+            + "CASE WHEN r.status = :pending THEN r.createdAt END ASC, r.createdAt DESC")
+    List<InboundReceipt> findWithPurchaseOrderQcFifo(@Param("pending") InboundReceiptStatus pending,
+                                                      Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM InboundReceipt r WHERE r.id = :id")

@@ -23,6 +23,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +65,11 @@ final class StockCountDialog {
         rackSelector.setButtonCell(recommendationCell());
         Button createButton = new Button("Buat Sesi Opname");
         createButton.setDisable(true);
+        Button periodicButton = new Button("Buat Opname Periodik");
+        TextField monthField = new TextField(YearMonth.now().toString());
+        monthField.setPromptText("yyyy-MM");
+        monthField.setPrefColumnCount(8);
+        Button monthlyButton = new Button("Jadwalkan Bulanan");
         TableView<StockCount> sessions = createSessionTable();
         Button countButton = new Button("Isi / Tinjau Hitungan");
         Button postButton = new Button("Posting Penyesuaian");
@@ -75,16 +82,22 @@ final class StockCountDialog {
         sessions.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, selected) -> {
             boolean counting = selected != null && selected.getStatus() == StockCountStatus.COUNTING;
             boolean counted = selected != null && selected.getStatus() == StockCountStatus.COUNTED;
+            boolean scheduled = selected != null && selected.getStatus() == StockCountStatus.SCHEDULED;
             countButton.setDisable(selected == null);
-            countButton.setText(counting ? "Isi Hitungan" : "Tinjau Hasil");
+            countButton.setText(selected != null && selected.getStatus() == StockCountStatus.SCHEDULED
+                    ? "Mulai Opname" : counting ? "Isi Hitungan" : "Tinjau Hasil");
             postButton.setDisable(!counted);
-            cancelButton.setDisable(!counting && !counted);
+            cancelButton.setDisable(!scheduled && !counting && !counted);
         });
 
         createButton.setOnAction(event -> createSession(rackSelector, createButton, sessions));
+        periodicButton.setOnAction(event -> createPeriodicSession(periodicButton, sessions));
+        monthlyButton.setOnAction(event -> createMonthlySchedule(monthField, monthlyButton, sessions));
         countButton.setOnAction(event -> {
             StockCount selected = sessions.getSelectionModel().getSelectedItem();
-            if (selected != null) openCountEditor(owner, selected, sessions,
+            if (selected != null && selected.getStatus() == StockCountStatus.SCHEDULED)
+                startScheduledSession(owner, selected, sessions);
+            else if (selected != null) openCountEditor(owner, selected, sessions,
                     selected.getStatus() == StockCountStatus.COUNTING);
         });
         postButton.setOnAction(event -> {
@@ -97,11 +110,12 @@ final class StockCountDialog {
         });
         refreshButton.setOnAction(event -> loadSessions(sessions));
 
-        HBox createControls = new HBox(8, rackSelector, createButton, refreshButton);
+        HBox createControls = new HBox(8, rackSelector, createButton, periodicButton, refreshButton);
+        HBox monthlyControls = new HBox(8, monthField, monthlyButton);
         HBox actionControls = new HBox(8, countButton, postButton, cancelButton);
         VBox content = new VBox(12,
                 new Label("Cycle count dilakukan per rak. Semua SKU pada rak dimasukkan, termasuk saldo nol."),
-                createControls, sessions, actionControls);
+                createControls, monthlyControls, sessions, actionControls);
         content.setPadding(new Insets(8, 0, 0, 0));
         VBox.setVgrow(sessions, Priority.ALWAYS);
         dialog.getDialogPane().setContent(content);
@@ -131,15 +145,22 @@ final class StockCountDialog {
         TableView<StockCount> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         table.getColumns().add(column("Kode Sesi", count -> count.getCountCode()));
+        table.getColumns().add(column("Siklus", count -> count.getCycleCode() == null
+                ? "Ad hoc" : count.getCycleCode()));
         table.getColumns().add(column("Rak", count -> count.getRak().getKodeRak()));
         table.getColumns().add(column("Dibuat", count -> count.getCreatedAt().format(DATE_FORMAT)));
+        table.getColumns().add(column("Jadwal", count -> count.getDueDate() == null
+                ? "-" : count.getDueDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
         table.getColumns().add(column("Status", count -> count.getStatus().name()));
         table.getColumns().add(column("Baris / Selisih", count -> {
             long varianceLines = count.getLines().stream()
                     .filter(line -> line.getCountedQuantity() != null
                             && !line.getCountedQuantity().equals(line.getExpectedQuantity())).count();
-            return count.getLines().size() + " SKU"
-                    + (count.getStatus() == StockCountStatus.COUNTING ? "" : " / " + varianceLines + " selisih");
+            long completed = count.getLines().stream().filter(line -> line.getCountedQuantity() != null).count();
+            String progress = count.getCycleType() == com.mycompany.tugas_akhir.model.StockCountCycleType.PERIODIC
+                    ? completed + "/" + count.getLines().size() + " dihitung" : count.getLines().size() + " SKU";
+            return progress + (count.getStatus() == StockCountStatus.COUNTING ? ""
+                    : " / " + varianceLines + " selisih");
         }));
         table.setPlaceholder(new Label("Belum ada sesi stock opname."));
         return table;
@@ -212,7 +233,9 @@ final class StockCountDialog {
     private void openCountEditor(Window owner, StockCount count, TableView<StockCount> sessions, boolean editable) {
         Task<List<CountLineView>> task = new Task<>() {
             @Override
-            protected List<CountLineView> call() { return stockCountService.getCountLines(count.getId()); }
+            protected List<CountLineView> call() {
+                return stockCountService.getCountLines(count.getId(), currentUser.getId(), editable);
+            }
         };
         task.setOnSucceeded(event -> showCountEditor(owner, count, task.getValue(), sessions, editable));
         task.setOnFailed(event -> {
@@ -234,6 +257,11 @@ final class StockCountDialog {
         if (editable) dialog.getDialogPane().getButtonTypes().addAll(saveType, ButtonType.CANCEL);
         else dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
 
+        if (editable && lines.isEmpty()) {
+            showInfo(owner, "Tidak ada SKU yang belum dihitung dan ditugaskan kepada Anda pada sesi ini.");
+            return;
+        }
+
         var rows = FXCollections.observableArrayList(lines.stream().map(CountEditRow::new).toList());
         TableView<CountEditRow> table = new TableView<>(rows);
         table.setEditable(editable);
@@ -241,6 +269,10 @@ final class StockCountDialog {
         table.getColumns().add(editColumn("Kode", row -> row.itemCode));
         table.getColumns().add(editColumn("Nama Barang", row -> row.itemName));
         table.getColumns().add(editColumn("Saldo Buku", row -> row.expectedQuantity + " " + safeUnit(row.unit)));
+        if (!editable && lines.stream().anyMatch(line -> line.assignedUserName() != null)) {
+            table.getColumns().add(editColumn("Petugas", row -> row.assignedUserName));
+            table.getColumns().add(editColumn("Dihitung Oleh", row -> row.countedByName));
+        }
 
         TableColumn<CountEditRow, String> countedColumn = new TableColumn<>("Hitung Fisik");
         countedColumn.setCellValueFactory(cell -> new SimpleStringProperty(
@@ -288,7 +320,7 @@ final class StockCountDialog {
             };
             task.setOnSucceeded(event -> {
                 loadSessions(sessions);
-                showInfo(owner, "Hitungan tersimpan. Tinjau selisih sebelum memposting penyesuaian.");
+                showInfo(owner, "Hitungan tersimpan. Sesi siap ditinjau dan diposting setelah seluruh tugas selesai.");
             });
             task.setOnFailed(event -> {
                 log.error("Gagal menyimpan hitungan {}", count.getCountCode(), task.getException());
@@ -296,6 +328,74 @@ final class StockCountDialog {
             });
             startTask(task, "stock-count-submit");
         });
+    }
+
+    private void createPeriodicSession(Button button, TableView<StockCount> table) {
+        button.setDisable(true);
+        Task<List<StockCount>> task = new Task<>() {
+            @Override
+            protected List<StockCount> call() {
+                return stockCountService.createPeriodicCycleCount(currentUser.getId());
+            }
+        };
+        task.setOnSucceeded(event -> {
+            button.setDisable(false);
+            loadSessions(table);
+            showInfo(table.getScene().getWindow(), "Opname periodik "
+                    + task.getValue().getFirst().getCycleCode() + " dibuat untuk "
+                    + task.getValue().size() + " rak dan dibagi rata ke pengguna.");
+        });
+        task.setOnFailed(event -> {
+            button.setDisable(false);
+            log.error("Gagal membuat opname periodik", task.getException());
+            showError(table.getScene().getWindow(), messageFor(task.getException()));
+        });
+        startTask(task, "stock-count-periodic-create");
+    }
+
+    private void createMonthlySchedule(TextField monthField, Button button, TableView<StockCount> table) {
+        final YearMonth month;
+        try {
+            month = YearMonth.parse(monthField.getText().trim());
+        } catch (RuntimeException exception) {
+            showError(table.getScene().getWindow(), "Bulan harus ditulis dalam format yyyy-MM.");
+            return;
+        }
+        button.setDisable(true);
+        Task<List<StockCount>> task = new Task<>() {
+            @Override
+            protected List<StockCount> call() {
+                return stockCountService.createMonthlySchedule(month, currentUser.getId());
+            }
+        };
+        task.setOnSucceeded(event -> {
+            button.setDisable(false);
+            loadSessions(table);
+            showInfo(table.getScene().getWindow(), "Jadwal opname " + month
+                    + " dibuat untuk " + task.getValue().size() + " rak pada hari kerja Senin–Jumat.");
+        });
+        task.setOnFailed(event -> {
+            button.setDisable(false);
+            log.error("Gagal membuat jadwal opname bulanan", task.getException());
+            showError(table.getScene().getWindow(), messageFor(task.getException()));
+        });
+        startTask(task, "stock-count-monthly-create");
+    }
+
+    private void startScheduledSession(Window owner, StockCount count, TableView<StockCount> sessions) {
+        Task<StockCount> task = new Task<>() {
+            @Override
+            protected StockCount call() { return stockCountService.startScheduledCount(count.getId()); }
+        };
+        task.setOnSucceeded(event -> {
+            loadSessions(sessions);
+            openCountEditor(owner, task.getValue(), sessions, true);
+        });
+        task.setOnFailed(event -> {
+            log.error("Gagal memulai jadwal opname {}", count.getCountCode(), task.getException());
+            showError(owner, messageFor(task.getException()));
+        });
+        startTask(task, "stock-count-monthly-start");
     }
 
     private TableColumn<CountEditRow, String> editColumn(String title,
@@ -395,6 +495,8 @@ final class StockCountDialog {
         private final String itemName;
         private final Integer expectedQuantity;
         private final String unit;
+        private final String assignedUserName;
+        private final String countedByName;
         private String countedText;
 
         private CountEditRow(CountLineView line) {
@@ -403,6 +505,8 @@ final class StockCountDialog {
             itemName = line.itemName();
             expectedQuantity = line.expectedQuantity();
             unit = line.unit();
+            assignedUserName = line.assignedUserName() == null ? "-" : line.assignedUserName();
+            countedByName = line.countedByName() == null ? "-" : line.countedByName();
             countedText = line.countedQuantity() == null ? "" : line.countedQuantity().toString();
         }
 

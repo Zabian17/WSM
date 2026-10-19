@@ -10,6 +10,7 @@ import com.mycompany.tugas_akhir.model.User;
 import com.mycompany.tugas_akhir.service.InboundReceiptService;
 import com.mycompany.tugas_akhir.service.InboundReceiptService.PutawayRecommendation;
 import com.mycompany.tugas_akhir.service.PurchaseOrderService;
+import com.mycompany.tugas_akhir.service.PurchaseOrderService.PurchaseOrderLineRequest;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Component
 public class InboundReceivingWorkflow {
@@ -132,6 +135,7 @@ public class InboundReceivingWorkflow {
         ComboBox<Supplier> supplierBox = new ComboBox<>(FXCollections.observableArrayList(supplierItems));
         ComboBox<Barang> barangBox = new ComboBox<>(FXCollections.observableArrayList(barangItems));
         TextField quantityField = new TextField("1");
+        TextField unitPriceField = new TextField("0");
         ObservableList<PurchaseOrderDraftLine> draftLines = FXCollections.observableArrayList();
         TableView<PurchaseOrderDraftLine> linesTable = new TableView<>(draftLines);
         linesTable.setPrefHeight(220);
@@ -142,18 +146,32 @@ public class InboundReceivingWorkflow {
         TableColumn<PurchaseOrderDraftLine, String> quantityColumn = new TableColumn<>("Jumlah");
         quantityColumn.setCellValueFactory(cell -> new SimpleStringProperty(
                 String.valueOf(cell.getValue().quantity())));
+        TableColumn<PurchaseOrderDraftLine, String> priceColumn = new TableColumn<>("Harga/Unit");
+        priceColumn.setCellValueFactory(cell -> new SimpleStringProperty(
+                cell.getValue().unitPrice().toPlainString()));
         linesTable.getColumns().add(itemColumn);
         linesTable.getColumns().add(quantityColumn);
+        linesTable.getColumns().add(priceColumn);
         Button addLineButton = new Button("Tambah Barang");
         Button removeLineButton = new Button("Hapus Baris");
         addLineButton.setOnAction(event -> {
             Barang item = barangBox.getValue();
             int quantity;
+            BigDecimal unitPrice;
             try {
                 quantity = Integer.parseInt(quantityField.getText().trim());
                 if (quantity <= 0) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
                 showAlert(Alert.AlertType.WARNING, "Jumlah Tidak Valid", "Jumlah PO harus bilangan bulat positif.");
+                return;
+            }
+            try {
+                unitPrice = new BigDecimal(unitPriceField.getText().trim());
+                if (unitPrice.signum() < 0 || unitPrice.precision() > 19
+                        || Math.max(0, unitPrice.stripTrailingZeros().scale()) > 4) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                showAlert(Alert.AlertType.WARNING, "Harga Tidak Valid",
+                        "Harga harus angka nol atau lebih dengan maksimal 4 desimal.");
                 return;
             }
             if (item == null) {
@@ -163,9 +181,14 @@ public class InboundReceivingWorkflow {
             for (int index = 0; index < draftLines.size(); index++) {
                 if (draftLines.get(index).barang().getId().equals(item.getId())) {
                     PurchaseOrderDraftLine existing = draftLines.get(index);
+                    if (existing.unitPrice().compareTo(unitPrice) != 0) {
+                        showAlert(Alert.AlertType.WARNING, "Harga Barang Berbeda",
+                                "SKU yang sama harus memakai satu harga per unit dalam satu PO.");
+                        return;
+                    }
                     try {
                         draftLines.set(index, new PurchaseOrderDraftLine(existing.barang(),
-                                Math.addExact(existing.quantity(), quantity)));
+                                Math.addExact(existing.quantity(), quantity), existing.unitPrice()));
                     } catch (ArithmeticException ex) {
                         showAlert(Alert.AlertType.WARNING, "Jumlah Terlalu Besar",
                                 "Total jumlah untuk barang ini melebihi batas yang didukung.");
@@ -173,7 +196,7 @@ public class InboundReceivingWorkflow {
                     return;
                 }
             }
-            draftLines.add(new PurchaseOrderDraftLine(item, quantity));
+            draftLines.add(new PurchaseOrderDraftLine(item, quantity, unitPrice));
             quantityField.setText("1");
         });
         removeLineButton.setOnAction(event ->
@@ -182,16 +205,28 @@ public class InboundReceivingWorkflow {
         TextArea notesArea = new TextArea();
         notesArea.setPromptText("Catatan PO (opsional)");
         notesArea.setPrefRowCount(2);
+        TextField currencyField = new TextField("IDR");
+        currencyField.setPromptText("ISO 4217");
+        TextField tenderField = new TextField();
+        tenderField.setPromptText("Referensi tender/penawaran");
+        TextField paymentTermsField = new TextField();
+        paymentTermsField.setPromptText("Termin pembayaran");
+        DatePicker expectedDeliveryDate = new DatePicker();
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(8);
         grid.setPadding(new javafx.geometry.Insets(12));
         grid.addRow(0, new Label("Supplier *"), supplierBox);
         grid.addRow(1, new Label("Barang"), barangBox);
-        grid.addRow(2, new Label("Jumlah"), quantityField);
+        grid.addRow(2, new Label("Jumlah"), quantityField, new Label("Harga/Unit"), unitPriceField);
         grid.addRow(3, addLineButton, removeLineButton);
-        grid.add(linesTable, 0, 4, 2, 1);
-        grid.addRow(5, new Label("Catatan"), notesArea);
+        grid.add(linesTable, 0, 4, 4, 1);
+        grid.addRow(5, new Label("Mata Uang"), currencyField,
+                new Label("Referensi Tender"), tenderField);
+        grid.addRow(6, new Label("Termin Pembayaran"), paymentTermsField,
+                new Label("Estimasi Tiba"), expectedDeliveryDate);
+        grid.add(new Label("Catatan"), 0, 7);
+        grid.add(notesArea, 1, 7, 3, 1);
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Buat Purchase Order");
@@ -206,15 +241,21 @@ public class InboundReceivingWorkflow {
                     "Pilih supplier dan tambahkan minimal satu barang.");
             return;
         }
-        Map<Integer, Integer> requested = new LinkedHashMap<>();
-        draftLines.forEach(line -> requested.put(line.barang().getId(), line.quantity()));
+        Map<Integer, PurchaseOrderLineRequest> requested = new LinkedHashMap<>();
+        draftLines.forEach(line -> requested.put(line.barang().getId(),
+                new PurchaseOrderLineRequest(line.quantity(), line.unitPrice())));
         Integer userId = currentUser.getId();
         String notes = notesArea.getText().trim();
+        String currency = currencyField.getText();
+        String tenderReference = tenderField.getText();
+        String paymentTerms = paymentTermsField.getText();
+        LocalDate expectedDate = expectedDeliveryDate.getValue();
         Task<PurchaseOrder> task = new Task<>() {
             @Override
             protected PurchaseOrder call() {
                 return purchaseOrderService.createPurchaseOrder(
-                        supplier.getId(), userId, Map.copyOf(requested), notes);
+                        supplier.getId(), userId, Map.copyOf(requested), notes, currency,
+                        tenderReference, paymentTerms, expectedDate);
             }
         };
         task.setOnSucceeded(event -> {
@@ -250,6 +291,10 @@ public class InboundReceivingWorkflow {
             table.getColumns().add(purchaseOrderColumn("PO", PurchaseOrder::getOrderCode));
             table.getColumns().add(purchaseOrderColumn("Supplier",
                     order -> order.getSupplier().getNamaSupplier()));
+            table.getColumns().add(purchaseOrderColumn("Nilai PO", order -> order.getCurrencyCode() + " "
+                    + order.getTotalAmount().toPlainString()));
+            table.getColumns().add(purchaseOrderColumn("Estimasi Tiba", order ->
+                    order.getExpectedDeliveryDate() == null ? "-" : order.getExpectedDeliveryDate().toString()));
             table.getColumns().add(purchaseOrderColumn("Barang", order -> String.valueOf(order.getLines().size())));
             table.getColumns().add(purchaseOrderColumn("Dipesan", order -> String.valueOf(order.getLines().stream()
                     .mapToInt(PurchaseOrderLine::getOrderedQuantity).sum())));
@@ -578,8 +623,13 @@ public class InboundReceivingWorkflow {
             public String toString(PutawayRecommendation recommendation) {
                 if (recommendation == null) return "";
                 return recommendation.rack().getKodeRak() + " — "
-                        + recommendation.getPreferenceLabel() + " — kapasitas tersedia "
-                        + recommendation.availableCapacity();
+                        + recommendation.getPreferenceLabel() + " — zona "
+                        + (recommendation.rack().getSection().getZoneCode().isBlank() ? "-"
+                        : recommendation.rack().getSection().getZoneCode()) + " — prioritas "
+                        + recommendation.rack().getSection().getPutawayPriority() + " — kapasitas tersedia "
+                        + recommendation.availableCapacity()
+                        + (recommendation.availableCbm() == null ? "" : " unit; "
+                        + recommendation.availableCbm().stripTrailingZeros().toPlainString() + " CBM tersedia");
             }
 
             @Override
@@ -624,8 +674,10 @@ public class InboundReceivingWorkflow {
             qrThread.setDaemon(true);
             qrThread.start();
         });
-        Label guidance = new Label("Urutan saran memakai target kategori section, kapasitas saat ini, "
-                + "dan kode rak. Kecocokan kategori adalah preferensi; CBM/volume barang belum tersedia. "
+        Label guidance = new Label("Aturan putaway memakai tipe storage barang/rak, target kategori, "
+                + "prioritas section, kapasitas unit dan CBM, lalu tingkat keterisian. Rack bertipe "
+                + "khusus menyaring tipe yang tidak cocok. Rak dengan stok ber-CBM belum lengkap "
+                + "tidak disarankan jika batas CBM dipakai. "
                 + "Barcode scanner keyboard dapat mengisi kolom scan.");
         guidance.setWrapText(true);
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -716,7 +768,7 @@ public class InboundReceivingWorkflow {
         return column;
     }
 
-    private record PurchaseOrderDraftLine(Barang barang, int quantity) {}
+    private record PurchaseOrderDraftLine(Barang barang, int quantity, BigDecimal unitPrice) {}
 
 
     private void showAlert(Alert.AlertType type, String title, String msg) {

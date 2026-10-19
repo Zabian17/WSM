@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 @Service
 public class SectionService {
@@ -42,6 +43,18 @@ public class SectionService {
     @Transactional(readOnly = true)
     public List<Rak> getAllRaks() {
         return rakRepository.findAll();
+    }
+
+    @Transactional
+    public boolean updateRackCbm(Integer rackId, BigDecimal capacityCbm) {
+        if (rackId == null || capacityCbm == null || capacityCbm.signum() <= 0
+                || capacityCbm.precision() > 12
+                || Math.max(0, capacityCbm.stripTrailingZeros().scale()) > 6) return false;
+        return rakRepository.findByIdForUpdate(rackId).map(rack -> {
+            rack.setCapacityCbm(capacityCbm);
+            rakRepository.save(rack);
+            return true;
+        }).orElse(false);
     }
 
     @Transactional
@@ -85,6 +98,18 @@ public class SectionService {
 
     @Transactional
     public Section addSection(String kodeSection, String namaSection, int kapasitas, String targetKategori, int threshold, String alertType) {
+        return addSection(kodeSection, namaSection, kapasitas, targetKategori, threshold, alertType,
+                null, "GENERAL", 50);
+    }
+
+    @Transactional
+    public Section addSection(String kodeSection, String namaSection, int kapasitas, String targetKategori,
+                              int threshold, String alertType, String zoneCode, String storageType,
+                              int putawayPriority) {
+        if (zoneCode != null && zoneCode.trim().length() > 40
+                || storageType == null || storageType.isBlank() || storageType.trim().length() > 40
+                || putawayPriority < 0 || putawayPriority > 1000)
+            throw new IllegalArgumentException("Zone, storage type, atau prioritas putaway tidak valid.");
         String kode = kodeSection.trim().toUpperCase();
         if (sectionRepository.findByKodeSection(kode).isPresent()) {
             kode = kode + (sectionRepository.count() + 1);
@@ -99,6 +124,9 @@ public class SectionService {
                 .alertType(alertType)
                 .alertActive(true)
                 .build();
+        section.setZoneCode(normalize(zoneCode));
+        section.setStorageType(storageType.trim().toUpperCase(java.util.Locale.ROOT));
+        section.setPutawayPriority(putawayPriority);
         section.setWarehouse(getOrCreateDefaultWarehouse());
 
         section = sectionRepository.save(section);
@@ -151,6 +179,19 @@ public class SectionService {
 
     @Transactional
     public Section updateSectionConfig(Integer sectionId, String namaSection, int kapasitas, String targetKategori, int threshold, String alertType, boolean alertActive) {
+        Section current = sectionRepository.findById(sectionId).orElse(null);
+        if (current == null) return null;
+        return updateSectionConfig(sectionId, namaSection, kapasitas, targetKategori, threshold, alertType,
+                alertActive, current.getZoneCode(), current.getStorageType(), current.getPutawayPriority());
+    }
+
+    @Transactional
+    public Section updateSectionConfig(Integer sectionId, String namaSection, int kapasitas, String targetKategori,
+                                       int threshold, String alertType, boolean alertActive,
+                                       String zoneCode, String storageType, int putawayPriority) {
+        if (zoneCode != null && zoneCode.trim().length() > 40
+                || storageType == null || storageType.isBlank() || storageType.trim().length() > 40
+                || putawayPriority < 0 || putawayPriority > 1000) return null;
         Optional<Section> secOpt = sectionRepository.findById(sectionId);
         if (secOpt.isPresent()) {
             Section s = secOpt.get();
@@ -159,6 +200,9 @@ public class SectionService {
             s.setAlertThreshold(threshold);
             s.setAlertType(alertType);
             s.setAlertActive(alertActive);
+            s.setZoneCode(normalize(zoneCode));
+            s.setStorageType(storageType.trim().toUpperCase(java.util.Locale.ROOT));
+            s.setPutawayPriority(putawayPriority);
 
             int currentSlots = s.getRaks().size();
             if (kapasitas > currentSlots) {
@@ -174,5 +218,7 @@ public class SectionService {
         }
         return null;
     }
+
+    private String normalize(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
 }

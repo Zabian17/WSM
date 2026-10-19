@@ -21,6 +21,8 @@ import com.mycompany.tugas_akhir.repository.PurchaseOrderRepository;
 import com.mycompany.tugas_akhir.repository.RakRepository;
 import com.mycompany.tugas_akhir.repository.SupplierRepository;
 import com.mycompany.tugas_akhir.repository.UserRepository;
+import com.mycompany.tugas_akhir.repository.InventoryBalanceRepository;
+import com.mycompany.tugas_akhir.model.InventoryBalance;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -41,19 +43,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 public class InboundReceiptService {
 
-    public record PutawayRecommendation(Rak rack, int availableCapacity, boolean categoryMatch) {
+    public record PutawayRecommendation(Rak rack, int availableCapacity, boolean categoryMatch,
+                                        boolean storageTypeMatch,
+                                        BigDecimal availableCbm) {
         public String getPreferenceLabel() {
-            return categoryMatch ? "Kategori cocok" : "Lokasi umum/lainnya";
+            String storage = storageTypeMatch ? "Tipe storage cocok" : "Tipe umum";
+            return storage + (categoryMatch ? " • Kategori cocok" : " • Lokasi umum/lainnya");
         }
     }
 
     private static final Path LABEL_DIRECTORY = Path.of(System.getProperty("user.home"), ".gudangku", "labels");
     @Value("${gudangku.inbound.qc-required:true}")
     private boolean qcRequired = true;
+    @Value("${gudangku.inbound.qc-fifo:false}")
+    private boolean qcFifoEnabled;
     private final InboundReceiptRepository receiptRepository;
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final BarangRepository barangRepository;
@@ -61,6 +72,7 @@ public class InboundReceiptService {
     private final RakRepository rakRepository;
     private final UserRepository userRepository;
     private final InboundStockPoster stockPoster;
+    private final InventoryBalanceRepository balanceRepository;
 
     public InboundReceiptService(InboundReceiptRepository receiptRepository,
                                  PurchaseOrderRepository purchaseOrderRepository,
@@ -68,7 +80,8 @@ public class InboundReceiptService {
                                  SupplierRepository supplierRepository,
                                  RakRepository rakRepository,
                                  UserRepository userRepository,
-                                 InboundStockPoster stockPoster) {
+                                 InboundStockPoster stockPoster,
+                                 InventoryBalanceRepository balanceRepository) {
         this.receiptRepository = receiptRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.barangRepository = barangRepository;
@@ -76,10 +89,15 @@ public class InboundReceiptService {
         this.rakRepository = rakRepository;
         this.userRepository = userRepository;
         this.stockPoster = stockPoster;
+        this.balanceRepository = balanceRepository;
     }
 
     @Transactional(readOnly = true)
     public List<InboundReceipt> getRecentReceipts() {
+        if (qcFifoEnabled) {
+            return receiptRepository.findWithPurchaseOrderQcFifo(InboundReceiptStatus.QC_PENDING,
+                    PageRequest.of(0, 100));
+        }
         return receiptRepository.findRecentWithPurchaseOrder(PageRequest.of(0, 100));
     }
 
@@ -256,21 +274,70 @@ public class InboundReceiptService {
         }
 
         String itemCategory = normalizeCategory(receipt.getBarang().getKategori());
+        String itemStorageType = normalizeStorageType(receipt.getBarang().getStorageType());
+        Map<Integer, BigDecimal> occupiedCbm = new HashMap<>();
+        Set<Integer> unknownVolumeRacks = new HashSet<>();
+        for (InventoryBalance balance : balanceRepository.findAllForLocationReport()) {
+            if (balance.getRak() == null || balance.getQuantity() <= 0) continue;
+            Barang storedItem = balance.getBarang();
+            if (storedItem.getVolumeCbm() == null) {
+                unknownVolumeRacks.add(balance.getRak().getId());
+            } else {
+                occupiedCbm.merge(balance.getRak().getId(), storedItem.getVolumeCbm()
+                        .multiply(BigDecimal.valueOf(balance.getQuantity())), BigDecimal::add);
+            }
+        }
         return rakRepository.findAll().stream()
                 .filter(rack -> rack.getSection() != null
                         && rack.getKapasitas() > 0
-                        && rack.getKapasitas() - rack.getTerisi() >= receipt.getQuantity())
+                        && matchesStorageType(rack, itemStorageType)
+                        && rack.getKapasitas() - rack.getTerisi() >= receipt.getQuantity()
+                        && (rack.getCapacityCbm() == null || receipt.getBarang().getVolumeCbm() == null
+                        || (!unknownVolumeRacks.contains(rack.getId())
+                        && receipt.getBarang().getVolumeCbm().multiply(BigDecimal.valueOf(receipt.getQuantity()))
+                        .add(occupiedCbm.getOrDefault(rack.getId(), BigDecimal.ZERO))
+                        .compareTo(rack.getCapacityCbm()) <= 0)))
                 .map(rack -> new PutawayRecommendation(rack,
                         rack.getKapasitas() - rack.getTerisi(),
-                        matchesCategory(rack, itemCategory)))
+                        matchesCategory(rack, itemCategory), isExactStorageType(rack, itemStorageType),
+                        rack.getCapacityCbm() == null
+                        || receipt.getBarang().getVolumeCbm() == null ? null
+                        : rack.getCapacityCbm().subtract(occupiedCbm.getOrDefault(rack.getId(), BigDecimal.ZERO))))
                 .sorted(Comparator
                         .comparingInt((PutawayRecommendation recommendation) ->
+                                storageTypeRank(recommendation, itemStorageType))
+                        .thenComparingInt((PutawayRecommendation recommendation) ->
                                 categoryRank(recommendation, itemCategory))
-                        .thenComparingDouble(recommendation ->
-                                (double) recommendation.rack().getTerisi()
-                                        / recommendation.rack().getKapasitas())
+                        .thenComparingInt(recommendation -> recommendation.rack().getSection().getPutawayPriority())
+                        .thenComparingDouble(this::putawayUtilization)
                         .thenComparing(recommendation -> recommendation.rack().getKodeRak()))
                 .toList();
+    }
+
+    private boolean matchesStorageType(Rak rack, String itemStorageType) {
+        if (itemStorageType.isEmpty()) return true;
+        String rackType = normalizeStorageType(rack.getSection().getStorageType());
+        return rackType.isEmpty() || "GENERAL".equals(rackType) || "ANY".equals(rackType)
+                || rackType.equals(itemStorageType);
+    }
+
+    private boolean isExactStorageType(Rak rack, String itemStorageType) {
+        return !itemStorageType.isEmpty()
+                && normalizeStorageType(rack.getSection().getStorageType()).equals(itemStorageType);
+    }
+
+    private int storageTypeRank(PutawayRecommendation recommendation, String itemStorageType) {
+        if (itemStorageType.isEmpty()) return 1;
+        return recommendation.storageTypeMatch() ? 0 : 1;
+    }
+
+    private double putawayUtilization(PutawayRecommendation recommendation) {
+        Rak rack = recommendation.rack();
+        if (recommendation.availableCbm() != null && rack.getCapacityCbm() != null
+                && rack.getCapacityCbm().signum() > 0) {
+            return 1d - recommendation.availableCbm().doubleValue() / rack.getCapacityCbm().doubleValue();
+        }
+        return (double) rack.getTerisi() / rack.getKapasitas();
     }
 
     public Path generateQrLabel(Integer receiptId) throws IOException {
@@ -392,6 +459,10 @@ public class InboundReceiptService {
 
     private String normalizeCategory(String category) {
         return category == null ? "" : category.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private String normalizeStorageType(String storageType) {
+        return storageType == null ? "" : storageType.trim().toUpperCase(java.util.Locale.ROOT);
     }
 
     private void releasePurchaseOrderPendingQuantity(InboundReceipt receipt) {

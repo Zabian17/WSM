@@ -1,0 +1,11 @@
+ALTER TABLE barang
+    ADD COLUMN storage_type VARCHAR(40) NULL;
+
+ALTER TABLE section
+    ADD COLUMN target_kategori VARCHAR(80) NOT NULL DEFAULT 'Semua',
+    ADD COLUMN alert_threshold INT NOT NULL DEFAULT 80,
+    ADD COLUMN alert_type VARCHAR(50) NOT NULL DEFAULT 'Kapasitas Penuh (>= %)',
+    ADD COLUMN alert_active BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN zone_code VARCHAR(40) NULL,
+    ADD COLUMN storage_type VARCHAR(40) NOT NULL DEFAULT 'GENERAL',
+    ADD COLUMN putaway_priority INT NOT NULL DEFAULT 50;

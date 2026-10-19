@@ -31,6 +31,9 @@ public class PickTask {
     @JoinColumn(name = "assigned_section_id")
     private Section assignedSection;
 
+    @Column(name = "assigned_shift", length = 40)
+    private String assignedShift = "FLEXIBLE";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private PickTaskStatus status;
@@ -66,13 +69,18 @@ public class PickTask {
     public MaterialUsage getMaterialUsage() { return materialUsage; }
     public User getAssignedPicker() { return assignedPicker; }
     public Section getAssignedSection() { return assignedSection; }
+    public String getAssignedShift() { return assignedShift != null ? assignedShift : "FLEXIBLE"; }
     public PickTaskStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getAssignedAt() { return assignedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void assign(User picker, Section section, LocalDateTime time) {
+        assign(picker, section, "FLEXIBLE", time);
+    }
+    public void assign(User picker, Section section, String shift, LocalDateTime time) {
         assignedPicker = picker;
         assignedSection = section;
+        assignedShift = shift;
         assignedAt = time;
         status = PickTaskStatus.ASSIGNED;
     }

@@ -18,6 +18,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Map;
 import java.util.Optional;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -65,6 +67,41 @@ class PurchaseOrderServiceTest {
     void rejectsInvalidPurchaseOrderQuantitiesBeforeSaving() {
         assertNull(service.createPurchaseOrder(2, 3, Map.of(1, 0), null));
 
+        verifyNoInteractions(purchaseOrderRepository);
+    }
+
+    @Test
+    void createsPurchaseOrderWithCurrencyTenderTermsAndCalculatedTotal() {
+        Supplier supplier = new Supplier(2, "Vendor", null, null, null);
+        User buyer = User.builder().id(3).fullName("Buyer").build();
+        Barang item = Barang.builder().id(1).kodeBarang("BRG-1").namaBarang("Item").build();
+        LocalDate deliveryDate = LocalDate.now().plusDays(14);
+        when(supplierRepository.findById(2)).thenReturn(Optional.of(supplier));
+        when(userRepository.findById(3)).thenReturn(Optional.of(buyer));
+        when(barangRepository.findById(1)).thenReturn(Optional.of(item));
+        when(purchaseOrderRepository.save(any(PurchaseOrder.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PurchaseOrder order = service.createPurchaseOrder(2, 3,
+                Map.of(1, new PurchaseOrderService.PurchaseOrderLineRequest(4, new BigDecimal("125.50"))),
+                "urgent", "usd", "TENDER-42", "Net 30", deliveryDate);
+
+        assertNotNull(order);
+        assertEquals("USD", order.getCurrencyCode());
+        assertEquals("TENDER-42", order.getTenderReference());
+        assertEquals("Net 30", order.getPaymentTerms());
+        assertEquals(deliveryDate, order.getExpectedDeliveryDate());
+        assertEquals(new BigDecimal("502.00"), order.getTotalAmount());
+    }
+
+    @Test
+    void rejectsUnknownCurrencyAndNegativeUnitPrice() {
+        assertNull(service.createPurchaseOrder(2, 3,
+                Map.of(1, new PurchaseOrderService.PurchaseOrderLineRequest(1, BigDecimal.ONE)),
+                null, "XYZ", null, null, null));
+        assertNull(service.createPurchaseOrder(2, 3,
+                Map.of(1, new PurchaseOrderService.PurchaseOrderLineRequest(1, BigDecimal.ONE.negate())),
+                null, "IDR", null, null, null));
         verifyNoInteractions(purchaseOrderRepository);
     }
 

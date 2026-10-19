@@ -190,9 +190,12 @@ public class DeliveryOrderService {
         DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
         if (order == null || order.getStatus() != DeliveryOrderStatus.READY_TO_PICK) return false;
         List<PickTask> tasks = pickTaskRepository.findActiveByOrderId(orderId);
-        if (tasks.isEmpty() || tasks.get(0).getStatus() != PickTaskStatus.ASSIGNED) return false;
-        tasks.get(0).setStatus(PickTaskStatus.IN_PROGRESS);
-        pickTaskRepository.save(tasks.get(0));
+        if (tasks.isEmpty() || tasks.stream().anyMatch(task -> task.getStatus() != PickTaskStatus.ASSIGNED))
+            return false;
+        for (PickTask task : tasks) {
+            task.setStatus(PickTaskStatus.IN_PROGRESS);
+            pickTaskRepository.save(task);
+        }
         order.setStatus(DeliveryOrderStatus.PICKING);
         deliveryOrderRepository.save(order);
         return true;
@@ -215,11 +218,55 @@ public class DeliveryOrderService {
     }
 
     @Transactional
+    public boolean assignPickers(Integer orderId, List<PickerAssignment> assignments) {
+        if (orderId == null || assignments == null || assignments.isEmpty() || assignments.size() > 24)
+            return false;
+        DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
+        if (order == null || order.getStatus() != DeliveryOrderStatus.READY_TO_PICK) return false;
+        List<PickTask> activeTasks = pickTaskRepository.findActiveByOrderId(orderId);
+        if (activeTasks.isEmpty() || activeTasks.stream().anyMatch(task -> task.getStatus() != PickTaskStatus.OPEN
+                && task.getStatus() != PickTaskStatus.ASSIGNED)) return false;
+        Set<Integer> sectionIds = new HashSet<>();
+        List<ResolvedPickerAssignment> resolved = new ArrayList<>();
+        for (PickerAssignment assignment : assignments) {
+            if (assignment == null || assignment.pickerId() == null || assignment.sectionId() == null
+                    || assignment.shift() == null || assignment.shift().isBlank()
+                    || assignment.shift().trim().length() > 40 || !sectionIds.add(assignment.sectionId())) return false;
+            User picker = userRepository.findById(assignment.pickerId()).orElse(null);
+            Section section = sectionRepository.findById(assignment.sectionId()).orElse(null);
+            if (picker == null || section == null) return false;
+            resolved.add(new ResolvedPickerAssignment(picker, section, assignment.shift().trim()));
+        }
+        Set<Integer> reservedSections = reservationRepository.findByOrderIdForUpdate(orderId).stream()
+                .map(DeliveryOrderLotReservation::getLotBalance)
+                .filter(lot -> lot.getRak() != null && lot.getRak().getSection() != null)
+                .map(lot -> lot.getRak().getSection().getId()).collect(java.util.stream.Collectors.toSet());
+        if (resolved.stream().anyMatch(assignment -> !reservedSections.contains(assignment.section().getId())))
+            return false;
+        for (PickTask task : activeTasks) {
+            task.setStatus(PickTaskStatus.CANCELLED);
+            pickTaskRepository.save(task);
+        }
+        for (ResolvedPickerAssignment assignment : resolved) {
+            PickTask task = new PickTask("PICK-" + UUID.randomUUID().toString()
+                    .replace("-", "").substring(0, 16).toUpperCase(java.util.Locale.ROOT), order,
+                    LocalDateTime.now());
+            task.assign(assignment.picker(), assignment.section(), assignment.shift(), LocalDateTime.now());
+            pickTaskRepository.save(task);
+        }
+        return true;
+    }
+
+    public record PickerAssignment(Integer pickerId, Integer sectionId, String shift) {}
+    private record ResolvedPickerAssignment(User picker, Section section, String shift) {}
+
+    @Transactional
     public boolean completePicking(Integer orderId) {
         DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
         if (order == null || order.getStatus() != DeliveryOrderStatus.PICKING) return false;
         List<PickTask> tasks = pickTaskRepository.findActiveByOrderId(orderId);
-        if (tasks.isEmpty() || tasks.get(0).getStatus() != PickTaskStatus.IN_PROGRESS) return false;
+        if (tasks.isEmpty() || tasks.stream().anyMatch(task -> task.getStatus() != PickTaskStatus.IN_PROGRESS))
+            return false;
         List<DeliveryOrderLotReservation> reservations = reservationRepository.findByOrderIdForUpdate(orderId);
         int totalPicked = 0;
         for (DeliveryOrderLine line : order.getLines()) {
@@ -256,9 +303,11 @@ public class DeliveryOrderService {
             }
         }
         order.setStatus(DeliveryOrderStatus.PICKED);
-        tasks.get(0).setStatus(PickTaskStatus.COMPLETED);
-        tasks.get(0).setCompletedAt(LocalDateTime.now());
-        pickTaskRepository.save(tasks.get(0));
+        for (PickTask task : tasks) {
+            task.setStatus(PickTaskStatus.COMPLETED);
+            task.setCompletedAt(LocalDateTime.now());
+            pickTaskRepository.save(task);
+        }
         deliveryOrderRepository.save(order);
         return true;
     }
@@ -285,21 +334,24 @@ public class DeliveryOrderService {
         if (line == null || scannedSku == null
             || !line.getBarang().getKodeBarang().equalsIgnoreCase(scannedSku.trim())) return false;
         List<PickTask> tasks = pickTaskRepository.findActiveByOrderId(orderId);
-        if (tasks.isEmpty() || tasks.get(0).getStatus() != PickTaskStatus.IN_PROGRESS
-                || tasks.get(0).getAssignedPicker() == null
-                || !java.util.Objects.equals(tasks.get(0).getAssignedPicker().getId(), pickerId)
-                || tasks.get(0).getAssignedSection() == null) return false;
-        Integer assignedSectionId = tasks.get(0).getAssignedSection().getId();
+        if (tasks.stream().noneMatch(task -> task.getStatus() == PickTaskStatus.IN_PROGRESS
+                && task.getAssignedPicker() != null
+                && java.util.Objects.equals(task.getAssignedPicker().getId(), pickerId))) return false;
 
         List<DeliveryOrderLotReservation> reservations = reservationRepository.findByLineIdForUpdate(lineId);
         for (DeliveryOrderLotReservation reservation : reservations) {
             InventoryLotBalance lot = reservation.getLotBalance();
             if (lot.getRak() == null || scannedRack == null || scannedBatch == null
                 || lot.getRak().getSection() == null
-                || !Objects.equals(lot.getRak().getSection().getId(), assignedSectionId)
                 || !lot.getRak().getKodeRak().equalsIgnoreCase(scannedRack.trim())
                 || !lot.getBatchCode().equalsIgnoreCase(scannedBatch.trim())
                 || !java.util.Objects.equals(scannedExpiry, lot.getExpiryDate())) continue;
+            Integer sectionId = lot.getRak().getSection().getId();
+            boolean assignedHere = tasks.stream().anyMatch(task -> task.getStatus() == PickTaskStatus.IN_PROGRESS
+                    && task.getAssignedPicker() != null && task.getAssignedSection() != null
+                    && java.util.Objects.equals(task.getAssignedPicker().getId(), pickerId)
+                    && java.util.Objects.equals(task.getAssignedSection().getId(), sectionId));
+            if (!assignedHere) continue;
             int nextPicked = reservation.getPickedQuantity() + quantity;
             if (nextPicked > reservation.getReservedQuantity()) return false;
             reservation.setPickedQuantity(nextPicked);

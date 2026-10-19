@@ -10,6 +10,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,13 +29,16 @@ class StockCountServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private InventoryBalanceRepository balanceRepository;
     @Mock private InventoryLotBalanceRepository lotBalanceRepository;
+    @Mock private TransaksiRepository transaksiRepository;
+    @Mock private InventoryTransferRepository inventoryTransferRepository;
 
     private StockCountService service;
 
     @BeforeEach
     void setUp() {
         service = new StockCountService(stockCountRepository, barangRepository, rakRepository,
-                userRepository, balanceRepository, lotBalanceRepository);
+                userRepository, balanceRepository, lotBalanceRepository, transaksiRepository,
+                inventoryTransferRepository);
     }
 
     @Test
@@ -64,6 +69,130 @@ class StockCountServiceTest {
         assertEquals(2, result.getLines().size());
         assertEquals(8, result.getLines().get(0).getExpectedQuantity());
         assertEquals(0, result.getLines().get(1).getExpectedQuantity());
+    }
+
+    @Test
+    void periodicCycleAssignsSkuRowsAcrossUsersAndSharesCycleCode() {
+        User first = user(7);
+        User second = user(8);
+        Rak rackA = rack(4, 100, 0);
+        Rak rackB = rack(5, 100, 0);
+        when(userRepository.findById(7)).thenReturn(Optional.of(first));
+        when(userRepository.findAll()).thenReturn(List.of(first, second));
+        when(rakRepository.findAll()).thenReturn(List.of(rackA, rackB));
+        when(rakRepository.findByIdForUpdate(4)).thenReturn(Optional.of(rackA));
+        when(rakRepository.findByIdForUpdate(5)).thenReturn(Optional.of(rackB));
+        when(stockCountRepository.existsByRakIdAndStatusIn(anyInt(), anyList())).thenReturn(false);
+        when(barangRepository.findAll()).thenReturn(List.of(item(1, 4), item(2, 6)));
+        when(balanceRepository.findAllForLocationReport()).thenReturn(List.of());
+        when(stockCountRepository.save(any(StockCount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<StockCount> counts = service.createPeriodicCycleCount(7);
+
+        assertEquals(2, counts.size());
+        assertEquals(counts.get(0).getCycleCode(), counts.get(1).getCycleCode());
+        assertEquals(StockCountCycleType.PERIODIC, counts.get(0).getCycleType());
+        List<Integer> assignments = counts.stream().flatMap(count -> count.getLines().stream())
+                .map(line -> line.getAssignedUser().getId()).toList();
+        assertEquals(List.of(7, 8, 7, 8), assignments);
+    }
+
+    @Test
+    void periodicSubmissionsKeepSessionOpenUntilEveryAssignedSkuIsCounted() {
+        User first = user(7);
+        User second = user(8);
+        StockCount count = new StockCount("SC-PERIODIC", rack(4, 100, 0), first, LocalDateTime.now());
+        count.setCycle("PC-TEST", StockCountCycleType.PERIODIC);
+        StockCountLine firstLine = new StockCountLine(item(1, 0), 0);
+        firstLine.setAssignedUser(first);
+        StockCountLine secondLine = new StockCountLine(item(2, 0), 0);
+        secondLine.setAssignedUser(second);
+        count.addLine(firstLine);
+        count.addLine(secondLine);
+        ReflectionTestUtils.setField(firstLine, "id", 101);
+        ReflectionTestUtils.setField(secondLine, "id", 102);
+        ReflectionTestUtils.setField(count, "id", 11);
+        when(stockCountRepository.findByIdForUpdate(11)).thenReturn(Optional.of(count));
+        when(userRepository.findById(7)).thenReturn(Optional.of(first));
+        when(userRepository.findById(8)).thenReturn(Optional.of(second));
+
+        service.submitCounts(11, Map.of(101, 3), 7);
+        assertEquals(StockCountStatus.COUNTING, count.getStatus());
+        assertNull(count.getCountedBy());
+
+        service.submitCounts(11, Map.of(102, 4), 8);
+        assertEquals(StockCountStatus.COUNTED, count.getStatus());
+        assertEquals(8, count.getCountedBy().getId());
+    }
+
+    @Test
+    void monthlyScheduleSpreadsRackTasksAcrossWeekdaysWithoutTakingEarlySnapshots() {
+        User creator = user(7);
+        Rak rackA = rack(4, 100, 0);
+        Rak rackB = rack(5, 100, 0);
+        when(userRepository.findById(7)).thenReturn(Optional.of(creator));
+        when(stockCountRepository.existsByCycleCode("MC-202611")).thenReturn(false);
+        when(rakRepository.findAll()).thenReturn(List.of(rackA, rackB));
+        when(rakRepository.findByIdForUpdate(4)).thenReturn(Optional.of(rackA));
+        when(rakRepository.findByIdForUpdate(5)).thenReturn(Optional.of(rackB));
+        when(stockCountRepository.existsByRakIdAndStatusIn(anyInt(), anyList())).thenReturn(false);
+        when(stockCountRepository.save(any(StockCount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<StockCount> schedule = service.createMonthlySchedule(YearMonth.of(2026, 11), 7);
+
+        assertEquals(2, schedule.size());
+        assertTrue(schedule.stream().allMatch(count -> count.getStatus() == StockCountStatus.SCHEDULED));
+        assertTrue(schedule.stream().allMatch(count -> count.getLines().isEmpty()));
+        assertTrue(schedule.stream().allMatch(count -> count.getDueDate().getDayOfWeek().getValue() <= 5));
+        assertEquals("MC-202611", schedule.getFirst().getCycleCode());
+    }
+
+    @Test
+    void startingMonthlyTaskTakesFreshSnapshotAndMovesItToCounting() {
+        User creator = user(7);
+        Rak rack = rack(4, 100, 0);
+        StockCount scheduled = new StockCount("SC-MONTHLY", rack, creator, LocalDateTime.now());
+        scheduled.setCycle("MC-202610", StockCountCycleType.MONTHLY);
+        scheduled.setDueDate(LocalDate.now().minusDays(1));
+        scheduled.setStatus(StockCountStatus.SCHEDULED);
+        ReflectionTestUtils.setField(scheduled, "id", 12);
+        Barang item = item(1, 9);
+        when(stockCountRepository.findByIdForUpdate(12)).thenReturn(Optional.of(scheduled));
+        when(rakRepository.findByIdForUpdate(4)).thenReturn(Optional.of(rack));
+        when(barangRepository.findAll()).thenReturn(List.of(item));
+        when(balanceRepository.findAllForLocationReport())
+                .thenReturn(List.of(new InventoryBalance(item, rack, "RAK-4", 9)));
+        when(stockCountRepository.save(scheduled)).thenReturn(scheduled);
+
+        StockCount started = service.startScheduledCount(12);
+
+        assertEquals(StockCountStatus.COUNTING, started.getStatus());
+        assertEquals(1, started.getLines().size());
+        assertEquals(9, started.getLines().getFirst().getExpectedQuantity());
+    }
+
+    @Test
+    void prioritizesRacksWithTodayStockTransactionsAndSlocTransfers() {
+        Rak quietRack = rack(4, 100, 20);
+        Rak activeRack = rack(5, 100, 20);
+        when(stockCountRepository.findAllByStatusOrderByPostedAtDesc(StockCountStatus.POSTED))
+                .thenReturn(List.of());
+        when(balanceRepository.findAllForLocationReport()).thenReturn(List.of());
+        when(rakRepository.findAll()).thenReturn(List.of(quietRack, activeRack));
+        when(transaksiRepository.countMutationsByRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(5, 1)));
+        when(inventoryTransferRepository.countMutationsFromRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(5, 1)));
+        when(inventoryTransferRepository.countMutationsIntoRackSince(any(LocalDateTime.class)))
+                .thenReturn(List.of(mutationCount(5, 1)));
+
+        List<StockCountService.CycleCountRecommendation> recommendations =
+                service.getCycleCountRecommendations();
+
+        assertEquals(activeRack, recommendations.getFirst().rack());
+        assertEquals(3, recommendations.getFirst().dailyMutationCount());
+        assertTrue(recommendations.getFirst().reason().contains("3 mutasi stok hari ini"));
+        assertTrue(recommendations.getFirst().priorityScore() > recommendations.getLast().priorityScore());
     }
 
     @Test
@@ -229,5 +358,12 @@ class StockCountServiceTest {
     private User user(int id) {
         User user = User.builder().id(id).fullName("Operator").build();
         return user;
+    }
+
+    private RackMutationCount mutationCount(Integer rackId, long count) {
+        return new RackMutationCount() {
+            @Override public Integer getRackId() { return rackId; }
+            @Override public Long getMutationCount() { return count; }
+        };
     }
 }

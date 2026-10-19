@@ -18,13 +18,15 @@ import javafx.concurrent.Task;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -144,46 +146,38 @@ public class ReturnWorkflow {
                             : "Data SLOC belum berhasil dimuat.");
             return;
         }
-        ComboBox<Object> sourceBox = new ComboBox<>(FXCollections.observableArrayList(sources));
-        sourceBox.setPromptText(type == ReturnType.PURCHASE ? "Pilih baris PO" : "Pilih baris DO terkirim");
-        ComboBox<Rak> rackBox = new ComboBox<>(FXCollections.observableArrayList(rakItems));
-        rackBox.setPromptText("Pilih SLOC");
-        TextField batchField = new TextField();
-        batchField.setPromptText("Batch retur");
-        DatePicker expiryPicker = new DatePicker();
-        TextField quantityField = new TextField();
-        quantityField.setPromptText("Jumlah");
         CheckBox scanBarcodes = new CheckBox("Validasi item dan SLOC dengan scan barcode");
-        TextField itemQrField = new TextField();
-        itemQrField.setPromptText("WMS1 item QR");
-        TextField locationBarcodeField = new TextField();
-        locationBarcodeField.setPromptText("SLOC1 barcode");
-        itemQrField.setDisable(true);
-        locationBarcodeField.setDisable(true);
-        scanBarcodes.selectedProperty().addListener((observable, oldValue, selected) -> {
-            itemQrField.setDisable(!selected);
-            locationBarcodeField.setDisable(!selected);
-            rackBox.setDisable(selected);
-            batchField.setDisable(selected);
-            expiryPicker.setDisable(selected);
+        VBox entriesBox = new VBox(6);
+        List<ReturnEntry> entries = new ArrayList<>();
+        Button addLine = new Button("Tambah baris barang");
+        addLine.setOnAction(event -> {
+            if (entries.size() >= 100) {
+                showAlert(Alert.AlertType.WARNING, "Batas Baris", "Satu dokumen retur maksimal 100 baris.");
+                return;
+            }
+            ReturnEntry entry = new ReturnEntry(sources, rakItems, type);
+            entry.setScanMode(scanBarcodes.isSelected());
+            Button removeLine = new Button("Hapus");
+            removeLine.setOnAction(removeEvent -> {
+                entries.remove(entry);
+                entriesBox.getChildren().remove(entry.row());
+            });
+            entry.setRemoveButton(removeLine);
+            entries.add(entry);
+            entriesBox.getChildren().add(entry.row());
         });
+        scanBarcodes.selectedProperty().addListener((observable, oldValue, selected) ->
+                entries.forEach(entry -> entry.setScanMode(selected)));
+        addLine.fire();
         TextArea reasonField = new TextArea();
         reasonField.setPromptText("Alasan retur / hasil pemeriksaan");
         reasonField.setPrefRowCount(2);
-        GridPane form = new GridPane();
-        form.setHgap(10);
-        form.setVgap(8);
+        ScrollPane rowsPane = new ScrollPane(entriesBox);
+        rowsPane.setFitToWidth(true);
+        rowsPane.setPrefViewportHeight(180);
+        VBox form = new VBox(8, new Label("Pilih sumber, lokasi, batch, dan jumlah untuk setiap barang."),
+                scanBarcodes, rowsPane, addLine, new Label("Alasan retur"), reasonField);
         form.setPadding(new javafx.geometry.Insets(12));
-        form.addRow(0, new Label("Dokumen asal"), sourceBox);
-        form.addRow(1, new Label("SLOC"), rackBox);
-        form.addRow(2, new Label("Batch"), batchField);
-        int row = 3;
-        if (type == ReturnType.SALES) form.addRow(row++, new Label("Expiry (opsional)"), expiryPicker);
-        form.addRow(row++, new Label("Jumlah"), quantityField);
-        form.addRow(row++, new Label("Alasan"), reasonField);
-        form.addRow(row++, scanBarcodes);
-        form.addRow(row++, new Label("QR barang"), itemQrField);
-        form.addRow(row, new Label("Barcode SLOC"), locationBarcodeField);
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(type == ReturnType.PURCHASE ? "Buat Purchase Return" : "Buat Sales Return");
         dialog.getDialogPane().setContent(form);
@@ -191,57 +185,65 @@ public class ReturnWorkflow {
         Optional<ButtonType> result = dialog.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
         boolean useScannedBarcodes = scanBarcodes.isSelected();
-        if (sourceBox.getValue() == null || reasonField.getText().isBlank()
-                || !useScannedBarcodes && (rackBox.getValue() == null || batchField.getText().isBlank())) {
+        if (entries.isEmpty() || reasonField.getText().isBlank()) {
             showAlert(Alert.AlertType.WARNING, "Data Belum Lengkap",
-                    "Dokumen asal, SLOC, batch, jumlah, dan alasan wajib diisi.");
+                    "Tambahkan minimal satu baris retur dan isi alasan.");
             return;
         }
-        if (useScannedBarcodes && (itemQrField.getText().isBlank()
-                || locationBarcodeField.getText().isBlank())) {
-            showAlert(Alert.AlertType.WARNING, "Barcode Belum Lengkap",
-                    "Scan QR barang dan barcode SLOC.");
-            return;
+        List<ReturnRequestService.ReturnLineInput> manualLines = new ArrayList<>();
+        List<ReturnRequestService.BarcodeReturnLineInput> scannedLines = new ArrayList<>();
+        for (ReturnEntry entry : entries) {
+            if (entry.source().getValue() == null) {
+                showAlert(Alert.AlertType.WARNING, "Sumber Wajib", "Pilih dokumen asal pada setiap baris.");
+                return;
+            }
+            int quantity;
+            try {
+                quantity = Integer.parseInt(entry.quantity().getText().trim());
+                if (quantity <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException exception) {
+                showAlert(Alert.AlertType.WARNING, "Jumlah Tidak Valid", "Masukkan jumlah bulat lebih dari nol pada semua baris.");
+                return;
+            }
+            Integer sourceId = type == ReturnType.PURCHASE
+                    ? ((PurchaseOrderLine) entry.source().getValue()).getId()
+                    : ((DeliveryOrderLine) entry.source().getValue()).getId();
+            if (useScannedBarcodes) {
+                if (entry.itemQr().getText().isBlank() || entry.locationBarcode().getText().isBlank()) {
+                    showAlert(Alert.AlertType.WARNING, "Barcode Belum Lengkap", "Scan QR barang dan barcode SLOC pada semua baris.");
+                    return;
+                }
+                scannedLines.add(new ReturnRequestService.BarcodeReturnLineInput(sourceId,
+                        entry.itemQr().getText().trim(), entry.locationBarcode().getText().trim(), quantity));
+            } else {
+                if (entry.rack().getValue() == null || entry.batch().getText().isBlank()) {
+                    showAlert(Alert.AlertType.WARNING, "Data Belum Lengkap", "Pilih SLOC dan isi batch pada semua baris.");
+                    return;
+                }
+                manualLines.add(new ReturnRequestService.ReturnLineInput(sourceId, entry.rack().getValue().getId(),
+                        entry.batch().getText().trim(), type == ReturnType.SALES ? entry.expiry().getValue() : null,
+                        quantity));
+            }
         }
-        int quantity;
-        try {
-            quantity = Integer.parseInt(quantityField.getText().trim());
-            if (quantity <= 0) throw new NumberFormatException();
-        } catch (NumberFormatException exception) {
-            showAlert(Alert.AlertType.WARNING, "Jumlah Tidak Valid", "Masukkan jumlah bulat lebih dari nol.");
-            return;
-        }
-        Integer sourceId = type == ReturnType.PURCHASE
-                ? ((PurchaseOrderLine) sourceBox.getValue()).getId()
-                : ((DeliveryOrderLine) sourceBox.getValue()).getId();
-        Integer rackId = useScannedBarcodes ? null : rackBox.getValue().getId();
-        String batch = batchField.getText().trim();
         String reason = reasonField.getText().trim();
-        java.time.LocalDate expiry = expiryPicker.getValue();
-        String scannedItemQr = itemQrField.getText().trim();
-        String scannedLocationBarcode = locationBarcodeField.getText().trim();
         Integer creatorId = currentUser.getId();
         Task<ReturnRequest> task = new Task<>() {
             @Override
             protected ReturnRequest call() {
                 if (useScannedBarcodes) {
                     return type == ReturnType.PURCHASE
-                            ? returnRequestService.createPurchaseReturnWithBarcodes(sourceId, scannedItemQr,
-                                    scannedLocationBarcode, quantity, reason, creatorId)
-                            : returnRequestService.createSalesReturnWithBarcodes(sourceId, scannedItemQr,
-                                    scannedLocationBarcode, quantity, reason, creatorId);
+                            ? returnRequestService.createPurchaseReturnWithBarcodes(scannedLines, reason, creatorId)
+                            : returnRequestService.createSalesReturnWithBarcodes(scannedLines, reason, creatorId);
                 }
                 return type == ReturnType.PURCHASE
-                        ? returnRequestService.createPurchaseReturn(sourceId, rackId, batch,
-                                quantity, reason, creatorId)
-                        : returnRequestService.createSalesReturn(sourceId, rackId, batch, expiry,
-                                quantity, reason, creatorId);
+                        ? returnRequestService.createPurchaseReturn(manualLines, reason, creatorId)
+                        : returnRequestService.createSalesReturn(manualLines, reason, creatorId);
             }
         };
         task.setOnSucceeded(event -> {
             if (task.getValue() == null) {
                 showAlert(Alert.AlertType.ERROR, "Retur Ditolak",
-                        "Jumlah retur melebihi penerimaan/pengiriman asal atau dokumen tidak memenuhi syarat.");
+                        "Salah satu baris tidak valid, melampaui kuantitas sumber, atau tidak cocok dengan scan.");
             } else loadReturns(table);
         });
         task.setOnFailed(event -> {
@@ -251,6 +253,86 @@ public class ReturnWorkflow {
         Thread thread = new Thread(task, "return-request-create");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private static final class ReturnEntry {
+        private final ComboBox<Object> source = new ComboBox<>();
+        private final ComboBox<Rak> rack = new ComboBox<>();
+        private final TextField batch = new TextField();
+        private final DatePicker expiry = new DatePicker();
+        private final TextField quantity = new TextField();
+        private final TextField itemQr = new TextField();
+        private final TextField locationBarcode = new TextField();
+        private final VBox row = new VBox(5);
+        private final HBox manualRow = new HBox(6);
+        private final HBox scanRow = new HBox(6);
+
+        private ReturnEntry(List<?> sources, List<Rak> racks, ReturnType type) {
+            source.setItems(FXCollections.observableArrayList(sources));
+            source.setPromptText(type == ReturnType.PURCHASE ? "Baris PO" : "Baris DO");
+            source.setAccessibleText("Baris sumber retur");
+            source.setConverter(new StringConverter<>() {
+                @Override public String toString(Object value) {
+                    if (value instanceof PurchaseOrderLine line) {
+                        return line.getPurchaseOrder().getOrderCode() + " · " + line.getBarang().getKodeBarang();
+                    }
+                    if (value instanceof DeliveryOrderLine line) {
+                        return line.getDeliveryOrder().getOrderCode() + " · " + line.getBarang().getKodeBarang();
+                    }
+                    return "";
+                }
+                @Override public Object fromString(String value) { return null; }
+            });
+            rack.setItems(FXCollections.observableArrayList(racks));
+            rack.setPromptText("SLOC");
+            rack.setAccessibleText("SLOC retur");
+            batch.setPromptText("Batch");
+            batch.setAccessibleText("Batch retur");
+            expiry.setPromptText("Expiry");
+            expiry.setAccessibleText("Tanggal kedaluwarsa");
+            expiry.setVisible(type == ReturnType.SALES);
+            expiry.setManaged(type == ReturnType.SALES);
+            quantity.setPromptText("Jumlah");
+            quantity.setAccessibleText("Jumlah retur");
+            itemQr.setPromptText("QR barang");
+            itemQr.setAccessibleText("QR barang yang dipindai");
+            locationBarcode.setPromptText("Barcode SLOC");
+            locationBarcode.setAccessibleText("Barcode SLOC yang dipindai");
+            manualRow.getChildren().addAll(source, rack, batch, expiry, quantity);
+            row.getChildren().addAll(manualRow, scanRow);
+            scanRow.getChildren().addAll(itemQr, locationBarcode);
+            source.setPrefWidth(220);
+            rack.setPrefWidth(140);
+            batch.setPrefWidth(115);
+            expiry.setPrefWidth(130);
+            quantity.setPrefWidth(80);
+            itemQr.setPrefWidth(150);
+            locationBarcode.setPrefWidth(150);
+        }
+
+        private void setRemoveButton(Button button) {
+            button.setAccessibleText("Hapus baris retur");
+            scanRow.getChildren().add(button);
+        }
+        private void setScanMode(boolean enabled) {
+            rack.setDisable(enabled);
+            batch.setDisable(enabled);
+            expiry.setDisable(enabled);
+            itemQr.setDisable(!enabled);
+            locationBarcode.setDisable(!enabled);
+            manualRow.setVisible(!enabled);
+            manualRow.setManaged(!enabled);
+            scanRow.setVisible(enabled);
+            scanRow.setManaged(enabled);
+        }
+        private VBox row() { return row; }
+        private ComboBox<Object> source() { return source; }
+        private ComboBox<Rak> rack() { return rack; }
+        private TextField batch() { return batch; }
+        private DatePicker expiry() { return expiry; }
+        private TextField quantity() { return quantity; }
+        private TextField itemQr() { return itemQr; }
+        private TextField locationBarcode() { return locationBarcode; }
     }
 
     private void reviewReturn(TableView<ReturnRequest> table, boolean approved) {

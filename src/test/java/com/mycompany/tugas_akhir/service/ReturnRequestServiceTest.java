@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,6 +54,66 @@ class ReturnRequestServiceTest {
 
         assertNull(service.createPurchaseReturn(8, 2, "LOT-1", 3, "Damaged on arrival", 3));
         verify(returnRepository, never()).save(any());
+    }
+
+    @Test
+    void createsMultiLinePurchaseReturnFromOnePurchaseOrder() {
+        PurchaseOrderLine first = purchaseLine();
+        PurchaseOrderLine second = purchaseLine();
+        ReflectionTestUtils.setField(second, "id", 10);
+        when(purchaseOrderRepository.findLineByIdForUpdate(8)).thenReturn(Optional.of(first));
+        when(purchaseOrderRepository.findLineByIdForUpdate(10)).thenReturn(Optional.of(second));
+        when(rakRepository.findById(2)).thenReturn(Optional.of(rack()));
+        when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
+        when(returnRepository.sumPurchaseReturnQuantity(anyInt(), any())).thenReturn(0L);
+        when(returnRepository.save(any(ReturnRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnRequest request = service.createPurchaseReturn(List.of(
+                returnLineInput(8, 2, "LOT-1", null, 2),
+                returnLineInput(10, 2, "LOT-2", null, 3)), "Damaged items", 3);
+
+        assertNotNull(request);
+        assertEquals(2, request.getLines().size());
+        assertEquals(List.of("LOT-1", "LOT-2"), request.getLines().stream()
+                .map(ReturnRequestLine::getBatchCode).toList());
+    }
+
+    @Test
+    void multiLinePurchaseReturnCountsRepeatedSourceLineBeforeSaving() {
+        PurchaseOrderLine source = purchaseLine();
+        when(purchaseOrderRepository.findLineByIdForUpdate(8)).thenReturn(Optional.of(source));
+        when(rakRepository.findById(2)).thenReturn(Optional.of(rack()));
+        when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
+        when(returnRepository.sumPurchaseReturnQuantity(eq(8), any())).thenReturn(4L);
+
+        ReturnRequest request = service.createPurchaseReturn(List.of(
+                returnLineInput(8, 2, "LOT-1", null, 1),
+                returnLineInput(8, 2, "LOT-2", null, 1)), "Damaged items", 3);
+
+        assertNull(request);
+        verify(returnRepository, never()).save(any());
+    }
+
+    @Test
+    void createsMultiLineSalesReturnFromOneDeliveryOrder() {
+        DeliveryOrderLine first = deliveryLine();
+        DeliveryOrderLine second = deliveryLine();
+        ReflectionTestUtils.setField(second, "id", 10);
+        when(deliveryOrderLineRepository.findByIdForUpdate(9)).thenReturn(Optional.of(first));
+        when(deliveryOrderLineRepository.findByIdForUpdate(10)).thenReturn(Optional.of(second));
+        when(rakRepository.findById(2)).thenReturn(Optional.of(rack()));
+        when(userRepository.findById(3)).thenReturn(Optional.of(user(3)));
+        when(returnRepository.sumSalesReturnQuantity(anyInt(), any())).thenReturn(0L);
+        when(returnRepository.save(any(ReturnRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnRequest request = service.createSalesReturn(List.of(
+                returnLineInput(9, 2, "RET-LOT-1", LocalDate.now().plusDays(30), 1),
+                returnLineInput(10, 2, "RET-LOT-2", LocalDate.now().plusDays(60), 2)),
+                "Customer return", 3);
+
+        assertNotNull(request);
+        assertEquals(2, request.getLines().size());
+        assertEquals(3, request.getLines().stream().mapToInt(ReturnRequestLine::getQuantity).sum());
     }
 
     @Test
@@ -168,6 +229,30 @@ class ReturnRequestServiceTest {
                 eq(LocalDate.now().plusDays(30)), eq(1), any(), eq(4));
     }
 
+    @Test
+    void scannedPurchaseReturnRejectsRepeatedLotQuantityAboveAvailableStock() {
+        PurchaseOrderLine source = purchaseLine();
+        LocalDate expiry = LocalDate.now().plusDays(30);
+        ReturnRequest request = new ReturnRequest("RET-TEST", ReturnType.PURCHASE, user(3),
+                "Damaged goods", LocalDateTime.now());
+        ReflectionTestUtils.setField(request, "id", 15);
+        request.addLine(new ReturnRequestLine(source, rack(), "LOT-1", 2));
+        request.addLine(new ReturnRequestLine(source, rack(), "LOT-1", 2));
+        request.review(user(4), true, null, LocalDateTime.now());
+        ReflectionTestUtils.setField(request.getLines().get(0), "id", 21);
+        ReflectionTestUtils.setField(request.getLines().get(1), "id", 22);
+        InventoryLotBalance lot = new InventoryLotBalance(item(), rack(), "RAK-2", "LOT-1",
+                expiry, LocalDateTime.now().minusDays(2), 3);
+        when(returnRepository.findByIdWithLinesForUpdate(15)).thenReturn(Optional.of(request));
+        when(lotBalanceRepository.findByBarangIdAndLocationKeyAndBatchCodeForUpdate(1, "RAK-2", "LOT-1"))
+                .thenReturn(Optional.of(lot));
+
+        assertFalse(service.postApprovedReturnWithBarcodes(15, 4, List.of(
+                new ReturnRequestService.MobileReturnScan(21, itemQr("SKU-1", "LOT-1", expiry), locationQr("A-01")),
+                new ReturnRequestService.MobileReturnScan(22, itemQr("SKU-1", "LOT-1", expiry), locationQr("A-01")))));
+        verify(outboundStockPoster, never()).postOutbound(any(), any(), any(), anyInt(), any(), anyInt());
+    }
+
     private PurchaseOrderLine purchaseLine() {
         PurchaseOrder order = new PurchaseOrder("PO-1", new Supplier(4, "Supplier", null, null, null),
                 user(3), null, LocalDateTime.now());
@@ -220,5 +305,10 @@ class ReturnRequestServiceTest {
     private String encode(String value) {
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private ReturnRequestService.ReturnLineInput returnLineInput(Integer sourceLineId, Integer rackId,
+                                                                  String batch, LocalDate expiry, int quantity) {
+        return new ReturnRequestService.ReturnLineInput(sourceLineId, rackId, batch, expiry, quantity);
     }
 }

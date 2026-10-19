@@ -41,6 +41,7 @@
 - [x] Select a responsive web mobile client and build its authenticated, paginated API boundary.
 - [x] Implement mobile putaway, DO picking/fulfillment, and cycle-count flows with barcode scanning and stock posting.
 - [x] Implement mobile MRO picking and approved-return verification/posting.
+- [x] Create purchase and sales returns with multiple item lines; validate combined quantities for repeated source lines and scanned inventory lots.
 - [x] Implement assigned-picker STO picking with item/source-location scans and Goods Issue posting.
 
 ## Phase 7: ERP and advanced configuration

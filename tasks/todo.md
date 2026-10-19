@@ -46,7 +46,8 @@
 
 ## Phase 7: ERP and advanced configuration
 
-- [~] Define the provider-neutral ERP SPI and SAP/Oracle/Accurate provider keys; concrete connectors need product/API versions and field mappings.
+- [~] Define the provider-neutral ERP SPI and SAP/Oracle/Accurate provider keys; Accurate database discovery/session setup is implemented, while PO/SO sync needs endpoint schemas and field mappings.
+- [x] Add Accurate API-token configuration and validated database-list/open-session requests; reject database hosts outside HTTPS Accurate domains.
 - [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
 - [x] Add admin-configurable Delivery Order zone exclusions to available-stock reservation.
 - [x] Apply configurable zone exclusions to manual/SLOC and barcode-based stock transfers.

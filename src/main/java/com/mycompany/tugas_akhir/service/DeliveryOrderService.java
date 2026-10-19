@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Objects;
@@ -322,6 +323,38 @@ public class DeliveryOrderService {
                 item.expiryDate(), quantity, pickerId);
     }
 
+    @Transactional
+    public boolean recordFulfillmentScan(Integer orderId, Integer lineId, String itemQrPayload,
+                                         int quantity, Integer actorId) {
+        BarcodePayload.Item item = BarcodePayload.parseItem(itemQrPayload);
+        if (item == null || orderId == null || lineId == null || quantity <= 0 || actorId == null) return false;
+        DeliveryOrder order = deliveryOrderRepository.findByIdWithLinesForUpdate(orderId).orElse(null);
+        User actor = userRepository.findById(actorId).orElse(null);
+        boolean packing = order != null && order.getStatus() == DeliveryOrderStatus.PICKED;
+        boolean loading = order != null && order.getStatus() == DeliveryOrderStatus.PACKED;
+        if (order == null || actor == null || (!packing && !loading)) return false;
+        DeliveryOrderLine line = order.getLines().stream()
+                .filter(value -> Objects.equals(value.getId(), lineId)).findFirst().orElse(null);
+        if (line == null || !line.getBarang().getKodeBarang().equalsIgnoreCase(item.sku().trim())) return false;
+
+        for (DeliveryOrderLotReservation reservation : reservationRepository.findByLineIdForUpdate(lineId)) {
+            InventoryLotBalance lot = reservation.getLotBalance();
+            if (lot == null || !lot.getBatchCode().equalsIgnoreCase(item.batchCode().trim())
+                    || !Objects.equals(lot.getExpiryDate(), item.expiryDate())) continue;
+            int available = packing
+                    ? reservation.getPickedQuantity() - reservation.getPackedQuantity()
+                    : reservation.getPackedQuantity() - reservation.getLoadedQuantity();
+            if (quantity > available) return false;
+            if (packing) reservation.setPackedQuantity(reservation.getPackedQuantity() + quantity);
+            else reservation.setLoadedQuantity(reservation.getLoadedQuantity() + quantity);
+            reservationRepository.save(reservation);
+            fulfillmentAuditRepository.save(new DeliveryOrderFulfillmentAudit(order, line, actor,
+                    packing ? "PACKING_SCAN" : "LOADING_SCAN", quantity, LocalDateTime.now()));
+            return true;
+        }
+        return false;
+    }
+
     private boolean recordPickValidated(Integer orderId, Integer lineId, String scannedSku, String scannedRack,
                                         String scannedBatch, LocalDate scannedExpiry, int quantity, Integer pickerId) {
         if (orderId == null || lineId == null || quantity <= 0 || pickerId == null) return false;
@@ -440,11 +473,19 @@ public class DeliveryOrderService {
         if (order == null || actor == null || order.getStatus() != expected) return false;
 
         List<DeliveryOrderLotReservation> reservations = reservationRepository.findByOrderIdForUpdate(orderId);
+        String scanStage = loading ? "LOADING_SCAN" : "PACKING_SCAN";
+        Map<Integer, Integer> scannedTotals = new HashMap<>();
+        fulfillmentAuditRepository.findByOrderId(orderId).stream()
+                .filter(audit -> scanStage.equals(audit.getStage()))
+                .forEach(audit -> scannedTotals.merge(audit.getDeliveryOrderLine().getId(),
+                        audit.getVerifiedQuantity(), Math::addExact));
         Set<Integer> lineIds = new HashSet<>();
         int totalQuantity = 0;
         for (DeliveryOrderLine line : order.getLines()) {
             Integer quantity = quantities.get(line.getId());
             if (quantity == null || quantity < 0) return false;
+            if (!scannedTotals.isEmpty()
+                    && quantity != scannedTotals.getOrDefault(line.getId(), 0)) return false;
             lineIds.add(line.getId());
             int available = reservations.stream()
                     .filter(reservation -> Objects.equals(

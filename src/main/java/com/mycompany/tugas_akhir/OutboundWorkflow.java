@@ -125,6 +125,8 @@ public class OutboundWorkflow {
         Button picked = deliveryOrderButton("Selesaikan picking", "Simpan jumlah yang berhasil diambil dan lanjutkan ke packing.");
         Button packed = deliveryOrderButton("Konfirmasi packing", "Masukkan jumlah aktual yang dikemas per barang.");
         Button loaded = deliveryOrderButton("Konfirmasi loading", "Masukkan jumlah aktual yang dimuat per barang.");
+        Button scanPacking = deliveryOrderButton("Scan packing", "Verifikasi QR item terhadap barang yang sudah dipick.");
+        Button scanLoading = deliveryOrderButton("Scan loading", "Verifikasi QR item terhadap barang yang sudah dipacking.");
         Button fulfillmentAudit = deliveryOrderButton("Audit pemenuhan", "Tinjau catatan jumlah packing dan loading.");
         Button dispatch = deliveryOrderButton("Dispatch / Goods Issue", "Posting barang yang dimuat sebagai Goods Issue.");
         create.setOnAction(event -> handleCreateDeliveryOrder(table));
@@ -139,6 +141,8 @@ public class OutboundWorkflow {
         picked.setOnAction(event -> withSelectedOrder(table, "Picking selesai", orderId -> deliveryOrderService.completePicking(orderId)));
         packed.setOnAction(event -> handleCompletePacking(table));
         loaded.setOnAction(event -> handleCompleteLoading(table));
+        scanPacking.setOnAction(event -> handleRecordFulfillmentScan(table));
+        scanLoading.setOnAction(event -> handleRecordFulfillmentScan(table));
         scanHistory.setOnAction(event -> handlePickScanHistory(table));
         dispatch.setOnAction(event -> {
             DeliveryOrder selected = table.getSelectionModel().getSelectedItem();
@@ -165,17 +169,19 @@ public class OutboundWorkflow {
                     + selectedOrder.getLines().stream().mapToInt(DeliveryOrderLine::getRemainingQuantity).sum()
                     + " unit tersisa");
             updateDeliveryOrderActionState(selectedOrder, release, assignTask, taskDetails, reservations,
-                    start, scanPick, scanHistory, picked, packed, loaded, fulfillmentAudit, dispatch);
+                    start, scanPick, scanHistory, picked, packed, loaded, scanPacking, scanLoading,
+                    fulfillmentAudit, dispatch);
         });
         updateDeliveryOrderActionState(null, release, assignTask, taskDetails, reservations, start,
-                scanPick, scanHistory, picked, packed, loaded, fulfillmentAudit, dispatch);
+                scanPick, scanHistory, picked, packed, loaded, scanPacking, scanLoading,
+                fulfillmentAudit, dispatch);
 
         VBox createGroup = deliveryOrderActionGroup("Buat pesanan", create, salesOrders);
         VBox preparationGroup = deliveryOrderActionGroup("Persiapan", release, assignTask,
                 taskDetails, reservations);
         VBox pickingGroup = deliveryOrderActionGroup("Picking", start, scanPick, scanHistory, picked);
         VBox fulfillmentGroup = deliveryOrderActionGroup("Packing & pengiriman", packed, loaded,
-                fulfillmentAudit, dispatch);
+                scanPacking, scanLoading, fulfillmentAudit, dispatch);
         javafx.scene.layout.FlowPane actions = new javafx.scene.layout.FlowPane(
                 12, 12, createGroup, preparationGroup, pickingGroup, fulfillmentGroup);
         actions.setPrefWrapLength(980);
@@ -276,7 +282,8 @@ public class OutboundWorkflow {
 
     private void updateDeliveryOrderActionState(DeliveryOrder order, Button release, Button assignTask,
             Button taskDetails, Button reservations, Button start, Button scanPick, Button scanHistory,
-            Button picked, Button packed, Button loaded, Button fulfillmentAudit, Button dispatch) {
+            Button picked, Button packed, Button loaded, Button scanPacking, Button scanLoading,
+            Button fulfillmentAudit, Button dispatch) {
         boolean selected = order != null;
         release.setDisable(!selected || (order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.DRAFT
@@ -295,6 +302,10 @@ public class OutboundWorkflow {
         packed.setDisable(!selected || order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PICKED);
         loaded.setDisable(!selected || order.getStatus()
+                != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PACKED);
+        scanPacking.setDisable(!selected || order.getStatus()
+                != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PICKED);
+        scanLoading.setDisable(!selected || order.getStatus()
                 != com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PACKED);
         fulfillmentAudit.setDisable(!selected);
         dispatch.setDisable(!selected || order.getStatus()
@@ -816,6 +827,78 @@ public class OutboundWorkflow {
         handleFulfillmentQuantities(table, true);
     }
 
+    private void handleRecordFulfillmentScan(TableView<DeliveryOrder> table) {
+        DeliveryOrder order = table.getSelectionModel().getSelectedItem();
+        Integer actorId = currentUser == null ? null : currentUser.getId();
+        if (order == null || actorId == null) return;
+        ComboBox<DeliveryOrderLine> lineBox = new ComboBox<>(
+                FXCollections.observableArrayList(order.getLines()));
+        lineBox.setConverter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(DeliveryOrderLine line) {
+                return line == null ? "" : line.getBarang().getKodeBarang() + " — "
+                        + line.getBarang().getNamaBarang();
+            }
+
+            @Override
+            public DeliveryOrderLine fromString(String value) { return null; }
+        });
+        lineBox.getSelectionModel().selectFirst();
+        TextField qrField = new TextField();
+        qrField.setPromptText("Pindai QR barang (WMS1)");
+        TextField quantityField = new TextField("1");
+        GridPane grid = new GridPane();
+        grid.addRow(0, new Label("Barang DO"), lineBox);
+        grid.addRow(1, new Label("QR item"), qrField);
+        grid.addRow(2, new Label("Jumlah scan"), quantityField);
+        configureDeliveryOrderFormGrid(grid);
+        boolean packing = order.getStatus() == com.mycompany.tugas_akhir.model.DeliveryOrderStatus.PICKED;
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(packing ? "Scan Packing" : "Scan Loading");
+        dialog.setHeaderText("Scan hanya diterima jika SKU, batch, expiry, dan jumlah cocok dengan reservasi DO.");
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        styleDeliveryOrderDialog(dialog);
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+        DeliveryOrderLine line = lineBox.getValue();
+        int quantity;
+        try {
+            quantity = Integer.parseInt(quantityField.getText().trim());
+            if (quantity <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException ex) {
+            showAlert(Alert.AlertType.WARNING, "Jumlah Tidak Valid", "Jumlah scan harus bilangan positif.");
+            return;
+        }
+        if (line == null || qrField.getText().isBlank()) {
+            showAlert(Alert.AlertType.WARNING, "Scan Tidak Lengkap", "Pilih barang dan pindai QR item.");
+            return;
+        }
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return deliveryOrderService.recordFulfillmentScan(order.getId(), line.getId(),
+                        qrField.getText().trim(), quantity, actorId);
+            }
+        };
+        task.setOnSucceeded(event -> {
+            if (task.getValue()) {
+                showAlert(Alert.AlertType.INFORMATION, "Scan Tercatat", quantity + " unit terverifikasi.");
+                loadDeliveryOrders(table);
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Scan Ditolak",
+                        "QR item, status tahap, atau jumlah tidak cocok dengan reservasi DO.");
+            }
+        });
+        task.setOnFailed(event -> {
+            log.error("Scan fulfillment gagal", task.getException());
+            showAlert(Alert.AlertType.ERROR, "Scan Gagal", "Scan tidak dapat dicatat.");
+        });
+        Thread thread = new Thread(task, "delivery-order-fulfillment-scan");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
     private void handleFulfillmentQuantities(TableView<DeliveryOrder> table, boolean loading) {
         DeliveryOrder order = table.getSelectionModel().getSelectedItem();
         Integer actorId = currentUser == null ? null : currentUser.getId();
@@ -840,7 +923,7 @@ public class OutboundWorkflow {
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(loading ? "Konfirmasi Barang Dimuat" : "Konfirmasi Barang Dikemas");
-        dialog.setHeaderText("Masukkan jumlah aktual untuk setiap barang. Isi 0 jika tidak diproses pada tahap ini.");
+        dialog.setHeaderText("Masukkan jumlah per barang; jika memakai scan QR, jumlah wajib sama dengan total scan.");
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         styleDeliveryOrderDialog(dialog);

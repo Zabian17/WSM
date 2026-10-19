@@ -369,6 +369,38 @@ class DeliveryOrderServiceTest {
     }
 
     @Test
+    void fulfillmentBarcodeScanMustMatchPackedReservationAndLot() {
+        DeliveryOrder order = order(DeliveryOrderStatus.PACKED, 4);
+        DeliveryOrderLine line = order.getLines().get(0);
+        java.time.LocalDate expiry = java.time.LocalDate.of(2027, 6, 30);
+        Rak rack = new Rak(2, null, "A-01", 100, 4);
+        InventoryLotBalance lot = new InventoryLotBalance(line.getBarang(), rack, rack.getKodeRak(),
+                "LOT-A", expiry, java.time.LocalDateTime.now(), 4);
+        DeliveryOrderLotReservation reservation = reservation(order, lot, 4);
+        reservation.setPickedQuantity(3);
+        reservation.setPackedQuantity(2);
+        reservation.setLoadedQuantity(0);
+        when(orderRepository.findByIdWithLinesForUpdate(7)).thenReturn(Optional.of(order));
+        when(userRepository.findById(9)).thenReturn(Optional.of(User.builder().id(9).fullName("Operator").build()));
+        when(reservationRepository.findByLineIdForUpdate(line.getId())).thenReturn(List.of(reservation));
+        when(reservationRepository.findByOrderIdForUpdate(7)).thenReturn(List.of(reservation));
+
+        assertFalse(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "OTHER", expiry.toString()), 1, 9));
+        assertFalse(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "LOT-A", expiry.toString()), 3, 9));
+        assertTrue(service.recordFulfillmentScan(7, line.getId(), itemQr("SKU-1", "LOT-A", expiry.toString()), 2, 9));
+
+        assertEquals(2, reservation.getLoadedQuantity());
+        verify(fulfillmentAuditRepository).save(argThat(audit -> audit.getStage().equals("LOADING_SCAN")
+                && audit.getVerifiedQuantity() == 2));
+        User actor = User.builder().id(9).fullName("Operator").build();
+        when(fulfillmentAuditRepository.findByOrderId(7)).thenReturn(List.of(
+                new DeliveryOrderFulfillmentAudit(order, line, actor, "LOADING_SCAN", 2,
+                        java.time.LocalDateTime.now())));
+        assertFalse(service.completeLoading(7, Map.of(line.getId(), 1), 9));
+        assertTrue(service.completeLoading(7, Map.of(line.getId(), 2), 9));
+    }
+
+    @Test
     void partialDispatchKeepsOutstandingQuantityOnSameOrderForNextCycle() {
         DeliveryOrder order = order(DeliveryOrderStatus.LOADED, 5);
         Rak rack = new Rak(2, null, "A-01", 100, 5);

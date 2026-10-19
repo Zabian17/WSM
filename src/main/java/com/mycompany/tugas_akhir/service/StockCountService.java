@@ -2,6 +2,8 @@ package com.mycompany.tugas_akhir.service;
 
 import com.mycompany.tugas_akhir.model.*;
 import com.mycompany.tugas_akhir.repository.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ public class StockCountService {
             List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING, StockCountStatus.COUNTED);
 
     private final StockCountRepository stockCountRepository;
+    private final StockCountLineRepository stockCountLineRepository;
     private final BarangRepository barangRepository;
     private final RakRepository rakRepository;
     private final UserRepository userRepository;
@@ -26,13 +29,16 @@ public class StockCountService {
     private final TransaksiRepository transaksiRepository;
     private final InventoryTransferRepository inventoryTransferRepository;
 
-    public StockCountService(StockCountRepository stockCountRepository, BarangRepository barangRepository,
+    public StockCountService(StockCountRepository stockCountRepository,
+                            StockCountLineRepository stockCountLineRepository,
+                            BarangRepository barangRepository,
                             RakRepository rakRepository, UserRepository userRepository,
                             InventoryBalanceRepository balanceRepository,
                             InventoryLotBalanceRepository lotBalanceRepository,
                             TransaksiRepository transaksiRepository,
                             InventoryTransferRepository inventoryTransferRepository) {
         this.stockCountRepository = stockCountRepository;
+        this.stockCountLineRepository = stockCountLineRepository;
         this.barangRepository = barangRepository;
         this.rakRepository = rakRepository;
         this.userRepository = userRepository;
@@ -258,6 +264,40 @@ public class StockCountService {
     }
 
     @Transactional(readOnly = true)
+    public Page<StockCountSummaryProjection> getMobileActiveCounts(Integer userId, Pageable pageable) {
+        return stockCountRepository.findMobileActiveCounts(userId,
+                List.of(StockCountStatus.SCHEDULED, StockCountStatus.COUNTING),
+                StockCountStatus.SCHEDULED, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<StockCountLineProjection> getMobileCountLines(Integer countId, Integer userId,
+                                                              Pageable pageable) {
+        return stockCountLineRepository.findOpenLinesForUser(countId, userId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public void validateMobileCountBarcode(Integer countId, Integer lineId, Integer userId,
+                                           String barcodePayload) {
+        if (barcodePayload == null || barcodePayload.length() > 512) {
+            throw new IllegalArgumentException("Barcode barang tidak valid.");
+        }
+        BarcodePayload.Item scanned = BarcodePayload.parseItem(barcodePayload);
+        if (scanned == null) throw new IllegalArgumentException("Barcode barang tidak valid.");
+        String expectedSku = stockCountLineRepository.findOpenSkuForUser(countId, lineId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("SKU tidak ditugaskan pada sesi ini."));
+        if (!expectedSku.equalsIgnoreCase(scanned.sku())) {
+            throw new IllegalStateException("Barcode tidak cocok dengan SKU yang sedang dihitung.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public StockCountStatus getCountStatus(Integer countId) {
+        return stockCountRepository.findStatusById(countId)
+                .orElseThrow(() -> new IllegalArgumentException("Sesi opname tidak ditemukan."));
+    }
+
+    @Transactional(readOnly = true)
     public List<CycleCountRecommendation> getCycleCountRecommendations() {
         LocalDate today = LocalDate.now();
         Map<Integer, StockCount> lastCountByRack = new HashMap<>();
@@ -363,8 +403,8 @@ public class StockCountService {
                 .filter(line -> line.getCountedQuantity() == null)
                 .filter(line -> line.getAssignedUser() == null
                         || Objects.equals(line.getAssignedUser().getId(), counter.getId())).toList();
-        if (countedQuantities.size() != assignedLines.size())
-            throw new IllegalArgumentException("Hasil hitung harus mencakup seluruh SKU yang ditugaskan kepada Anda.");
+        if (countedQuantities.size() > assignedLines.size())
+            throw new IllegalArgumentException("Hasil hitung melebihi SKU yang masih ditugaskan kepada Anda.");
         Map<Integer, StockCountLine> linesById = new HashMap<>();
         for (StockCountLine line : assignedLines) linesById.put(line.getId(), line);
         for (Map.Entry<Integer, Integer> entry : countedQuantities.entrySet()) {

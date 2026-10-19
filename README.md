@@ -188,6 +188,14 @@ Start MySQL first, then open PowerShell in the repository root:
 The JavaFX login window should open after Spring Boot has initialized. Maven
 downloads required dependencies on the first run.
 
+The mobile API listens on `127.0.0.1:8765` by default. Its OpenAPI contract is
+[`docs/mobile-api-v1.yaml`](./docs/mobile-api-v1.yaml). To expose it on a
+warehouse network, set `MOBILE_API_BIND_ADDRESS` to the server's LAN address,
+enable `MOBILE_API_TLS_ENABLED=true`, and configure the standard Spring Boot
+`SERVER_SSL_KEY_STORE`, `SERVER_SSL_KEY_STORE_PASSWORD`, `SERVER_SSL_KEY_STORE_TYPE`,
+and `SERVER_SSL_KEY_ALIAS` environment variables. Startup rejects non-loopback
+binding without TLS.
+
 An optional Windows launcher is available:
 
 ```powershell

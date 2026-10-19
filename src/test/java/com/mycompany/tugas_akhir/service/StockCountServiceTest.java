@@ -24,6 +24,7 @@ import static org.mockito.Mockito.*;
 class StockCountServiceTest {
 
     @Mock private StockCountRepository stockCountRepository;
+    @Mock private StockCountLineRepository stockCountLineRepository;
     @Mock private BarangRepository barangRepository;
     @Mock private RakRepository rakRepository;
     @Mock private UserRepository userRepository;
@@ -36,7 +37,7 @@ class StockCountServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new StockCountService(stockCountRepository, barangRepository, rakRepository,
+        service = new StockCountService(stockCountRepository, stockCountLineRepository, barangRepository, rakRepository,
                 userRepository, balanceRepository, lotBalanceRepository, transaksiRepository,
                 inventoryTransferRepository);
     }
@@ -126,6 +127,34 @@ class StockCountServiceTest {
     }
 
     @Test
+    void countOperatorCanSubmitAssignedSkusInMultipleBatches() {
+        User operator = user(7);
+        StockCount count = new StockCount("SC-BATCHED", rack(4, 100, 0), operator, LocalDateTime.now());
+        StockCountLine firstLine = new StockCountLine(item(1, 0), 0);
+        firstLine.setAssignedUser(operator);
+        StockCountLine secondLine = new StockCountLine(item(2, 0), 0);
+        secondLine.setAssignedUser(operator);
+        count.addLine(firstLine);
+        count.addLine(secondLine);
+        ReflectionTestUtils.setField(count, "id", 13);
+        ReflectionTestUtils.setField(firstLine, "id", 201);
+        ReflectionTestUtils.setField(secondLine, "id", 202);
+        when(stockCountRepository.findByIdForUpdate(13)).thenReturn(Optional.of(count));
+        when(userRepository.findById(7)).thenReturn(Optional.of(operator));
+
+        service.submitCounts(13, Map.of(201, 3), 7);
+
+        assertEquals(StockCountStatus.COUNTING, count.getStatus());
+        assertEquals(3, firstLine.getCountedQuantity());
+        assertNull(secondLine.getCountedQuantity());
+
+        service.submitCounts(13, Map.of(202, 2), 7);
+
+        assertEquals(StockCountStatus.COUNTED, count.getStatus());
+        assertEquals(2, secondLine.getCountedQuantity());
+    }
+
+    @Test
     void monthlyScheduleSpreadsRackTasksAcrossWeekdaysWithoutTakingEarlySnapshots() {
         User creator = user(7);
         Rak rackA = rack(4, 100, 0);
@@ -204,6 +233,18 @@ class StockCountServiceTest {
 
         assertThrows(IllegalStateException.class, () -> service.createDailyCycleCount(7));
         verify(transaksiRepository, never()).countMutationsByRackSince(any(LocalDateTime.class));
+    }
+
+    @Test
+    void mobileCountBarcodeMustMatchAnOpenAssignedLine() {
+        when(stockCountLineRepository.findOpenSkuForUser(11, 21, 7)).thenReturn(Optional.of("SKU-1"));
+
+        service.validateMobileCountBarcode(11, 21, 7, "WMS1|U0tVLTE|QkFUQ0gtMQ|-");
+
+        assertThrows(IllegalStateException.class, () -> service.validateMobileCountBarcode(
+                11, 21, 7, "WMS1|U0tVLTI|QkFUQ0gtMQ|-"));
+        assertThrows(IllegalArgumentException.class, () -> service.validateMobileCountBarcode(
+                11, 21, 7, "SLOC1|U0xPQy0x"));
     }
 
     @Test

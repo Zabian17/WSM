@@ -7,6 +7,9 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,6 +40,30 @@ class AccurateDatabaseClientTest {
                 .andRespond(withSuccess("{\"s\":true,\"d\":[]}", APPLICATION_JSON));
 
         assertTrue(client.get(SESSION, "item/list", Map.of("pageSize", "20")).path("s").asBoolean());
+        server.verify();
+    }
+
+    @Test
+    void signsDatabaseRequestsInApiTokenModeWithoutSessionHeader() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AccurateApiProperties properties = properties();
+        properties.setAuthMode(AccurateApiProperties.AuthMode.API_TOKEN);
+        properties.setApiSecret("test-secret");
+        AccurateDatabaseClient client = new AccurateDatabaseClient(builder, properties, new ObjectMapper(),
+                Clock.fixed(Instant.ofEpochMilli(1234), ZoneOffset.UTC));
+        server.expect(requestTo("https://public.accurate.id/accurate/api/item/list.do"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer test-token"))
+                .andExpect(header("X-Api-Timestamp", "1234"))
+                .andExpect(request -> {
+                    assertTrue(request.getHeaders().containsKey("X-Api-Signature"));
+                    assertTrue(!request.getHeaders().containsKey("X-Session-ID"));
+                })
+                .andRespond(withSuccess("{\"s\":true,\"d\":[]}", APPLICATION_JSON));
+
+        assertTrue(client.get(new AccurateSessionClient.DatabaseSession(
+                URI.create("https://public.accurate.id"), null), "item/list", Map.of()).path("s").asBoolean());
         server.verify();
     }
 

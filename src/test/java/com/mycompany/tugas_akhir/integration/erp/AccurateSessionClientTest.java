@@ -5,6 +5,9 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,6 +55,42 @@ class AccurateSessionClientTest {
         assertEquals(new AccurateSessionClient.DatabaseSession(URI.create("https://public.accurate.id"), "session-1"),
                 client.openDatabase(1156));
         server.verify();
+    }
+
+    @Test
+    void resolvesSingleDatabaseHostUsingSignedApiToken() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AccurateApiProperties properties = properties();
+        properties.setAuthMode(AccurateApiProperties.AuthMode.API_TOKEN);
+        properties.setApiSecret("test-secret");
+        AccurateSessionClient client = new AccurateSessionClient(builder, properties,
+                Clock.fixed(Instant.ofEpochMilli(1234), ZoneOffset.UTC));
+        server.expect(requestTo("https://account.accurate.id/api/api-token.do"))
+                .andExpect(method(GET))
+                .andExpect(header("Authorization", "Bearer test-token"))
+                .andExpect(header("X-Api-Timestamp", "1234"))
+                .andExpect(request -> assertEquals(64,
+                        request.getHeaders().getFirst("X-Api-Signature").length()))
+                .andRespond(withSuccess("""
+                        {"s":true,"d":{"database":{"host":"https://public.accurate.id/accurate"}}}
+                        """, APPLICATION_JSON));
+
+        assertEquals(URI.create("https://public.accurate.id"), client.openApiTokenDatabase().host());
+        server.verify();
+    }
+
+    @Test
+    void apiTokenModeRequiresItsSecretBeforeCallingAccurate() {
+        AccurateApiProperties properties = properties();
+        properties.setAuthMode(AccurateApiProperties.AuthMode.API_TOKEN);
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer.bindTo(builder).build();
+        AccurateSessionClient client = new AccurateSessionClient(builder, properties);
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, client::openApiTokenDatabase);
+
+        assertTrue(error.getMessage().contains("ACCURATE_API_SECRET"));
     }
 
     @Test

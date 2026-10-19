@@ -56,6 +56,10 @@ implemented.
   section zones; all zones remain available until a picklist is configured.
 - ERP adapters share a provider-neutral contract for SAP, Oracle, and Accurate;
   vendor connectors remain disabled until API versions and mappings are agreed.
+- Accurate transport supports OAuth bearer access tokens with database sessions
+  and API Tokens with HMAC-signed requests. Set `ACCURATE_AUTH_MODE=API_TOKEN`
+  with `ACCURATE_API_TOKEN` and `ACCURATE_API_SECRET`; OAuth remains the default
+  and accepts `ACCURATE_BEARER_TOKEN` (or the legacy `ACCURATE_API_TOKEN`).
 - Desktop picking scan validation for item QR, SLOC, batch, expiry, assigned
   picker, and section.
 - Packing and loading quantity checks with operator/time audit.

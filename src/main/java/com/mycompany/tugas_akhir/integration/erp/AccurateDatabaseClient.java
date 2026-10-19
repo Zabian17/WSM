@@ -13,6 +13,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.time.Clock;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -28,13 +29,20 @@ public class AccurateDatabaseClient {
     private final RestClient restClient;
     private final AccurateApiProperties properties;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
     private final AccurateRequestGate requestGate = new AccurateRequestGate();
 
     public AccurateDatabaseClient(RestClient.Builder builder, AccurateApiProperties properties,
                                   ObjectMapper objectMapper) {
+        this(builder, properties, objectMapper, Clock.systemUTC());
+    }
+
+    AccurateDatabaseClient(RestClient.Builder builder, AccurateApiProperties properties,
+                           ObjectMapper objectMapper, Clock clock) {
         this.restClient = builder.build();
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.clock = clock;
     }
 
     public JsonNode get(DatabaseSession session, String endpoint, Map<String, String> parameters) {
@@ -47,12 +55,18 @@ public class AccurateDatabaseClient {
 
     private JsonNode request(HttpMethod method, DatabaseSession session, String endpoint,
                              Map<String, String> parameters) {
-        if (session == null || !validEndpoint(endpoint) || !validParameters(parameters)) {
+        if (session == null || !validEndpoint(endpoint) || !validParameters(parameters)
+                || properties.getAuthMode() == null
+                || !properties.usesApiTokenAuth() && (session.session() == null || session.session().isBlank())) {
             throw new IllegalArgumentException("Invalid Accurate database request.");
         }
         String token = properties.getApiToken();
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("ACCURATE_API_TOKEN is not configured.");
+        }
+        if (properties.usesApiTokenAuth()
+                && (properties.getApiSecret() == null || properties.getApiSecret().isBlank())) {
+            throw new IllegalStateException("ACCURATE_API_SECRET is required in API_TOKEN auth mode.");
         }
         URI target = buildUri(session.host(), endpoint, method == HttpMethod.GET ? parameters : Map.of());
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
@@ -65,8 +79,12 @@ public class AccurateDatabaseClient {
             try {
                 result = restClient.method(method).uri(target)
                         .headers(headers -> {
-                            headers.setBearerAuth(token);
-                            headers.set("X-Session-ID", session.session());
+                            if (properties.usesApiTokenAuth()) {
+                                AccurateApiTokenSigner.apply(headers, token, properties.getApiSecret(), clock);
+                            } else {
+                                headers.setBearerAuth(token);
+                                headers.set("X-Session-ID", session.session());
+                            }
                         })
                         .body(method == HttpMethod.POST ? form : new LinkedMultiValueMap<>())
                         .exchange((request, response) -> new ExchangeResult(response.getStatusCode().value(),

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -14,9 +15,15 @@ import java.util.Objects;
 public class AccurateSessionClient {
     private final RestClient restClient;
     private final AccurateApiProperties properties;
+    private final Clock clock;
 
     public AccurateSessionClient(RestClient.Builder builder, AccurateApiProperties properties) {
+        this(builder, properties, Clock.systemUTC());
+    }
+
+    AccurateSessionClient(RestClient.Builder builder, AccurateApiProperties properties, Clock clock) {
         this.properties = Objects.requireNonNull(properties, "Accurate API properties are required.");
+        this.clock = Objects.requireNonNull(clock, "Clock is required.");
         URI accountBaseUrl = properties.getAccountBaseUrl();
         if (!isAccountApiUrl(accountBaseUrl)) {
             throw new IllegalArgumentException("Accurate account API URL must use HTTPS at account.accurate.id.");
@@ -25,6 +32,7 @@ public class AccurateSessionClient {
     }
 
     public List<DatabaseInfo> listDatabases() {
+        requireOAuthMode();
         JsonNode response = request("/api/db-list.do");
         JsonNode databases = response.path("d");
         if (!databases.isArray()) throw new IllegalStateException("Accurate returned an invalid database list.");
@@ -41,6 +49,7 @@ public class AccurateSessionClient {
     }
 
     public DatabaseSession openDatabase(long databaseId) {
+        requireOAuthMode();
         if (databaseId <= 0) throw new IllegalArgumentException("Accurate database ID must be positive.");
         JsonNode response = request("/api/open-db.do?id=" + databaseId);
         String session = response.path("session").asText("");
@@ -52,18 +61,46 @@ public class AccurateSessionClient {
         return new DatabaseSession(databaseHost, session);
     }
 
+    public DatabaseSession openApiTokenDatabase() {
+        if (!properties.usesApiTokenAuth()) {
+            throw new IllegalStateException("API Token database resolution requires API_TOKEN auth mode.");
+        }
+        JsonNode response = request("/api/api-token.do");
+        URI databaseHost = validDatabaseHost(response.path("d").path("database").path("host").asText(""));
+        if (databaseHost == null) {
+            throw new IllegalStateException("Accurate returned an invalid API Token database host.");
+        }
+        return new DatabaseSession(databaseHost, null);
+    }
+
     private JsonNode request(String path) {
         String token = properties.getApiToken();
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("ACCURATE_API_TOKEN is not configured.");
         }
+        if (properties.usesApiTokenAuth()
+                && (properties.getApiSecret() == null || properties.getApiSecret().isBlank())) {
+            throw new IllegalStateException("ACCURATE_API_SECRET is required in API_TOKEN auth mode.");
+        }
         JsonNode response = restClient.get().uri(path)
-                .headers(headers -> headers.setBearerAuth(token))
+                .headers(headers -> {
+                    if (properties.usesApiTokenAuth()) {
+                        AccurateApiTokenSigner.apply(headers, token, properties.getApiSecret(), clock);
+                    } else {
+                        headers.setBearerAuth(token);
+                    }
+                })
                 .retrieve().body(JsonNode.class);
         if (response == null || !response.path("s").asBoolean(false)) {
             throw new IllegalStateException("Accurate rejected the database request.");
         }
         return response;
+    }
+
+    private void requireOAuthMode() {
+        if (properties.usesApiTokenAuth()) {
+            throw new IllegalStateException("API_TOKEN auth is bound to one database; use openApiTokenDatabase().");
+        }
     }
 
     private URI validDatabaseHost(String value) {
@@ -81,7 +118,8 @@ public class AccurateSessionClient {
                 || host.getQuery() != null || host.getFragment() != null
                 || !(hostname.equalsIgnoreCase("accurate.id")
                 || hostname.toLowerCase(Locale.ROOT).endsWith(".accurate.id"))
-                || host.getPath() != null && !host.getPath().isEmpty() && !host.getPath().equals("/")) {
+                || host.getPath() != null && !host.getPath().isEmpty()
+                && !host.getPath().equals("/") && !host.getPath().equals("/accurate")) {
             return null;
         }
         return URI.create("https://" + hostname.toLowerCase(Locale.ROOT));
@@ -106,8 +144,8 @@ public class AccurateSessionClient {
         public DatabaseSession {
             host = validDatabaseHost(Objects.requireNonNull(host, "Database host is required."));
             if (host == null) throw new IllegalArgumentException("Database host must be HTTPS on an Accurate domain.");
-            if (session == null || session.isBlank() || session.length() > 512) {
-                throw new IllegalArgumentException("A valid database session is required.");
+            if (session != null && (session.isBlank() || session.length() > 512)) {
+                throw new IllegalArgumentException("Database session must be blank or at most 512 characters.");
             }
         }
     }

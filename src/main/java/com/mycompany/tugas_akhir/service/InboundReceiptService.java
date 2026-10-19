@@ -390,8 +390,7 @@ public class InboundReceiptService {
     }
 
     private String itemQrPayload(String sku, String batchCode, LocalDate expiryDate) {
-        return "WMS1|" + encode(sku) + "|" + encode(batchCode)
-                + "|" + (expiryDate == null ? "-" : expiryDate);
+        return BarcodePayload.itemPayload(sku, batchCode, expiryDate);
     }
 
     private void writeQrLabel(String payload, Path target) throws IOException {
@@ -416,7 +415,7 @@ public class InboundReceiptService {
         if (rack == null) throw new IOException("Lokasi rak tidak ditemukan.");
         Files.createDirectories(labelDirectory);
         Path target = labelDirectory.resolve("location-" + rack.getKodeRak() + ".png");
-        String payload = "SLOC1|" + encode(rack.getKodeRak());
+        String payload = BarcodePayload.locationPayload(rack.getKodeRak());
         Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
         hints.put(EncodeHintType.CHARACTER_SET, StandardCharsets.UTF_8.name());
         hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
@@ -428,10 +427,6 @@ public class InboundReceiptService {
             throw new IOException("QR lokasi gagal dibuat.", e);
         }
         return target;
-    }
-
-    private String encode(String value) {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
     private boolean matchesReceiptQr(InboundReceipt receipt, String payload) {

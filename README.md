@@ -139,6 +139,8 @@ Connection values can be overridden with environment variables:
 | `DB_USER` | `root` in `dev`; required otherwise | Database username |
 | `DB_PASSWORD` | Empty in `dev`; required otherwise | Database password |
 | `DB_SSL_MODE` | `DISABLED` in `dev`; `REQUIRED` otherwise | MySQL TLS mode (`REQUIRED`, `VERIFY_CA`, `VERIFY_IDENTITY`, or `DISABLED` for local development only) |
+| `ITEM_BARCODE_PREFIX` | `WMS1` | Prefix used when generating item QR payloads |
+| `LOCATION_BARCODE_PREFIX` | `SLOC1` | Prefix used when generating location QR payloads |
 
 For example, in PowerShell:
 
@@ -149,8 +151,14 @@ $env:DB_NAME = "gudang_akhir"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = "your-local-password"
 $env:DB_SSL_MODE = "VERIFY_IDENTITY"
+$env:ITEM_BARCODE_PREFIX = "WMS1"
+$env:LOCATION_BARCODE_PREFIX = "SLOC1"
 $env:SPRING_PROFILES_ACTIVE = "prod"
 ```
+
+Barcode prefixes accept 1–16 letters, digits, underscores, or hyphens. Scanners
+continue accepting legacy `WMS1` item and `SLOC1` location labels after prefixes
+change; newly generated labels use the configured values.
 
 Use `VERIFY_IDENTITY` for remote databases with a trusted server certificate.
 Use `REQUIRED` when encryption is needed but certificate verification is not

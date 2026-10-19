@@ -996,8 +996,8 @@ public class OutboundWorkflow {
             var line = reservation.getDeliveryOrderLine();
             var lot = reservation.getLotBalance();
             String expiry = lot.getExpiryDate() == null ? "-" : lot.getExpiryDate().toString();
-            String payload = "WMS1|" + barcodePart(line.getBarang().getKodeBarang()) + "|"
-                    + barcodePart(lot.getBatchCode()) + "|" + expiry;
+            String payload = com.mycompany.tugas_akhir.service.BarcodePayload.itemPayload(
+                    line.getBarang().getKodeBarang(), lot.getBatchCode(), lot.getExpiryDate());
             html.append("<section class=\"label\"><b>DO ").append(escapeHtml(order.getOrderCode()))
                     .append("</b><p>").append(escapeHtml(line.getBarang().getKodeBarang())).append(" — ")
                     .append(escapeHtml(line.getBarang().getNamaBarang())).append("</p><p>Batch: ")
@@ -1019,10 +1019,6 @@ public class OutboundWorkflow {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         com.google.zxing.client.j2se.MatrixToImageWriter.writeToStream(matrix, "PNG", output);
         return Base64.getEncoder().encodeToString(output.toByteArray());
-    }
-
-    private String barcodePart(String value) {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private String escapeHtml(String value) {

@@ -45,5 +45,6 @@
 ## Phase 7: ERP and advanced configuration
 
 - [ ] Define ERP contracts/adapters for SAP, Oracle, and Accurate.
-- [ ] Add custom barcode formats and remaining availability/zone configuration.
+- [x] Add configurable item/location barcode prefixes with backward compatibility for WMS1/SLOC1.
+- [ ] Finish remaining availability/zone configuration.
 - [ ] Validate live synchronization when vendor docs, credentials, and mappings are provided.
